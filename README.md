@@ -4,4 +4,4 @@ Este proyecto tiene el objetivo de presentar una herramienta para el control de 
 
 Probando conflictos
 
-**Puto Carlos
+*Puto Carlos*
