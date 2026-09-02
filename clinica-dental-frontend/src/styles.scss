@@ -1,1 +1,15 @@
-/* You can add global styles to this file, and also import other style files */
+@import "bootstrap-icons/font/bootstrap-icons.css";
+
+:root {
+  --color-primario: #2C7BE5;       // Azul dental
+  --color-secundario: #5CC9C9;     // Turquesa suave
+  --color-acento: #8FE3C0;         // Verde menta
+  --color-fondo: #F7F9FA;          // Blanco hueso
+  --color-texto: #2E3A45;          // Gris azulado oscuro
+}
+
+body {
+  background-color: var(--color-fondo);
+  color: var(--color-texto);
+  font-family: 'Roboto', sans-serif;
+}
