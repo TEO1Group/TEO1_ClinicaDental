@@ -1,4 +1,4 @@
-package com.teo1.backend;
+package com.teo1.clinicadental;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
