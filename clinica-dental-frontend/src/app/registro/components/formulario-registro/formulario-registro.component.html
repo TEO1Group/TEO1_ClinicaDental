@@ -10,10 +10,36 @@
             <p class="text-muted">Crea tu cuenta para gestionar tus citas y expediente médico</p>
           </div>
 
+          @if (successMessage) {
+            <div class="alert alert-success" role="status">{{ successMessage }}</div>
+          }
+          @if (errorMessage) {
+            <div class="alert alert-danger" role="alert">{{ errorMessage }}</div>
+          }
+
           <form [formGroup]="registroForm" (ngSubmit)="onSubmit()" novalidate>
             
-            <!-- Nombre y Apellido -->
+            <!-- DPI y Nombre -->
             <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label for="dpi" class="form-label fw-semibold">DPI <span class="text-danger">*</span></label>
+                <input 
+                  type="text" 
+                  id="dpi" 
+                  class="form-control" 
+                  formControlName="dpi"
+                  placeholder="13 dígitos"
+                  maxlength="13"
+                  inputmode="numeric"
+                  [ngClass]="{ 'is-invalid': registroForm.get('dpi')?.touched && registroForm.get('dpi')?.invalid }"
+                />
+                @if (registroForm.get('dpi')?.hasError('required')) {
+                  <div class="invalid-feedback">El DPI es obligatorio.</div>
+                } @else if (registroForm.get('dpi')?.hasError('pattern')) {
+                  <div class="invalid-feedback">El DPI debe contener exactamente 13 dígitos.</div>
+                }
+              </div>
+
               <div class="col-md-6">
                 <label for="nombre" class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
                 <input 
@@ -21,118 +47,45 @@
                   id="nombre" 
                   class="form-control" 
                   formControlName="nombre"
-                  placeholder="Ej. Juan"
+                  placeholder="Ej. Juan Pérez"
                   [ngClass]="{ 'is-invalid': registroForm.get('nombre')?.touched && registroForm.get('nombre')?.invalid }"
                 />
-                <div class="invalid-feedback" *ngIf="registroForm.get('nombre')?.hasError('required')">
-                  El nombre es obligatorio.
-                </div>
-                <div class="invalid-feedback" *ngIf="registroForm.get('nombre')?.hasError('minlength')">
-                  Debe tener al menos 3 caracteres.
-                </div>
-              </div>
-
-              <div class="col-md-6">
-                <label for="apellido" class="form-label fw-semibold">Apellido <span class="text-danger">*</span></label>
-                <input 
-                  type="text" 
-                  id="apellido" 
-                  class="form-control" 
-                  formControlName="apellido"
-                  placeholder="Ej. Pérez"
-                  [ngClass]="{ 'is-invalid': registroForm.get('apellido')?.touched && registroForm.get('apellido')?.invalid }"
-                />
-                <div class="invalid-feedback" *ngIf="registroForm.get('apellido')?.hasError('required')">
-                  El apellido es obligatorio.
-                </div>
-                <div class="invalid-feedback" *ngIf="registroForm.get('apellido')?.hasError('minlength')">
-                  Debe tener al menos 3 caracteres.
-                </div>
+                @if (registroForm.get('nombre')?.hasError('required')) {
+                  <div class="invalid-feedback">El nombre es obligatorio.</div>
+                } @else if (registroForm.get('nombre')?.hasError('minlength')) {
+                  <div class="invalid-feedback">Debe tener al menos 3 caracteres.</div>
+                }
               </div>
             </div>
 
-            <!-- Email y Telefono -->
+            <!-- Celular -->
             <div class="row g-3 mb-3">
-              <div class="col-md-6">
-                <label for="email" class="form-label fw-semibold">Correo Electrónico <span class="text-danger">*</span></label>
-                <div class="input-group">
-                  <span class="input-group-text bg-light border-end-0">
-                    <i class="bi bi-envelope text-muted"></i>
-                  </span>
-                  <input 
-                    type="email" 
-                    id="email" 
-                    class="form-control border-start-0" 
-                    formControlName="email"
-                    placeholder="ejemplo@correo.com"
-                    [ngClass]="{ 'is-invalid': registroForm.get('email')?.touched && registroForm.get('email')?.invalid }"
-                  />
-                  <div class="invalid-feedback" *ngIf="registroForm.get('email')?.hasError('required')">
-                    El correo es obligatorio.
-                  </div>
-                  <div class="invalid-feedback" *ngIf="registroForm.get('email')?.hasError('email')">
-                    Ingresa un correo electrónico válido.
-                  </div>
-                </div>
-              </div>
-
-              <div class="col-md-6">
-                <label for="telefono" class="form-label fw-semibold">Teléfono <span class="text-danger">*</span></label>
+              <div class="col-md-12">
+                <label for="celular" class="form-label fw-semibold">Celular <span class="text-danger">*</span></label>
                 <div class="input-group">
                   <span class="input-group-text bg-light border-end-0">
                     <i class="bi bi-telephone text-muted"></i>
                   </span>
                   <input 
                     type="tel" 
-                    id="telefono" 
+                    id="celular" 
                     class="form-control border-start-0" 
-                    formControlName="telefono"
+                    formControlName="celular"
                     placeholder="88888888"
-                    [ngClass]="{ 'is-invalid': registroForm.get('telefono')?.touched && registroForm.get('telefono')?.invalid }"
+                    maxlength="15"
+                    inputmode="numeric"
+                    [ngClass]="{ 'is-invalid': registroForm.get('celular')?.touched && registroForm.get('celular')?.invalid }"
                   />
-                  <div class="invalid-feedback" *ngIf="registroForm.get('telefono')?.hasError('required')">
-                    El teléfono es obligatorio.
-                  </div>
-                  <div class="invalid-feedback" *ngIf="registroForm.get('telefono')?.hasError('pattern') && !registroForm.get('telefono')?.hasError('required')">
-                    El teléfono debe contener exactamente 8 dígitos.
-                  </div>
+                  @if (registroForm.get('celular')?.hasError('required')) {
+                    <div class="invalid-feedback">El celular es obligatorio.</div>
+                  } @else if (registroForm.get('celular')?.hasError('pattern')) {
+                    <div class="invalid-feedback">El celular debe contener entre 1 y 15 dígitos.</div>
+                  }
                 </div>
               </div>
             </div>
 
-            <!-- Fecha de Nacimiento y Direccion -->
-            <div class="row g-3 mb-3">
-              <div class="col-md-5">
-                <label for="fechaNacimiento" class="form-label fw-semibold">Fecha de Nacimiento <span class="text-danger">*</span></label>
-                <input 
-                  type="date" 
-                  id="fechaNacimiento" 
-                  class="form-control" 
-                  formControlName="fechaNacimiento"
-                  [ngClass]="{ 'is-invalid': registroForm.get('fechaNacimiento')?.touched && registroForm.get('fechaNacimiento')?.invalid }"
-                />
-                <div class="invalid-feedback" *ngIf="registroForm.get('fechaNacimiento')?.hasError('required')">
-                  La fecha de nacimiento es obligatoria.
-                </div>
-              </div>
-
-              <div class="col-md-7">
-                <label for="direccion" class="form-label fw-semibold">Dirección <span class="text-danger">*</span></label>
-                <input 
-                  type="text" 
-                  id="direccion" 
-                  class="form-control" 
-                  formControlName="direccion"
-                  placeholder="Calle, avenida, ciudad"
-                  [ngClass]="{ 'is-invalid': registroForm.get('direccion')?.touched && registroForm.get('direccion')?.invalid }"
-                />
-                <div class="invalid-feedback" *ngIf="registroForm.get('direccion')?.hasError('required')">
-                  La dirección es obligatoria.
-                </div>
-              </div>
-            </div>
-
-            <!-- Contraseña y Confirmar Contraseña -->
+            <!-- Contraseñas -->
             <div class="row g-3 mb-3">
               <div class="col-md-6">
                 <label for="password" class="form-label fw-semibold">Contraseña <span class="text-danger">*</span></label>
@@ -152,15 +105,13 @@
                     tabindex="-1">
                     <i class="bi" [ngClass]="showPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
                   </button>
-                  <div class="invalid-feedback" *ngIf="registroForm.get('password')?.hasError('required')">
-                    La contraseña es obligatoria.
-                  </div>
-                  <div class="invalid-feedback" *ngIf="registroForm.get('password')?.hasError('minlength')">
-                    Debe tener al menos 8 caracteres.
-                  </div>
-                  <div class="invalid-feedback" *ngIf="registroForm.get('password')?.hasError('pattern') && !registroForm.get('password')?.hasError('minlength')">
-                    Debe incluir letras, al menos un número y un carácter especial (@#$%^&+=!._*-).
-                  </div>
+                  @if (registroForm.get('password')?.hasError('required')) {
+                    <div class="invalid-feedback">La contraseña es obligatoria.</div>
+                  } @else if (registroForm.get('password')?.hasError('minlength')) {
+                    <div class="invalid-feedback">Debe tener al menos 8 caracteres.</div>
+                  } @else if (registroForm.get('password')?.hasError('pattern')) {
+                    <div class="invalid-feedback">Debe incluir mayúscula, minúscula, número y carácter especial.</div>
+                  }
                 </div>
               </div>
 
@@ -185,12 +136,11 @@
                     tabindex="-1">
                     <i class="bi" [ngClass]="showConfirmPassword ? 'bi-eye-slash' : 'bi-eye'"></i>
                   </button>
-                  <div class="invalid-feedback" *ngIf="registroForm.get('confirmarPassword')?.hasError('required')">
-                    Confirmar la contraseña es obligatorio.
-                  </div>
-                  <div class="invalid-feedback" *ngIf="registroForm.hasError('passwordMismatch') && !registroForm.get('confirmarPassword')?.hasError('required')">
-                    Las contraseñas no coinciden.
-                  </div>
+                  @if (registroForm.get('confirmarPassword')?.hasError('required')) {
+                    <div class="invalid-feedback">Confirmar la contraseña es obligatorio.</div>
+                  } @else if (registroForm.hasError('passwordMismatch')) {
+                    <div class="invalid-feedback">Las contraseñas no coinciden.</div>
+                  }
                 </div>
               </div>
             </div>
@@ -200,8 +150,13 @@
               <button 
                 type="submit" 
                 class="btn btn-primario btn-lg text-white font-weight-bold" 
-                [disabled]="registroForm.invalid">
-                <i class="bi bi-person-plus-fill me-2"></i> Registrar Paciente
+                [disabled]="isSubmitting">
+                @if (isSubmitting) {
+                  <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                } @else {
+                  <i class="bi bi-person-plus-fill me-2" aria-hidden="true"></i>
+                }
+                {{ isSubmitting ? 'Registrando...' : 'Registrar Paciente' }}
               </button>
             </div>
 

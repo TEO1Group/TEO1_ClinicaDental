@@ -12,6 +12,18 @@ export interface LoginResponse {
   token: string;
 }
 
+export interface RegistroRequest {
+  dpi: string;
+  nombre: string;
+  celular: string;
+  password: string;
+}
+
+export interface RegistroResponse {
+  mensaje: string;
+  id: number;
+}
+
 /**
  * Contrato preparado para POST /auth/login.
  * Body: { usuario: string, password: string }
@@ -24,6 +36,10 @@ export class AuthService {
 
   login(request: LoginRequest): Observable<LoginResponse> {
     return this.http.post<LoginResponse>(this.loginUrl, request);
+  }
+
+  registrar(request: RegistroRequest): Observable<RegistroResponse> {
+    return this.http.post<RegistroResponse>(`${environment.apiUrl}/auth/registro`, request);
   }
 
   saveToken(token: string): void {

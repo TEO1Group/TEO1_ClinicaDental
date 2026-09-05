@@ -1,10 +1,6 @@
 export interface PacienteRegistroRequest {
+  dpi: string;
   nombre: string;
-  apellido: string;
-  email: string;
+  celular: string;
   password: string;
-  confirmarPassword?: string;
-  telefono?: string;
-  direccion: string;
-  fechaNacimiento: string;
 }
