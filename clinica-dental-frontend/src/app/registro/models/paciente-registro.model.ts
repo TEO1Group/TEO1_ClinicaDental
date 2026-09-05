@@ -1,4 +1,5 @@
 export interface PacienteRegistroRequest {
+  dpi: string;
   nombre: string;
   apellido: string;
   email: string;
@@ -7,4 +8,9 @@ export interface PacienteRegistroRequest {
   telefono?: string;
   direccion: string;
   fechaNacimiento: string;
+}
+
+export interface RegistroResponse {
+  mensaje: string;
+  id: number;
 }

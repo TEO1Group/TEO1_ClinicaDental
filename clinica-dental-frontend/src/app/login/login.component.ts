@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { AuthService } from '../core/services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -12,6 +13,8 @@ import { RouterLink } from '@angular/router';
 })
 export class LoginComponent {
   private readonly formBuilder = inject(FormBuilder);
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   readonly loginForm = this.formBuilder.nonNullable.group({
     usuario: ['', [Validators.required]],
@@ -37,7 +40,17 @@ export class LoginComponent {
     }
 
     this.isSubmitting = true;
-    this.errorMessage = 'El formulario está listo. El backend todavía debe exponer POST /auth/login para completar el ingreso.';
-    this.isSubmitting = false;
+
+    this.authService.login(this.loginForm.getRawValue()).subscribe({
+      next: () => {
+        this.isSubmitting = false;
+        this.successMessage = 'Inicio de sesión exitoso';
+        this.router.navigate(['/dashboard']);
+      },
+      error: (error) => {
+        this.isSubmitting = false;
+        this.errorMessage = error.error?.mensaje || 'Error al iniciar sesión. Verifica tus credenciales.';
+      }
+    });
   }
 }

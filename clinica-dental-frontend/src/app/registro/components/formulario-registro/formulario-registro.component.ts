@@ -6,11 +6,7 @@ import { PacienteRegistroRequest } from '../../models/paciente-registro.model';
 @Component({
   selector: 'app-formulario-registro-cliente',
   standalone: true,
-  imports: [
-    ReactiveFormsModule,
-    CommonModule,
-    NgClass
-  ],
+  imports: [ ReactiveFormsModule, CommonModule, NgClass],
   templateUrl: './formulario-registro.component.html',
   styleUrls: ['./formulario-registro.component.scss']
 })
@@ -22,6 +18,7 @@ export class FormularioRegistroClienteComponent {
 
   constructor(private fb: FormBuilder) {
     this.registroForm = this.fb.nonNullable.group({
+      dpi: ['', [Validators.required, Validators.pattern(/^\d{13}$/)]], //el dpi tiene que tener 13 digitos
       nombre: ['', [Validators.required, Validators.minLength(3)]],
       apellido: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
