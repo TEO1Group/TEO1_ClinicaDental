@@ -1,28 +1,11 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { environment } from '../../../environments/environment.development';
-
-export interface LoginRequest {
-  usuario: string;
-  password: string;
-}
-
-export interface LoginResponse {
-  token: string;
-}
-
-export interface RegistroRequest {
-  dpi: string;
-  nombre: string;
-  celular: string;
-  password: string;
-}
-
-export interface RegistroResponse {
-  mensaje: string;
-  id: number;
-}
+import { ApiService } from './api.service';
+import { LoginRequest } from '../../login/models/login-request.model';
+import { LoginResponse } from '../../login/models/login-response.model';
+import { PacienteRegistroRequest } from '../../registro/models/paciente-registro.model';
+import { RegistroResponse } from '../../registro/models/registro-response.model';
 
 /**
  * Contrato preparado para POST /auth/login.
@@ -30,16 +13,17 @@ export interface RegistroResponse {
  * Response esperada: { token: string }
  */
 @Injectable({ providedIn: 'root' })
-export class AuthService {
-  private readonly http = inject(HttpClient);
-  private readonly loginUrl = `${environment.apiUrl}/auth/login`;
-
-  login(request: LoginRequest): Observable<LoginResponse> {
-    return this.http.post<LoginResponse>(this.loginUrl, request);
+export class AuthService extends ApiService {
+  constructor(http: HttpClient) {
+    super(http);
   }
 
-  registrar(request: RegistroRequest): Observable<RegistroResponse> {
-    return this.http.post<RegistroResponse>(`${environment.apiUrl}/auth/registro`, request);
+  login(request: LoginRequest): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>(`${this.baseUrl}/auth/login`, request);
+  }
+
+  registrar(request: PacienteRegistroRequest): Observable<RegistroResponse> {
+    return this.http.post<RegistroResponse>(`${this.baseUrl}/auth/registro`, request);
   }
 
   saveToken(token: string): void {

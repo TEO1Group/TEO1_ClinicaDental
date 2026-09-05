@@ -2,6 +2,8 @@ import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
+import { AuthService } from '../core/services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -12,6 +14,7 @@ import { RouterLink } from '@angular/router';
 })
 export class LoginComponent {
   private readonly formBuilder = inject(FormBuilder);
+  private readonly authService = inject(AuthService);
 
   readonly loginForm = this.formBuilder.nonNullable.group({
     usuario: ['', [Validators.required]],
@@ -37,7 +40,16 @@ export class LoginComponent {
     }
 
     this.isSubmitting = true;
-    this.errorMessage = 'El formulario está listo. El backend todavía debe exponer POST /auth/login para completar el ingreso.';
-    this.isSubmitting = false;
+    this.authService.login(this.loginForm.getRawValue()).subscribe({
+      next: ({ token }) => {
+        this.authService.saveToken(token);
+        this.successMessage = 'Inicio de sesión correcto.';
+        this.isSubmitting = false;
+      },
+      error: (error: HttpErrorResponse) => {
+        this.errorMessage = error.error?.message || 'Usuario o contraseña incorrectos.';
+        this.isSubmitting = false;
+      }
+    });
   }
 }
