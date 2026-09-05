@@ -7,8 +7,8 @@
 }
 
 .login-panel {
-  width: min(100%, 440px);
-  padding: 2.75rem clamp(1.5rem, 5vw, 3rem);
+  width: min(100%, 520px);
+  padding: 2rem clamp(1.5rem, 5vw, 3rem);
   background: #fff;
   border: 1px solid rgba(44, 123, 229, 0.1);
   border-radius: 1.25rem;
@@ -42,9 +42,12 @@ h1 { margin: 0; color: var(--color-texto); font-size: 2.25rem; font-weight: 700;
 label { display: block; margin-bottom: .45rem; font-weight: 600; }
 .input-wrap { position: relative; }
 .input-wrap i { position: absolute; top: 50%; left: 1rem; color: #7890a5; transform: translateY(-50%); }
-input { width: 100%; padding: .8rem 1rem .8rem 2.8rem; border: 1px solid #d9e2eb; border-radius: .65rem; outline: 0; }
+input { width: 100%; padding: .8rem 3rem .8rem 2.8rem; border: 1px solid #d9e2eb; border-radius: .65rem; outline: 0; }
 input:focus { border-color: var(--color-secundario); box-shadow: 0 0 0 .2rem rgba(92, 201, 201, .2); }
 input.is-invalid { border-color: #dc3545; }
+.password-toggle { position: absolute; top: 50%; right: .75rem; display: grid; width: 2rem; height: 2rem; place-items: center; padding: 0; border: 0; color: #7890a5; background: transparent; transform: translateY(-50%); }
+.password-toggle:hover, .password-toggle:focus-visible { color: var(--color-primario); }
+.password-toggle:focus-visible { border-radius: .35rem; outline: 2px solid var(--color-secundario); outline-offset: 2px; }
 .field-error { display: block; margin-top: .35rem; color: #dc3545; }
 .login-button { width: 100%; padding: .85rem; border: 0; border-radius: .65rem; color: #fff; background: var(--color-primario); font-weight: 700; }
 .login-button:hover:not(:disabled) { background: #216aca; }

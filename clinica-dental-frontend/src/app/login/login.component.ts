@@ -19,8 +19,13 @@ export class LoginComponent {
   });
 
   isSubmitting = false;
+  showPassword = false;
   successMessage = '';
   errorMessage = '';
+
+  togglePasswordVisibility(): void {
+    this.showPassword = !this.showPassword;
+  }
 
   onSubmit(): void {
     this.successMessage = '';
