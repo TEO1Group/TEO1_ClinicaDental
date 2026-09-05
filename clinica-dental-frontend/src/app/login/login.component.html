@@ -5,8 +5,12 @@
     <h1 id="login-title">Bienvenido</h1>
     <p class="intro">Ingresa para gestionar tus citas y tu expediente médico.</p>
 
-    <div *ngIf="successMessage" class="alert alert-success" role="status">{{ successMessage }}</div>
-    <div *ngIf="errorMessage" class="alert alert-danger" role="alert">{{ errorMessage }}</div>
+    @if (successMessage) {
+      <div class="alert alert-success" role="status">{{ successMessage }}</div>
+    }
+    @if (errorMessage) {
+      <div class="alert alert-danger" role="alert">{{ errorMessage }}</div>
+    }
 
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
       <div class="field-group">
@@ -16,9 +20,9 @@
           <input id="usuario" type="text" formControlName="usuario" placeholder="Tu DPI" autocomplete="username"
             [class.is-invalid]="loginForm.controls.usuario.touched && loginForm.controls.usuario.invalid" />
         </div>
-        <small *ngIf="loginForm.controls.usuario.touched && loginForm.controls.usuario.hasError('required')" class="field-error">
-          El usuario es obligatorio.
-        </small>
+        @if (loginForm.controls.usuario.touched && loginForm.controls.usuario.hasError('required')) {
+          <small class="field-error">El usuario es obligatorio.</small>
+        }
       </div>
 
       <div class="field-group">
@@ -33,13 +37,15 @@
             <i class="bi" [class.bi-eye]="!showPassword" [class.bi-eye-slash]="showPassword" aria-hidden="true"></i>
           </button>
         </div>
-        <small *ngIf="loginForm.controls.password.touched && loginForm.controls.password.hasError('required')" class="field-error">
-          La contraseña es obligatoria.
-        </small>
+        @if (loginForm.controls.password.touched && loginForm.controls.password.hasError('required')) {
+          <small class="field-error">La contraseña es obligatoria.</small>
+        }
       </div>
 
       <button class="login-button" type="submit" [disabled]="isSubmitting">
-        <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+        @if (isSubmitting) {
+          <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+        }
         Ingresar
       </button>
     </form>
