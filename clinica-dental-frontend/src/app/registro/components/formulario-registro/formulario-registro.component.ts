@@ -8,11 +8,7 @@ import { PacienteRegistroRequest } from '../../models/paciente-registro.model';
 @Component({
   selector: 'app-formulario-registro-cliente',
   standalone: true,
-  imports: [
-    ReactiveFormsModule,
-    CommonModule,
-    NgClass
-  ],
+  imports: [ ReactiveFormsModule, CommonModule, NgClass],
   templateUrl: './formulario-registro.component.html',
   styleUrls: ['./formulario-registro.component.scss']
 })
