@@ -51,6 +51,28 @@
               </div>
             </div>
 
+            <!-- DPI -->
+            <div class="row g-3 mb-3">
+              <div class="col-md-12">
+                <label for="dpi" class="form-label fw-semibold">DPI <span class="text-danger">*</span></label>
+                <input 
+                  type="text" 
+                  id="dpi" 
+                  class="form-control" 
+                  formControlName="dpi"
+                  placeholder="1234567890123"
+                  maxlength="13"
+                  [ngClass]="{ 'is-invalid': registroForm.get('dpi')?.touched && registroForm.get('dpi')?.invalid }"
+                />
+                <div class="invalid-feedback" *ngIf="registroForm.get('dpi')?.hasError('required')">
+                  El DPI es obligatorio.
+                </div>
+                <div class="invalid-feedback" *ngIf="registroForm.get('dpi')?.hasError('pattern') && !registroForm.get('dpi')?.hasError('required')">
+                  El DPI debe contener exactamente 13 dígitos.
+                </div>
+              </div>
+            </div>
+
             <!-- Email y Telefono -->
             <div class="row g-3 mb-3">
               <div class="col-md-6">
