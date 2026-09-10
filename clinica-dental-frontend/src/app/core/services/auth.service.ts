@@ -1,5 +1,5 @@
-import { Injectable } from '@angular/core';
-import { Observable, computed, signal, tap } from 'rxjs';
+import { computed, Injectable, signal } from '@angular/core';
+import { Observable, tap } from 'rxjs';
 import { jwtDecode } from 'jwt-decode';
 import { ApiService } from './api.service';
 import { LoginRequest, LoginResponse } from '../../login/models/login.model';
