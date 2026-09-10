@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -40,16 +41,16 @@ export class LoginComponent {
     }
 
     this.isSubmitting = true;
-
     this.authService.login(this.loginForm.getRawValue()).subscribe({
-      next: () => {
+      next: ({ token }) => {
+        this.authService.guardarSesion({ token });
+        this.successMessage = 'Inicio de sesión correcto.';
         this.isSubmitting = false;
-        this.successMessage = 'Inicio de sesión exitoso';
         this.router.navigate(['/dashboard']);
       },
-      error: (error) => {
+      error: (error: HttpErrorResponse) => {
+        this.errorMessage = error.error?.mensaje || error.error?.message || 'Usuario o contraseña incorrectos.';
         this.isSubmitting = false;
-        this.errorMessage = error.error?.mensaje || 'Error al iniciar sesión. Verifica tus credenciales.';
       }
     });
   }

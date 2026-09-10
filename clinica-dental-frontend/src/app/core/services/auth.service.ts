@@ -1,25 +1,23 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { computed, Injectable, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
-import { ApiService } from './api.service';
 import { jwtDecode } from 'jwt-decode';
-import { PacienteRegistroRequest, RegistroResponse} from '../../registro/models/paciente-registro.model';
+import { ApiService } from './api.service';
 import { LoginRequest, LoginResponse } from '../../login/models/login.model';
+import { PacienteRegistroRequest } from '../../registro/models/paciente-registro.model';
+import { RegistroResponse } from '../../registro/models/registro-response.model';
 
 interface DecodedToken {
-  sub: string;
   rol: string;
   exp: number;
-  iat: number;
 }
 
 @Injectable({ providedIn: 'root' })
 export class AuthService extends ApiService {
   private readonly loginUrl = `${this.baseUrl}/auth/login`;
   private readonly registroUrl = `${this.baseUrl}/auth/registro`;
-
   private readonly _token = signal<string | null>(null);
   private readonly _rol = signal<string | null>(null);
-  
+
   readonly token = this._token.asReadonly();
   readonly rol = this._rol.asReadonly();
   readonly estaAutenticado = computed(() => this._token() !== null);
@@ -30,15 +28,23 @@ export class AuthService extends ApiService {
     );
   }
 
-  registro(request: PacienteRegistroRequest): Observable<RegistroResponse> {
+  registrar(request: PacienteRegistroRequest): Observable<RegistroResponse> {
     return this.http.post<RegistroResponse>(this.registroUrl, request);
   }
 
+  registro(request: PacienteRegistroRequest): Observable<RegistroResponse> {
+    return this.registrar(request);
+  }
+
   guardarSesion(response: LoginResponse): void {
-    this._token.set(response.token);
     const decoded = jwtDecode<DecodedToken>(response.token);
+    this._token.set(response.token);
     this._rol.set(decoded.rol);
     localStorage.setItem('token', response.token);
+  }
+
+  saveToken(token: string): void {
+    this.guardarSesion({ token });
   }
 
   limpiarSesion(): void {
@@ -53,18 +59,20 @@ export class AuthService extends ApiService {
 
   cargarTokenDesdeStorage(): void {
     const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const decoded = jwtDecode<DecodedToken>(token);
-        if (decoded.exp * 1000 > Date.now()) {
-          this._token.set(token);
-          this._rol.set(decoded.rol);
-        } else {
-          this.limpiarSesion();
-        }
-      } catch {
+    if (!token) {
+      return;
+    }
+
+    try {
+      const decoded = jwtDecode<DecodedToken>(token);
+      if (decoded.exp * 1000 > Date.now()) {
+        this._token.set(token);
+        this._rol.set(decoded.rol);
+      } else {
         this.limpiarSesion();
       }
+    } catch {
+      this.limpiarSesion();
     }
   }
 }
