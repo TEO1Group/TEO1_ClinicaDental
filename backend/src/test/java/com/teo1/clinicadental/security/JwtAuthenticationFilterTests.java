@@ -38,7 +38,7 @@ class JwtAuthenticationFilterTests {
     @BeforeEach
     void setUp() {
         signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(TEST_SECRET));
-        filter = new JwtAuthenticationFilter(new JwtService(TEST_SECRET));
+        filter = new JwtAuthenticationFilter(new JwtService(TEST_SECRET, 3600000L));
         SecurityContextHolder.clearContext();
     }
 

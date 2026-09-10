@@ -10,6 +10,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import com.teo1.clinicadental.dto.LoginRequest;
+import com.teo1.clinicadental.dto.LoginResponse;
+import com.teo1.clinicadental.security.JwtService;
 
 @Service
 @RequiredArgsConstructor
@@ -17,6 +20,7 @@ public class AuthService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public RegistroResponse registrar(RegistroRequest request) {
         if (usuarioRepository.existsByDpi(request.getDpi())) {
@@ -42,4 +46,24 @@ public class AuthService {
 
         return new RegistroResponse("Usuario registrado exitosamente", usuarioGuardado.getId());
     }
+
+    public LoginResponse login(LoginRequest request) {
+        Usuario usuario = usuarioRepository.findByCelular(request.getCelular())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "Celular o contraseña incorrectos"
+                ));
+
+        if (!passwordEncoder.matches(request.getPassword(), usuario.getPassword())) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Celular o contraseña incorrectos"
+            );
+        }
+
+        String token = jwtService.generateToken(usuario.getId(), usuario.getRol());
+
+        return new LoginResponse(token);
+    }
+
 }

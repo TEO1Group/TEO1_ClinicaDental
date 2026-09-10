@@ -34,7 +34,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(authorize -> authorize
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
-                        .requestMatchers(HttpMethod.POST, "/auth/registro").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/registro", "/auth/login").permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(
