@@ -1,5 +1,6 @@
 package com.teo1.clinicadental.dto;
 
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -8,5 +9,5 @@ import lombok.Getter;
 public class RegistroResponse {
 
     private String mensaje;
-    private Long id;
+    private UUID id;
 }

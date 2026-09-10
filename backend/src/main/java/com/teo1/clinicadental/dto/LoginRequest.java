@@ -1,5 +1,6 @@
 package com.teo1.clinicadental.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -11,7 +12,8 @@ import lombok.Setter;
 public class LoginRequest {
 
     @NotBlank
-    private String celular;
+    @Email
+    private String email;
 
     @NotBlank
     private String password;
