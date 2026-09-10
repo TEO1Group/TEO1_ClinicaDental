@@ -1,0 +1,47 @@
+// src/app/core/components/header/header.component.scss
+
+.header-principal {
+  background-color: var(--color-primario);
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.brand-logo-wrap {
+  background-color: #ffffff;
+  border-radius: 8px;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.brand-logo {
+  height: 48px;
+  width: auto;
+  display: block;
+  border-radius: 6px;
+}
+
+.brand-text {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.rol-badge {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-weight: 500;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.85rem;
+}
+
+.btn-outline-light {
+  border-color: rgba(255, 255, 255, 0.5);
+
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+    border-color: #ffffff;
+  }
+}

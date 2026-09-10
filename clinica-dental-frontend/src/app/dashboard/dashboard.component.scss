@@ -2,9 +2,16 @@
   color: var(--color-primario);
 }
 
-.brand-mark {
-  font-size: 3rem;
-  color: var(--color-primario);
+.brand-logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-logo {
+  height: 100px;
+  width: auto;
+  display: block;
 }
 
 .card {
