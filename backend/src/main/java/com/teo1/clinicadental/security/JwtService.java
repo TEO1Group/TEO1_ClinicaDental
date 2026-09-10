@@ -18,9 +18,11 @@ public class JwtService {
     private static final String ROLE_CLAIM = "rol";
 
     private final SecretKey signingKey;
+    private final long expirationMs;
 
-    public JwtService(@Value("${app.jwt.secret}") String secret) {
+    public JwtService(@Value("${app.jwt.secret}") String secret, @Value("${app.jwt.expiration-ms}") long expirationMs) {
         this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secret));
+        this.expirationMs = expirationMs;
     }
 
     public String extractSubject(String token) {
@@ -48,6 +50,19 @@ public class JwtService {
         } catch (JwtException | IllegalArgumentException exception) {
             return false;
         }
+    }
+
+    public String generateToken(Long id, Rol rol) {
+        Date now = new Date();
+        Date expiration = new Date(now.getTime() + expirationMs);
+
+        return Jwts.builder()
+                .subject(String.valueOf(id))
+                .claim(ROLE_CLAIM, rol.name())
+                .issuedAt(now)
+                .expiration(expiration)
+                .signWith(signingKey)
+                .compact();
     }
 
     private Claims extractClaims(String token) {
