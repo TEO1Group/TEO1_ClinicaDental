@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
 import java.util.Date;
+import java.util.UUID;
 
 @Service
 public class JwtService {
@@ -52,12 +53,12 @@ public class JwtService {
         }
     }
 
-    public String generateToken(Long id, Rol rol) {
+    public String generateToken(UUID id, Rol rol) {
         Date now = new Date();
         Date expiration = new Date(now.getTime() + expirationMs);
 
         return Jwts.builder()
-                .subject(String.valueOf(id))
+                .subject(id.toString())
                 .claim(ROLE_CLAIM, rol.name())
                 .issuedAt(now)
                 .expiration(expiration)

@@ -1,6 +1,9 @@
 package com.teo1.clinicadental.dto;
 
+import java.time.LocalDate;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -17,12 +20,17 @@ public class RegistroRequest {
     private String dpi;
 
     @NotBlank
-    @Size(max = 100)
+    @Size(max = 80)
     private String nombre;
 
     @NotBlank
-    @Pattern(regexp = "\\d{1,15}")
-    private String celular;
+    @Size(max = 80)
+    private String apellido;
+
+    @NotBlank
+    @Email
+    @Size(max = 120)
+    private String email;
 
     @NotBlank
     @Size(min = 8)
@@ -31,4 +39,14 @@ public class RegistroRequest {
             message = "La contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial"
     )
     private String password;
+
+    // Campos nullable en el esquema (tabla cliente / usuario.telefono).
+    @Pattern(regexp = "\\d{8}", message = "El teléfono debe tener 8 dígitos")
+    private String telefono;
+
+    @Size(max = 200)
+    private String direccion;
+
+    @Past
+    private LocalDate fechaNacimiento;
 }
