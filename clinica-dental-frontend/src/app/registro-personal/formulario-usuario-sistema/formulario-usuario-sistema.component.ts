@@ -1,8 +1,8 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { Router } from '@angular/router';
-import { UsuarioSistemaService } from '../service/usuario-sistema.service';
+import { UsuarioSistemaService, Rol } from '../service/usuario-sistema.service';
 import { UsuarioSistemaRequest } from '../models/usuario-sistema.model';
 
 @Component({
@@ -12,19 +12,15 @@ import { UsuarioSistemaRequest } from '../models/usuario-sistema.model';
   templateUrl: './formulario-usuario-sistema.component.html',
   styleUrl: './formulario-usuario-sistema.component.scss'
 })
-export class FormularioUsuarioSistemaComponent {
+export class FormularioUsuarioSistemaComponent implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
   private readonly usuarioSistemaService = inject(UsuarioSistemaService);
   private readonly router = inject(Router);
 
-  readonly roles = [
-    { valor: 'DOCTOR', etiqueta: 'Doctor' },
-    { valor: 'SECRETARIA', etiqueta: 'Secretaria' },
-    { valor: 'ADMIN', etiqueta: 'Administrador' }
-  ];
+  roles = signal<Rol[]>([]);
 
   readonly turnos = [
-    { valor: 'MAÑANA', etiqueta: 'Mañana' },
+    { valor: 'MANANA', etiqueta: 'Mañana' },
     { valor: 'TARDE', etiqueta: 'Tarde' },
     { valor: 'NOCHE', etiqueta: 'Noche' }
   ];
@@ -42,10 +38,10 @@ export class FormularioUsuarioSistemaComponent {
     password: ['', [
       Validators.required,
       Validators.minLength(8),
-      Validators.pattern(/^(?=.*[a-zA-Z])(?=.*\d)(?=.*[@#$%^&+=!._*-]).{8,}$/)
+      Validators.pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9\s]).+$/)
     ]],
     confirmarPassword: ['', [Validators.required]],
-    telefono: ['', [Validators.required, Validators.pattern(/^[0-9]{8}$/)]],
+    telefono: ['', [Validators.pattern(/^[0-9]{8}$/)]],
     idRol: ['', [Validators.required]],
 
     // Doctor
@@ -58,10 +54,40 @@ export class FormularioUsuarioSistemaComponent {
     area: ['']
   }, { validators: this.passwordsIguales });
 
+  ngOnInit(): void {
+    this.cargarRoles();
+    this.configurarValidacionPorRol();
+  }
+
   private passwordsIguales(group: AbstractControl): ValidationErrors | null {
     const pass = group.get('password')?.value;
     const confirm = group.get('confirmarPassword')?.value;
     return pass === confirm ? null : { passwordMismatch: true };
+  }
+
+  private cargarRoles(): void {
+    this.usuarioSistemaService.obtenerRoles().subscribe({
+      next: (roles) => {
+        this.roles.set(roles.filter(r => r.nombreRol !== 'CLIENTE'));
+      },
+      error: (err) => {
+
+        this.errorMessage = 'Error al cargar los roles.';
+      }
+    });
+  }
+
+  private configurarValidacionPorRol(): void {
+    this.usuarioForm.get('idRol')?.valueChanges.subscribe((rol) => {
+      const especialidadControl = this.usuarioForm.get('especialidad');
+
+      if (rol === 'DOCTOR') {
+        especialidadControl?.setValidators([Validators.required]);
+      } else {
+        especialidadControl?.clearValidators();
+      }
+      especialidadControl?.updateValueAndValidity();
+    });
   }
 
   get rolSeleccionado(): string {
@@ -111,19 +137,19 @@ export class FormularioUsuarioSistemaComponent {
       apellido: valores.apellido,
       email: valores.email,
       password: valores.password,
-      telefono: valores.telefono,
+      telefono: valores.telefono || undefined,
       idRol: valores.idRol
     };
 
     if (valores.idRol === 'DOCTOR') {
       request.especialidad = valores.especialidad;
-      request.numeroColegiado = valores.numeroColegiado;
-      request.numeroClinica = valores.numeroClinica;
+      request.numeroColegiado = valores.numeroColegiado || undefined;
+      request.numeroClinica = valores.numeroClinica || undefined;
     }
 
     if (valores.idRol === 'SECRETARIA') {
-      request.turno = valores.turno;
-      request.area = valores.area;
+      request.turno = valores.turno || undefined;
+      request.area = valores.area || undefined;
     }
 
     return request;

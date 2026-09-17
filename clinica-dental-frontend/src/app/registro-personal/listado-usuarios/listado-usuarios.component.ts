@@ -2,7 +2,8 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { UsuarioSistemaService } from '../service/usuario-sistema.service';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { UsuarioSistemaService, Rol } from '../service/usuario-sistema.service';
 import { UsuarioListado } from '../models/usuario-listado.model';
 
 @Component({
@@ -16,17 +17,16 @@ export class ListadoUsuariosComponent implements OnInit {
   private readonly usuarioSistemaService = inject(UsuarioSistemaService);
   private readonly formBuilder = inject(FormBuilder);
 
-  readonly roles = [
-    { valor: '', etiqueta: 'Todos' },
-    { valor: 'ADMIN', etiqueta: 'Administrador' },
-    { valor: 'DOCTOR', etiqueta: 'Doctor' },
-    { valor: 'SECRETARIA', etiqueta: 'Secretaria' },
-    { valor: 'CLIENTE', etiqueta: 'Cliente' }
-  ];
+  readonly roles = signal<Rol[]>([]);
 
   readonly filtroForm = this.formBuilder.nonNullable.group({
     rol: ['']
   });
+
+  private readonly rolFiltro = toSignal(
+    this.filtroForm.controls.rol.valueChanges,
+    { initialValue: '' }
+  );
 
   private readonly _usuarios = signal<UsuarioListado[]>([]);
   private readonly _cargando = signal<boolean>(false);
@@ -37,17 +37,18 @@ export class ListadoUsuariosComponent implements OnInit {
   readonly error = this._error.asReadonly();
 
   readonly usuariosFiltrados = computed(() => {
-    const rolFiltro = this.filtroForm.controls.rol.value;
+    const rol = this.rolFiltro();
     const lista = this._usuarios();
 
-    if (!rolFiltro) {
+    if (!rol) {
       return lista;
     }
-    return lista.filter(u => u.rol === rolFiltro);
+    return lista.filter(u => u.rol === rol);
   });
 
   ngOnInit(): void {
     this.cargarUsuarios();
+    this.cargarRoles();
   }
 
   cargarUsuarios(): void {
@@ -62,6 +63,17 @@ export class ListadoUsuariosComponent implements OnInit {
       error: (error) => {
         this._cargando.set(false);
         this._error.set(error.error?.mensaje || 'Error al cargar los usuarios.');
+      }
+    });
+  }
+
+  private cargarRoles(): void {
+    this.usuarioSistemaService.obtenerRoles().subscribe({
+      next: (roles) => {
+        this.roles.set(roles);
+      },
+      error: () => {
+        // Silencioso: si fallan los roles, el filtro queda vacío
       }
     });
   }

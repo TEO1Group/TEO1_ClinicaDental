@@ -21,8 +21,9 @@
             <div class="col-md-4">
               <label for="rol" class="form-label fw-semibold">Filtrar por rol</label>
               <select id="rol" class="form-select" [formControl]="filtroForm.controls.rol">
-                @for (rol of roles; track rol.valor) {
-                  <option [value]="rol.valor">{{ rol.etiqueta }}</option>
+                <option value="">Todos</option>
+                @for (rol of roles(); track rol.nombreRol) {
+                  <option [value]="rol.nombreRol">{{ rol.nombreRol }}</option>
                 }
               </select>
             </div>
@@ -80,7 +81,7 @@
                           {{ usuario.estado }}
                         </span>
                       </td>
-                      <td>{{ usuario.fechaCreacion }}</td>
+                      <td>{{ usuario.fechaCreacion | date:'dd/MM/yyyy HH:mm' }}</td>
                       <td class="text-end">
                         <!-- TODO: Implementar cuando el backend lo defina -->
                         <button 
