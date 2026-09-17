@@ -1,0 +1,66 @@
+name: CD
+
+# Falta configurar en GitHub: Settings > Secrets and variables > Actions
+#   EC2_HOST, EC2_USERNAME, EC2_SSH_KEY (la llave .pem completa)
+#
+# La EC2 ya debe tener Docker y el repo con su .env configurado,
+# esto solo actualiza el backend, no hace el setup inicial
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "db/**"
+      - "docker-compose.yml"
+      - ".github/workflows/cd.yml"
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login en GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Definir nombre de imagen
+        id: image
+        run: echo "image=ghcr.io/${{ github.repository_owner }}/clinica-dental-backend:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build y push de la imagen del backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ steps.image.outputs.image }}
+            ghcr.io/${{ github.repository_owner }}/clinica-dental-backend:latest
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Desplegar en EC2 por SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ~/TEO1_ClinicaDental
+            git pull
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose pull backend
+            docker compose up -d backend
+            docker image prune -f

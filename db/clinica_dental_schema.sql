@@ -9,6 +9,7 @@ DROP TABLE IF EXISTS tratamiento_medicamento CASCADE;
 DROP TABLE IF EXISTS cita CASCADE;
 DROP TABLE IF EXISTS medicamento CASCADE;
 DROP TABLE IF EXISTS tratamiento CASCADE;
+DROP TABLE IF EXISTS historial_clinico CASCADE;
 DROP TABLE IF EXISTS horario CASCADE;
 DROP TABLE IF EXISTS secretaria CASCADE;
 DROP TABLE IF EXISTS doctor CASCADE;
@@ -48,6 +49,13 @@ CREATE TABLE cliente (
     fecha_nacimiento    DATE,
     en_lista_negra      BOOLEAN NOT NULL DEFAULT FALSE,
     motivo_lista_negra  VARCHAR(200)
+);
+
+CREATE TABLE historial_clinico (
+    id_historial  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_cliente    UUID NOT NULL REFERENCES cliente(id_cliente) ON DELETE CASCADE,
+    fecha         TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    descripcion   TEXT NOT NULL
 );
 
 CREATE TABLE doctor (
@@ -155,3 +163,4 @@ CREATE INDEX idx_cita_fecha       ON cita(fecha);
 CREATE INDEX idx_usuario_rol      ON usuario(id_rol);
 CREATE INDEX idx_horario_doctor   ON horario(id_doctor);
 CREATE INDEX idx_reprog_cita      ON cita_reprogramacion(id_cita);
+CREATE INDEX idx_historial_cliente ON historial_clinico(id_cliente);
