@@ -17,7 +17,7 @@ export class LoginComponent {
   private readonly router = inject(Router);
 
   readonly loginForm = this.formBuilder.nonNullable.group({
-    usuario: ['', [Validators.required]],
+    email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required]]
   });
 

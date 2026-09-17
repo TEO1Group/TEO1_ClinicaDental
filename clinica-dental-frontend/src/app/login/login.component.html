@@ -16,14 +16,16 @@
 
     <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" novalidate>
       <div class="field-group">
-        <label for="usuario">Usuario</label>
+        <label for="email">Correo Electrónico</label>
         <div class="input-wrap">
           <i class="bi bi-person" aria-hidden="true"></i>
-          <input id="usuario" type="text" formControlName="usuario" placeholder="Tu DPI" autocomplete="username"
-            [class.is-invalid]="loginForm.controls.usuario.touched && loginForm.controls.usuario.invalid" />
+          <input id="email" type="email" formControlName="email" placeholder="tu@correo.com" autocomplete="email"
+            [class.is-invalid]="loginForm.controls.email.touched && loginForm.controls.email.invalid" />
         </div>
-        @if (loginForm.controls.usuario.touched && loginForm.controls.usuario.hasError('required')) {
-          <small class="field-error">El usuario es obligatorio.</small>
+        @if (loginForm.controls.email.touched && loginForm.controls.email.hasError('required')) {
+          <small class="field-error">El correo es obligatorio.</small>
+        } @else if (loginForm.controls.email.touched && loginForm.controls.email.hasError('email')) {
+          <small class="field-error">Ingresa un correo electrónico válido.</small>
         }
       </div>
 
