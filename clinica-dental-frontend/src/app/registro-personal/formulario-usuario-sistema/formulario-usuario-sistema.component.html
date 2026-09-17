@@ -10,6 +10,13 @@
             <p class="text-muted">Crea una cuenta para doctores, secretarias o administradores</p>
           </div>
 
+          @if (successMessage) {
+            <div class="alert alert-success" role="status">{{ successMessage }}</div>
+          }
+          @if (errorMessage) {
+            <div class="alert alert-danger" role="alert">{{ errorMessage }}</div>
+          }
+
           <form [formGroup]="usuarioForm" (ngSubmit)="onSubmit()" novalidate>
 
             <!-- Nombre y Apellido -->
@@ -77,7 +84,7 @@
               </div>
 
               <div class="col-md-6">
-                <label for="telefono" class="form-label fw-semibold">Teléfono <span class="text-danger">*</span></label>
+                <label for="telefono" class="form-label fw-semibold">Teléfono</label>
                 <div class="input-group">
                   <span class="input-group-text bg-light border-end-0">
                     <i class="bi bi-telephone text-muted"></i>
@@ -90,10 +97,7 @@
                     placeholder="88888888"
                     [ngClass]="{ 'is-invalid': usuarioForm.get('telefono')?.touched && usuarioForm.get('telefono')?.invalid }"
                   />
-                  <div class="invalid-feedback" *ngIf="usuarioForm.get('telefono')?.hasError('required')">
-                    El teléfono es obligatorio.
-                  </div>
-                  <div class="invalid-feedback" *ngIf="usuarioForm.get('telefono')?.hasError('pattern') && !usuarioForm.get('telefono')?.hasError('required')">
+                  <div class="invalid-feedback" *ngIf="usuarioForm.get('telefono')?.hasError('pattern')">
                     El teléfono debe contener exactamente 8 dígitos.
                   </div>
                 </div>
@@ -111,8 +115,8 @@
                   [ngClass]="{ 'is-invalid': usuarioForm.get('idRol')?.touched && usuarioForm.get('idRol')?.invalid }"
                 >
                   <option value="">Selecciona un rol</option>
-                  @for (rol of roles; track rol.valor) {
-                    <option [value]="rol.valor">{{ rol.etiqueta }}</option>
+                  @for (rol of roles(); track rol.nombreRol) {
+                    <option [value]="rol.nombreRol">{{ rol.nombreRol }}</option>
                   }
                 </select>
                 <div class="invalid-feedback" *ngIf="usuarioForm.get('idRol')?.hasError('required')">
@@ -132,7 +136,11 @@
                     class="form-control" 
                     formControlName="especialidad"
                     placeholder="Ej. Ortodoncia"
+                    [ngClass]="{ 'is-invalid': usuarioForm.get('especialidad')?.touched && usuarioForm.get('especialidad')?.invalid }"
                   />
+                  <div class="invalid-feedback" *ngIf="usuarioForm.get('especialidad')?.hasError('required')">
+                    La especialidad es obligatoria para un doctor.
+                  </div>
                 </div>
 
                 <div class="col-md-6">
@@ -163,7 +171,7 @@
             @if (rolSeleccionado === 'SECRETARIA') {
               <div class="row g-3 mb-3">
                 <div class="col-md-6">
-                  <label for="turno" class="form-label fw-semibold">Turno <span class="text-danger">*</span></label>
+                  <label for="turno" class="form-label fw-semibold">Turno</label>
                   <select 
                     id="turno" 
                     class="form-select" 
@@ -177,7 +185,7 @@
                 </div>
 
                 <div class="col-md-6">
-                  <label for="area" class="form-label fw-semibold">Área <span class="text-danger">*</span></label>
+                  <label for="area" class="form-label fw-semibold">Área</label>
                   <input 
                     type="text" 
                     id="area" 
@@ -216,7 +224,7 @@
                     Debe tener al menos 8 caracteres.
                   </div>
                   <div class="invalid-feedback" *ngIf="usuarioForm.get('password')?.hasError('pattern') && !usuarioForm.get('password')?.hasError('minlength')">
-                    Debe incluir letras, al menos un número y un carácter especial (@#$%^&+=!._*-).
+                    Debe incluir al menos una mayúscula, una minúscula, un número y un carácter especial.
                   </div>
                 </div>
               </div>
@@ -258,6 +266,9 @@
                 type="submit" 
                 class="btn btn-primario btn-lg text-white font-weight-bold" 
                 [disabled]="usuarioForm.invalid || isSubmitting">
+                @if (isSubmitting) {
+                  <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                }
                 <i class="bi bi-person-plus-fill me-2"></i> Crear Usuario
               </button>
             </div>
