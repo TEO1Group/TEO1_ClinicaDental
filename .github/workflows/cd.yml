@@ -7,7 +7,7 @@ name: CD
 
 on:
   push:
-    branches: [main]
+    branches: [develop]
     paths:
       - "backend/**"
       - "clinica-dental-frontend/**"
@@ -59,6 +59,9 @@ jobs:
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     steps:
       - name: Desplegar en EC2 por SSH
         uses: appleboy/ssh-action@v1.2.0
@@ -68,7 +71,8 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd ~/TEO1_ClinicaDental
-            git pull
+            git checkout develop
+            git pull --ff-only origin develop
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             export BACKEND_IMAGE='${{ needs.build-and-push.outputs.backend_image }}'
             export FRONTEND_IMAGE='${{ needs.build-and-push.outputs.frontend_image }}'
