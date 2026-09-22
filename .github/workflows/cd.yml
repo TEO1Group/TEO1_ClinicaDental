@@ -70,12 +70,28 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -e
             cd ~/TEO1_ClinicaDental
             git checkout develop
             git pull --ff-only origin develop
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            export BACKEND_IMAGE='${{ needs.build-and-push.outputs.backend_image }}'
-            export FRONTEND_IMAGE='${{ needs.build-and-push.outputs.frontend_image }}'
+            if [ ! -f .env ]; then
+              echo "No existe .env en ~/TEO1_ClinicaDental" >&2
+              exit 1
+            fi
+
+            persist_env_var() {
+              key="$1"
+              value="$2"
+              if grep -q "^${key}=" .env; then
+                sed -i -E "s|^${key}=.*$|${key}=${value}|" .env
+              else
+                printf '%s\n' "${key}=${value}" >> .env
+              fi
+            }
+
+            persist_env_var BACKEND_IMAGE '${{ needs.build-and-push.outputs.backend_image }}'
+            persist_env_var FRONTEND_IMAGE '${{ needs.build-and-push.outputs.frontend_image }}'
             docker compose pull backend frontend
             docker compose up -d --no-build backend frontend
             docker image prune -f
