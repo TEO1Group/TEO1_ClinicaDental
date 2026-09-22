@@ -34,15 +34,14 @@ services:
       db:
         condition: service_healthy
 
-  # falta el Dockerfile del frontend, cuando lo suban se descomenta esto
-  # frontend:
-  #   build:
-  #     context: ./clinica-dental-frontend
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "4200:80"
-  #   depends_on:
-  #     - backend
+  frontend:
+    build:
+      context: ./clinica-dental-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
 
 volumes:
   postgres_data:
