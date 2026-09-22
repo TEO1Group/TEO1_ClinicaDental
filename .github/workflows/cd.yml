@@ -92,6 +92,7 @@ jobs:
 
             persist_env_var BACKEND_IMAGE '${{ needs.build-and-push.outputs.backend_image }}'
             persist_env_var FRONTEND_IMAGE '${{ needs.build-and-push.outputs.frontend_image }}'
+            persist_env_var CORS_ALLOWED_ORIGINS 'http://${{ secrets.EC2_HOST }}:4200'
             docker compose pull backend frontend
-            docker compose up -d --no-build backend frontend
+            docker compose up -d --no-build --force-recreate backend frontend
             docker image prune -f
