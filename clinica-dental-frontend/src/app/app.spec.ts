@@ -15,10 +15,10 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should render title', async () => {
+  it('should hide the header before a protected route is active', () => {
     const fixture = TestBed.createComponent(App);
-    await fixture.whenStable();
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelector('h1')?.textContent).toContain('Hello, clinica-dental-frontend');
+    const app = fixture.componentInstance;
+
+    expect(app.mostrarHeader()).toBe(false);
   });
 });

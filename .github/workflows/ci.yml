@@ -6,12 +6,16 @@ on:
     paths:
       - "backend/**"
       - "db/**"
+      - "clinica-dental-frontend/**"
+      - "docker-compose.yml"
       - ".github/workflows/ci.yml"
   pull_request:
     branches: [main, develop]
     paths:
       - "backend/**"
       - "db/**"
+      - "clinica-dental-frontend/**"
+      - "docker-compose.yml"
       - ".github/workflows/ci.yml"
 
 jobs:
@@ -59,3 +63,28 @@ jobs:
           DB_PASSWORD: ci_password
           JWT_SECRET: Y2ktb25seS10ZXN0LXNlY3JldC1uby11c2FyLWVuLXByb2R1Y2Npb24=
         run: ./mvnw -B verify
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+          cache-dependency-path: clinica-dental-frontend/package-lock.json
+
+      - name: Instalar dependencias del frontend
+        working-directory: clinica-dental-frontend
+        run: npm ci
+
+      - name: Compilar frontend en producción
+        working-directory: clinica-dental-frontend
+        run: npm run build -- --configuration production
+
+      - name: Ejecutar pruebas del frontend
+        working-directory: clinica-dental-frontend
+        run: npm test -- --no-watch --no-progress
+
+      - name: Construir imagen Docker del backend
+        run: docker build --tag clinica-dental-backend:ci ./backend
+
+      - name: Construir imagen Docker del frontend
+        run: docker build --tag clinica-dental-frontend:ci ./clinica-dental-frontend
