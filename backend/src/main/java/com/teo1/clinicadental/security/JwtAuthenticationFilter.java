@@ -1,6 +1,8 @@
 package com.teo1.clinicadental.security;
 
+import com.teo1.clinicadental.model.EstadoUsuario;
 import com.teo1.clinicadental.model.Rol;
+import com.teo1.clinicadental.repository.UsuarioRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -15,6 +17,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -23,6 +26,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtService jwtService;
+    private final UsuarioRepository usuarioRepository;
 
     @Override
     protected void doFilterInternal(
@@ -42,6 +46,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (SecurityContextHolder.getContext().getAuthentication() == null
                 && jwtService.isTokenValid(token)) {
             String subject = jwtService.extractSubject(token);
+
+            if (!usuarioActivo(subject)) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             Rol rol = jwtService.extractRol(token);
             SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + rol.name());
 
@@ -56,5 +66,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private boolean usuarioActivo(String subject) {
+        try {
+            return usuarioRepository.existsByIdAndEstado(UUID.fromString(subject), EstadoUsuario.ACTIVO);
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
     }
 }

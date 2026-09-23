@@ -24,6 +24,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -49,6 +50,8 @@ class PacientesDoctoresIntegrationTests {
     @Autowired
     private JwtService jwtService;
 
+    private Usuario admin;
+    private Usuario secretaria;
     private String tokenAdmin;
     private String tokenSecretaria;
     private String tokenCliente;
@@ -59,8 +62,10 @@ class PacientesDoctoresIntegrationTests {
 
     @BeforeEach
     void setUp() {
-        tokenAdmin = token(crearUsuario(Rol.ADMIN));
-        tokenSecretaria = token(crearUsuario(Rol.SECRETARIA));
+        admin = crearUsuario(Rol.ADMIN);
+        tokenAdmin = token(admin);
+        secretaria = crearUsuario(Rol.SECRETARIA);
+        tokenSecretaria = token(secretaria);
         tokenCliente = token(crearUsuario(Rol.CLIENTE));
 
         Usuario usuarioDoctor = crearUsuario(Rol.DOCTOR);
@@ -193,6 +198,53 @@ class PacientesDoctoresIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.rol").value("DOCTOR"))
                 .andExpect(jsonPath("$.idPerfil").value(doctor.getId().toString()));
+    }
+
+    @Test
+    void adminEditaUsuario() throws Exception {
+        mockMvc.perform(conToken(put("/admin/usuarios/" + secretaria.getId()), tokenAdmin)
+                        .content("{\"nombre\":\"Maria\",\"telefono\":\"33332222\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nombre").value("Maria"))
+                .andExpect(jsonPath("$.telefono").value("33332222"))
+                .andExpect(jsonPath("$.rol").value("SECRETARIA"));
+
+        mockMvc.perform(conToken(put("/admin/usuarios/" + secretaria.getId()), tokenAdmin)
+                        .content("{\"email\":\"" + admin.getEmail() + "\"}"))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(conToken(put("/admin/usuarios/" + secretaria.getId()), tokenSecretaria)
+                        .content("{\"nombre\":\"Otra\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void usuarioDesactivadoPierdeAcceso() throws Exception {
+        mockMvc.perform(conToken(get("/pacientes"), tokenSecretaria))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(conToken(patch("/admin/usuarios/" + secretaria.getId() + "/estado"), tokenAdmin)
+                        .content("{\"estado\":\"INACTIVO\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("INACTIVO"));
+
+        mockMvc.perform(conToken(get("/pacientes"), tokenSecretaria))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(conToken(patch("/admin/usuarios/" + secretaria.getId() + "/estado"), tokenAdmin)
+                        .content("{\"estado\":\"ACTIVO\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(conToken(get("/pacientes"), tokenSecretaria))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void adminNoPuedeDesactivarseASiMismo() throws Exception {
+        mockMvc.perform(conToken(patch("/admin/usuarios/" + admin.getId() + "/estado"), tokenAdmin)
+                        .content("{\"estado\":\"INACTIVO\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje").value("No puedes desactivar tu propia cuenta"));
     }
 
     private Usuario crearUsuario(Rol rol) {
