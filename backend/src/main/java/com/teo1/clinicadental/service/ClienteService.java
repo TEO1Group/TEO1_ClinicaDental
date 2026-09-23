@@ -5,7 +5,10 @@ import com.teo1.clinicadental.dto.ClienteUpdateRequest;
 import com.teo1.clinicadental.dto.HistorialClinicoRequest;
 import com.teo1.clinicadental.dto.HistorialClinicoResponse;
 import com.teo1.clinicadental.dto.ListaNegraRequest;
+import com.teo1.clinicadental.dto.RegistroRequest;
+import com.teo1.clinicadental.dto.RegistroResponse;
 import com.teo1.clinicadental.model.Cliente;
+import com.teo1.clinicadental.model.EstadoUsuario;
 import com.teo1.clinicadental.model.HistorialClinico;
 import com.teo1.clinicadental.repository.ClienteRepository;
 import com.teo1.clinicadental.repository.HistorialClinicoRepository;
@@ -23,10 +26,11 @@ public class ClienteService {
 
     private final ClienteRepository clienteRepository;
     private final HistorialClinicoRepository historialClinicoRepository;
+    private final AuthService authService;
 
     @Transactional(readOnly = true)
     public List<ClienteResponse> listarPacientes() {
-        return clienteRepository.findAll().stream()
+        return clienteRepository.findByUsuarioEstado(EstadoUsuario.ACTIVO).stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -37,9 +41,23 @@ public class ClienteService {
     }
 
     @Transactional
+    public ClienteResponse crearPaciente(RegistroRequest request) {
+        RegistroResponse registro = authService.registrar(request);
+        Cliente cliente = clienteRepository.findByUsuarioId(registro.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "No se pudo crear el paciente"));
+        return toResponse(cliente);
+    }
+
+    @Transactional
     public ClienteResponse actualizarPaciente(UUID id, ClienteUpdateRequest request) {
         Cliente cliente = buscarCliente(id);
 
+        if (request.getNombre() != null && !request.getNombre().isBlank()) {
+            cliente.getUsuario().setNombre(request.getNombre());
+        }
+        if (request.getApellido() != null && !request.getApellido().isBlank()) {
+            cliente.getUsuario().setApellido(request.getApellido());
+        }
         if (request.getTelefono() != null) {
             cliente.getUsuario().setTelefono(request.getTelefono());
         }
@@ -51,6 +69,13 @@ public class ClienteService {
         }
 
         return toResponse(clienteRepository.save(cliente));
+    }
+
+    @Transactional
+    public void desactivarPaciente(UUID id) {
+        Cliente cliente = buscarCliente(id);
+        cliente.getUsuario().setEstado(EstadoUsuario.INACTIVO);
+        clienteRepository.save(cliente);
     }
 
     @Transactional
@@ -105,7 +130,8 @@ public class ClienteService {
                 cliente.getDireccion(),
                 cliente.getFechaNacimiento(),
                 cliente.isEnListaNegra(),
-                cliente.getMotivoListaNegra()
+                cliente.getMotivoListaNegra(),
+                cliente.getUsuario().getEstado().name()
         );
     }
 

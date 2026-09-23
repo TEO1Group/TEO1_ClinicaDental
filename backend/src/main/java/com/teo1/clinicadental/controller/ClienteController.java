@@ -5,6 +5,7 @@ import com.teo1.clinicadental.dto.ClienteUpdateRequest;
 import com.teo1.clinicadental.dto.HistorialClinicoRequest;
 import com.teo1.clinicadental.dto.HistorialClinicoResponse;
 import com.teo1.clinicadental.dto.ListaNegraRequest;
+import com.teo1.clinicadental.dto.RegistroRequest;
 import com.teo1.clinicadental.service.ClienteService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,6 +35,11 @@ public class ClienteController {
         return ResponseEntity.ok(clienteService.listarPacientes());
     }
 
+    @PostMapping
+    public ResponseEntity<ClienteResponse> crearPaciente(@Valid @RequestBody RegistroRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(clienteService.crearPaciente(request));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ClienteResponse> obtenerPaciente(@PathVariable UUID id) {
         return ResponseEntity.ok(clienteService.obtenerPaciente(id));
@@ -44,6 +51,12 @@ public class ClienteController {
             @Valid @RequestBody ClienteUpdateRequest request
     ) {
         return ResponseEntity.ok(clienteService.actualizarPaciente(id, request));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> desactivarPaciente(@PathVariable UUID id) {
+        clienteService.desactivarPaciente(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PatchMapping("/{id}/lista-negra")
