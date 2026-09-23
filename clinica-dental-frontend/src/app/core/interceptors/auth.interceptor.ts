@@ -1,8 +1,15 @@
 import { HttpInterceptorFn } from "@angular/common/http";
-import { catchError } from "rxjs";
-import { throwError } from "rxjs";
+import { catchError, throwError } from "rxjs";
+import { inject } from "@angular/core";
+import { Router } from "@angular/router";
+import { AuthService } from "../services/auth.service";
+import { NotificacionService } from "../notificacion/service/notificacion.service";
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
+    const authService = inject(AuthService);
+    const router = inject(Router);
+    const notificacionService = inject(NotificacionService);
+
     const token = localStorage.getItem('token');
 
     if (token) {
@@ -16,10 +23,12 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     return next(req).pipe(
         catchError(err => {
             if (err.status === 401) {
-                console.log('No autorizado, redirigir al login');
+                authService.limpiarSesion();
+                notificacionService.error('Tu sesión expiró. Inicia sesión nuevamente.');
+                router.navigate(['']);
             }
             if (err.status === 403) {
-                console.log('Acceso prohibido');
+                notificacionService.error('No tienes permisos para acceder a esta sección.');
             }
             return throwError(() => err);
         })

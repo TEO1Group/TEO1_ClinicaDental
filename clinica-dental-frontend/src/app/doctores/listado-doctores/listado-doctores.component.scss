@@ -1,0 +1,33 @@
+@use 'sass:color';
+
+.text-primario {
+  color: var(--color-primario);
+}
+
+.card {
+  background-color: #ffffff;
+}
+
+.table {
+  th {
+    font-weight: 600;
+    color: var(--color-texto);
+    border-bottom: 2px solid #e9ecef;
+  }
+
+  td {
+    vertical-align: middle;
+    color: var(--color-texto);
+  }
+}
+
+.btn-outline-primary {
+  color: var(--color-primario);
+  border-color: var(--color-primario);
+
+  &:hover {
+    background-color: var(--color-primario);
+    border-color: var(--color-primario);
+    color: #ffffff;
+  }
+}

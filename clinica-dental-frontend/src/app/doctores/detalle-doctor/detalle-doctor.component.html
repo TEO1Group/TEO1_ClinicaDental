@@ -1,0 +1,228 @@
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-10">
+
+      <div class="mb-3">
+        <a routerLink="/doctores" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i> Volver al listado
+        </a>
+      </div>
+
+      @if (error()) {
+        <div class="alert alert-danger" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error() }}
+        </div>
+      }
+
+      @if (cargando()) {
+        <div class="text-center py-5">
+          <div class="spinner-border text-primario" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+        </div>
+      }
+
+      @if (!cargando() && doctor()) {
+        <!-- Card del doctor -->
+        <div class="card shadow-sm border-0 rounded-4 mb-4">
+          <div class="card-body p-4 p-md-5">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3 mb-4">
+              <div>
+                <h2 class="fw-bold text-primario mb-1">
+                  Dr. {{ doctor()!.nombre }} {{ doctor()!.apellido }}
+                </h2>
+                <p class="text-muted mb-0">{{ doctor()!.especialidad }}</p>
+              </div>
+              @if (puedeEditar()) {
+                <button class="btn btn-primario text-white" (click)="abrirModalEditar()">
+                  <i class="bi bi-pencil me-2"></i> Editar
+                </button>
+              }
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <p class="mb-1 text-muted small">Email</p>
+                <p class="mb-0 fw-semibold">{{ doctor()!.email }}</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1 text-muted small">Teléfono</p>
+                <p class="mb-0 fw-semibold">{{ doctor()!.telefono || '—' }}</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1 text-muted small">Número de colegiado</p>
+                <p class="mb-0 fw-semibold">{{ doctor()!.numeroColegiado || '—' }}</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1 text-muted small">Número de clínica</p>
+                <p class="mb-0 fw-semibold">{{ doctor()!.numeroClinica || '—' }}</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1 text-muted small">Calificación promedio</p>
+                <p class="mb-0 fw-semibold">{{ doctor()!.calificacionPromedio | number:'1.1-1' }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card de horarios -->
+        <div class="card shadow-sm border-0 rounded-4">
+          <div class="card-body p-4 p-md-5">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+              <div>
+                <h3 class="fw-bold text-primario mb-1">Horarios</h3>
+                <p class="text-muted mb-0">Días y horas de atención</p>
+              </div>
+              @if (puedeAgregarHorario()) {
+                <button class="btn btn-primario text-white" (click)="toggleFormHorario()">
+                  <i class="bi" [ngClass]="mostrarFormHorario ? 'bi-x-lg' : 'bi-plus-lg'"></i>
+                  {{ mostrarFormHorario ? 'Cancelar' : 'Agregar horario' }}
+                </button>
+              }
+            </div>
+
+            @if (mostrarFormHorario) {
+              <div class="border rounded-3 p-3 mb-4 bg-light">
+                @if (successHorario) {
+                  <div class="alert alert-success" role="status">{{ successHorario }}</div>
+                }
+                @if (errorHorario) {
+                  <div class="alert alert-danger" role="alert">{{ errorHorario }}</div>
+                }
+
+                <form [formGroup]="horarioForm" (ngSubmit)="guardarHorario()" novalidate>
+                  <div class="row g-3">
+                    <div class="col-md-4">
+                      <label for="diaSemana" class="form-label fw-semibold">Día</label>
+                      <select id="diaSemana" class="form-select" formControlName="diaSemana"
+                        [ngClass]="{ 'is-invalid': horarioForm.get('diaSemana')?.touched && horarioForm.get('diaSemana')?.invalid }">
+                        <option value="">Selecciona un día</option>
+                        @for (dia of diasSemana; track dia.valor) {
+                          <option [value]="dia.valor">{{ dia.etiqueta }}</option>
+                        }
+                      </select>
+                      <div class="invalid-feedback" *ngIf="horarioForm.get('diaSemana')?.hasError('required')">
+                        El día es obligatorio.
+                      </div>
+                    </div>
+
+                    <div class="col-md-3">
+                      <label for="horaInicio" class="form-label fw-semibold">Hora inicio</label>
+                      <input type="time" id="horaInicio" class="form-control" formControlName="horaInicio"
+                        [ngClass]="{ 'is-invalid': horarioForm.get('horaInicio')?.touched && horarioForm.get('horaInicio')?.invalid }" />
+                      <div class="invalid-feedback" *ngIf="horarioForm.get('horaInicio')?.hasError('required')">
+                        Obligatorio.
+                      </div>
+                    </div>
+
+                    <div class="col-md-3">
+                      <label for="horaFin" class="form-label fw-semibold">Hora fin</label>
+                      <input type="time" id="horaFin" class="form-control" formControlName="horaFin"
+                        [ngClass]="{ 'is-invalid': horarioForm.get('horaFin')?.touched && horarioForm.get('horaFin')?.invalid }" />
+                      <div class="invalid-feedback" *ngIf="horarioForm.get('horaFin')?.hasError('required')">
+                        Obligatorio.
+                      </div>
+                    </div>
+
+                    <div class="col-md-2 d-flex align-items-end">
+                      <button type="submit" class="btn btn-primario text-white w-100" [disabled]="isSubmittingHorario">
+                        @if (isSubmittingHorario) {
+                          <span class="spinner-border spinner-border-sm me-1"></span>
+                        }
+                        Guardar
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            }
+
+            @if (horarios().length > 0) {
+              <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th scope="col">Día</th>
+                      <th scope="col">Hora inicio</th>
+                      <th scope="col">Hora fin</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (horario of horarios(); track horario.idHorario) {
+                      <tr>
+                        <td>{{ formatearDia(horario.diaSemana) }}</td>
+                        <td>{{ formatearHora(horario.horaInicio) }}</td>
+                        <td>{{ formatearHora(horario.horaFin) }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            } @else {
+              <div class="text-center py-4">
+                <i class="bi bi-calendar-x text-muted" style="font-size: 2.5rem;"></i>
+                <p class="text-muted mt-3 mb-0">No hay horarios registrados.</p>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal de edición -->
+@if (mostrarModalEditar) {
+  <div class="modal-backdrop-custom" (click)="cerrarModalEditar()"></div>
+  <div class="modal-custom">
+    <div class="modal-content-custom">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold text-primario mb-0">Editar Doctor</h4>
+        <button class="btn btn-sm btn-outline-secondary" (click)="cerrarModalEditar()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      @if (successEditar) {
+        <div class="alert alert-success" role="status">{{ successEditar }}</div>
+      }
+      @if (errorEditar) {
+        <div class="alert alert-danger" role="alert">{{ errorEditar }}</div>
+      }
+
+      <form [formGroup]="editarForm" (ngSubmit)="guardarEdicion()" novalidate>
+        <div class="mb-3">
+          <label for="especialidad" class="form-label fw-semibold">Especialidad <span class="text-danger">*</span></label>
+          <input type="text" id="especialidad" class="form-control" formControlName="especialidad"
+            [ngClass]="{ 'is-invalid': editarForm.get('especialidad')?.touched && editarForm.get('especialidad')?.invalid }" />
+          <div class="invalid-feedback" *ngIf="editarForm.get('especialidad')?.hasError('required')">
+            La especialidad es obligatoria.
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="numeroColegiado" class="form-label fw-semibold">Número de Colegiado</label>
+          <input type="text" id="numeroColegiado" class="form-control" formControlName="numeroColegiado" />
+        </div>
+
+        <div class="mb-3">
+          <label for="numeroClinica" class="form-label fw-semibold">Número de Clínica</label>
+          <input type="text" id="numeroClinica" class="form-control" formControlName="numeroClinica" />
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-outline-secondary" (click)="cerrarModalEditar()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primario text-white" [disabled]="isSubmittingEditar">
+            @if (isSubmittingEditar) {
+              <span class="spinner-border spinner-border-sm me-1"></span>
+            }
+            Guardar cambios
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
