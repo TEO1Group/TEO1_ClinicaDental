@@ -1,0 +1,40 @@
+<aside class="sidebar d-flex flex-column" [class.sidebar-visible]="visible">
+  
+  <!-- Navegación principal -->
+  <nav class="sidebar-nav flex-grow-1 p-3 overflow-y-auto">
+    <div class="text-uppercase text-white-50 fs-8 fw-bold px-3 mb-2 tracking-wider">Menú Principal</div>
+    
+    <ul class="nav flex-column gap-1">
+      @for (item of itemsVisibles(); track item.ruta) {
+        <li class="nav-item">
+          <a
+            class="nav-link sidebar-item d-flex align-items-center gap-3 px-3 py-2.5 rounded-3 text-white"
+            [routerLink]="item.ruta"
+            routerLinkActive="sidebar-item-activo active"
+            [routerLinkActiveOptions]="{ exact: item.ruta === '/dashboard' }"
+          >
+            <i class="bi {{ item.icono }} fs-5 opacity-75"></i>
+            <span class="fw-medium">{{ item.label }}</span>
+          </a>
+        </li>
+      }
+    </ul>
+  </nav>
+
+  <!-- Footer de usuario integrado -->
+  <div class="sidebar-footer p-3 border-top border-white border-opacity-10 bg-black bg-opacity-10">
+    <div class="sidebar-user d-flex align-items-center gap-3">
+      <div class="sidebar-avatar rounded-circle bg-white bg-opacity-20 text-white d-flex align-items-center justify-content-center flex-shrink-0">
+        <i class="bi bi-person-fill fs-5"></i>
+      </div>
+      <div class="sidebar-user-info overflow-hidden">
+        <span class="d-block text-white-50 fs-8 text-uppercase">Rol actual</span>
+        <span class="sidebar-user-rol text-truncate fw-semibold text-white">{{ rol() }}</span>
+      </div>
+    </div>
+  </div>
+</aside>
+
+@if (visible) {
+  <div class="sidebar-overlay position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 z-1025" (click)="cerrarSidebar()"></div>
+}

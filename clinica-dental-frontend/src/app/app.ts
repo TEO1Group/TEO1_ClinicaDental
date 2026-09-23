@@ -1,50 +1,57 @@
-import { Component, signal, inject } from '@angular/core';
+import { Component, signal, inject, OnInit } from '@angular/core';
 import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { CommonModule } from '@angular/common';
-import { filter, map } from 'rxjs';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs';
 import { AuthService } from './core/services/auth.service';
 import { HeaderComponent } from './header/header.component';
+import { SidebarComponent } from './sidebar/sidebar.component';
+import { NotificacionComponent } from './core/notificacion/notificacion-component/notificacion.component';
 
 @Component({
-  imports: [RouterOutlet, CommonModule, HeaderComponent],
+  imports: [RouterOutlet, CommonModule, HeaderComponent, SidebarComponent, NotificacionComponent],
   selector: 'app-root',
   styleUrl: './app.scss',
   templateUrl: './app.html',
 })
-export class App {
+export class App implements OnInit {
   protected readonly title = signal('clinica-dental-frontend');
 
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
-  private readonly rutasSinHeader = ['/', '/registro'];
+  private readonly rutasSinLayout = ['/', '/registro'];
 
-  readonly rutaActual = toSignal(
-    this.router.events.pipe(
-      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-      map((event) => event.urlAfterRedirects)
-    ),
-    { initialValue: this.router.url }
-  );
-
-  readonly mostrarHeader = signal(false);
+  readonly mostrarLayout = signal(false);
+  readonly sidebarVisible = signal(false);
 
   constructor() {
     this.authService.cargarTokenDesdeStorage();
   }
 
   ngOnInit(): void {
-    this.mostrarHeader.set(!this.rutasSinHeader.includes(this.router.url));
-    this.actualizarVisibilidadHeader();
-  }
-
-  private actualizarVisibilidadHeader(): void {
+    this.actualizarLayout();
     this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe((event) => {
-        const url = event.urlAfterRedirects;
-        this.mostrarHeader.set(!this.rutasSinHeader.includes(url));
+        this.actualizarLayoutPorUrl(event.urlAfterRedirects);
+        this.sidebarVisible.set(false);
       });
+  }
+
+  toggleSidebar(): void {
+    this.sidebarVisible.update(v => !v);
+  }
+
+  cerrarSidebar(): void {
+    this.sidebarVisible.set(false);
+  }
+
+  private actualizarLayout(): void {
+    this.actualizarLayoutPorUrl(this.router.url);
+  }
+
+  private actualizarLayoutPorUrl(url: string): void {
+    const sinLayout = this.rutasSinLayout.includes(url);
+    this.mostrarLayout.set(!sinLayout);
   }
 }
