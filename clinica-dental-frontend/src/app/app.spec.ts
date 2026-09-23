@@ -5,8 +5,7 @@ describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [App],
-    })
-      .compileComponents();
+    }).compileComponents();
   });
 
   it('should create the app', () => {
@@ -15,10 +14,10 @@ describe('App', () => {
     expect(app).toBeTruthy();
   });
 
-  it('should hide the header before a protected route is active', () => {
+  it('should not show layout before a protected route is active', () => {
     const fixture = TestBed.createComponent(App);
     const app = fixture.componentInstance;
 
-    expect(app.mostrarHeader()).toBe(false);
+    expect(app.mostrarLayout()).toBe(false);
   });
 });
