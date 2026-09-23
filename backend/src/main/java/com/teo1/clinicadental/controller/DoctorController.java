@@ -11,6 +11,8 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -44,6 +46,12 @@ public class DoctorController {
         return ResponseEntity.ok(doctorService.actualizarDoctor(id, request));
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> desactivarDoctor(@PathVariable UUID id) {
+        doctorService.desactivarDoctor(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/{id}/horarios")
     public ResponseEntity<List<HorarioResponse>> listarHorarios(@PathVariable UUID id) {
         return ResponseEntity.ok(doctorService.listarHorarios(id));
@@ -52,9 +60,30 @@ public class DoctorController {
     @PostMapping("/{id}/horarios")
     public ResponseEntity<HorarioResponse> agregarHorario(
             @PathVariable UUID id,
-            @Valid @RequestBody HorarioRequest request
+            @Valid @RequestBody HorarioRequest request,
+            Authentication authentication
     ) {
-        HorarioResponse response = doctorService.agregarHorario(id, request);
+        HorarioResponse response = doctorService.agregarHorario(id, request, authentication);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PutMapping("/{id}/horarios/{idHorario}")
+    public ResponseEntity<HorarioResponse> actualizarHorario(
+            @PathVariable UUID id,
+            @PathVariable UUID idHorario,
+            @Valid @RequestBody HorarioRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(doctorService.actualizarHorario(id, idHorario, request, authentication));
+    }
+
+    @DeleteMapping("/{id}/horarios/{idHorario}")
+    public ResponseEntity<Void> eliminarHorario(
+            @PathVariable UUID id,
+            @PathVariable UUID idHorario,
+            Authentication authentication
+    ) {
+        doctorService.eliminarHorario(id, idHorario, authentication);
+        return ResponseEntity.noContent().build();
     }
 }

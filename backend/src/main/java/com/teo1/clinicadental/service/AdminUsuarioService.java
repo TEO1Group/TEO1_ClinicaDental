@@ -1,9 +1,11 @@
 package com.teo1.clinicadental.service;
 
 import com.teo1.clinicadental.dto.CrearPersonalRequest;
+import com.teo1.clinicadental.dto.EstadoUsuarioRequest;
 import com.teo1.clinicadental.dto.RegistroResponse;
 import com.teo1.clinicadental.dto.RolResponse;
 import com.teo1.clinicadental.dto.UsuarioListadoResponse;
+import com.teo1.clinicadental.dto.UsuarioUpdateRequest;
 import com.teo1.clinicadental.model.Doctor;
 import com.teo1.clinicadental.model.EstadoUsuario;
 import com.teo1.clinicadental.model.Rol;
@@ -16,6 +18,7 @@ import com.teo1.clinicadental.repository.RolRepository;
 import com.teo1.clinicadental.repository.SecretariaRepository;
 import com.teo1.clinicadental.repository.UsuarioRepository;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -36,17 +39,44 @@ public class AdminUsuarioService {
     @Transactional(readOnly = true)
     public List<UsuarioListadoResponse> listarUsuarios() {
         return usuarioRepository.findAll().stream()
-                .map(usuario -> new UsuarioListadoResponse(
-                        usuario.getId(),
-                        usuario.getNombre(),
-                        usuario.getApellido(),
-                        usuario.getEmail(),
-                        usuario.getTelefono(),
-                        usuario.getRol().getNombreRol().name(),
-                        usuario.getEstado().name(),
-                        usuario.getFechaCreacion()
-                ))
+                .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional
+    public UsuarioListadoResponse actualizarUsuario(UUID id, UsuarioUpdateRequest request) {
+        Usuario usuario = buscarUsuario(id);
+
+        if (request.getEmail() != null && !request.getEmail().isBlank()
+                && !request.getEmail().equalsIgnoreCase(usuario.getEmail())) {
+            if (usuarioRepository.existsByEmail(request.getEmail())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "El email ya esta registrado");
+            }
+            usuario.setEmail(request.getEmail());
+        }
+        if (request.getNombre() != null && !request.getNombre().isBlank()) {
+            usuario.setNombre(request.getNombre());
+        }
+        if (request.getApellido() != null && !request.getApellido().isBlank()) {
+            usuario.setApellido(request.getApellido());
+        }
+        if (request.getTelefono() != null) {
+            usuario.setTelefono(request.getTelefono());
+        }
+
+        return toResponse(usuarioRepository.save(usuario));
+    }
+
+    @Transactional
+    public UsuarioListadoResponse cambiarEstado(UUID id, EstadoUsuarioRequest request, String usuarioActualId) {
+        Usuario usuario = buscarUsuario(id);
+
+        if (request.getEstado() == EstadoUsuario.INACTIVO && usuario.getId().toString().equals(usuarioActualId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "No puedes desactivar tu propia cuenta");
+        }
+
+        usuario.setEstado(request.getEstado());
+        return toResponse(usuarioRepository.save(usuario));
     }
 
     @Transactional(readOnly = true)
@@ -108,6 +138,24 @@ public class AdminUsuarioService {
         }
 
         return new RegistroResponse("Usuario registrado exitosamente", usuarioGuardado.getId());
+    }
+
+    private Usuario buscarUsuario(UUID id) {
+        return usuarioRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado"));
+    }
+
+    private UsuarioListadoResponse toResponse(Usuario usuario) {
+        return new UsuarioListadoResponse(
+                usuario.getId(),
+                usuario.getNombre(),
+                usuario.getApellido(),
+                usuario.getEmail(),
+                usuario.getTelefono(),
+                usuario.getRol().getNombreRol().name(),
+                usuario.getEstado().name(),
+                usuario.getFechaCreacion()
+        );
     }
 
     private Rol parseRol(String idRol) {

@@ -1,6 +1,8 @@
 package com.teo1.clinicadental.security;
 
+import com.teo1.clinicadental.model.EstadoUsuario;
 import com.teo1.clinicadental.model.Rol;
+import com.teo1.clinicadental.repository.UsuarioRepository;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -20,10 +22,13 @@ import javax.crypto.SecretKey;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Date;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class JwtAuthenticationFilterTests {
 
@@ -34,11 +39,15 @@ class JwtAuthenticationFilterTests {
 
     private JwtAuthenticationFilter filter;
     private SecretKey signingKey;
+    private UsuarioRepository usuarioRepository;
+    private final UUID usuarioId = UUID.randomUUID();
 
     @BeforeEach
     void setUp() {
         signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(TEST_SECRET));
-        filter = new JwtAuthenticationFilter(new JwtService(TEST_SECRET, 3600000L));
+        usuarioRepository = mock(UsuarioRepository.class);
+        when(usuarioRepository.existsByIdAndEstado(usuarioId, EstadoUsuario.ACTIVO)).thenReturn(true);
+        filter = new JwtAuthenticationFilter(new JwtService(TEST_SECRET, 3600000L), usuarioRepository);
         SecurityContextHolder.clearContext();
     }
 
@@ -62,7 +71,7 @@ class JwtAuthenticationFilterTests {
         executeFilter(token);
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        assertEquals("usuario-123", authentication.getName());
+        assertEquals(usuarioId.toString(), authentication.getName());
         assertTrue(authentication.isAuthenticated());
         assertEquals(
                 "ROLE_" + rol.name(),
@@ -89,6 +98,16 @@ class JwtAuthenticationFilterTests {
         assertNull(SecurityContextHolder.getContext().getAuthentication());
     }
 
+    @Test
+    void usuarioInactivoRemainsUnauthenticated() throws Exception {
+        when(usuarioRepository.existsByIdAndEstado(usuarioId, EstadoUsuario.ACTIVO)).thenReturn(false);
+        String token = createToken(Rol.ADMIN, Instant.now().plus(1, ChronoUnit.HOURS), signingKey);
+
+        executeFilter(token);
+
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+    }
+
     private void executeFilter(String token) throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest();
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -102,7 +121,7 @@ class JwtAuthenticationFilterTests {
 
     private String createToken(Rol rol, Instant expiration, SecretKey key) {
         return Jwts.builder()
-                .subject("usuario-123")
+                .subject(usuarioId.toString())
                 .claim("rol", rol.name())
                 .expiration(Date.from(expiration))
                 .signWith(key)

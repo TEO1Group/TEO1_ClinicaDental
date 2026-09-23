@@ -16,7 +16,7 @@ import lombok.Setter;
 public class RegistroRequest {
 
     @NotBlank
-    @Pattern(regexp = "\\d{13}")
+    @Pattern(regexp = "\\d{13}", message = "El DPI debe tener 13 dígitos")
     private String dpi;
 
     @NotBlank

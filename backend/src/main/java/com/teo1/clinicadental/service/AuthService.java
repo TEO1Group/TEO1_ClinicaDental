@@ -4,15 +4,21 @@ import com.teo1.clinicadental.dto.LoginRequest;
 import com.teo1.clinicadental.dto.LoginResponse;
 import com.teo1.clinicadental.dto.RegistroRequest;
 import com.teo1.clinicadental.dto.RegistroResponse;
+import com.teo1.clinicadental.dto.UsuarioActualResponse;
 import com.teo1.clinicadental.model.Cliente;
+import com.teo1.clinicadental.model.Doctor;
 import com.teo1.clinicadental.model.EstadoUsuario;
 import com.teo1.clinicadental.model.Rol;
 import com.teo1.clinicadental.model.RolEntity;
+import com.teo1.clinicadental.model.Secretaria;
 import com.teo1.clinicadental.model.Usuario;
 import com.teo1.clinicadental.repository.ClienteRepository;
+import com.teo1.clinicadental.repository.DoctorRepository;
 import com.teo1.clinicadental.repository.RolRepository;
+import com.teo1.clinicadental.repository.SecretariaRepository;
 import com.teo1.clinicadental.repository.UsuarioRepository;
 import com.teo1.clinicadental.security.JwtService;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,6 +32,8 @@ public class AuthService {
 
     private final UsuarioRepository usuarioRepository;
     private final ClienteRepository clienteRepository;
+    private final DoctorRepository doctorRepository;
+    private final SecretariaRepository secretariaRepository;
     private final RolRepository rolRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
@@ -92,5 +100,29 @@ public class AuthService {
         String token = jwtService.generateToken(usuario.getId(), usuario.getRol().getNombreRol());
 
         return new LoginResponse(token);
+    }
+
+    @Transactional(readOnly = true)
+    public UsuarioActualResponse usuarioActual(UUID usuarioId) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Usuario no encontrado"));
+
+        Rol rol = usuario.getRol().getNombreRol();
+        UUID idPerfil = switch (rol) {
+            case CLIENTE -> clienteRepository.findByUsuarioId(usuarioId).map(Cliente::getId).orElse(null);
+            case DOCTOR -> doctorRepository.findByUsuarioId(usuarioId).map(Doctor::getId).orElse(null);
+            case SECRETARIA -> secretariaRepository.findByUsuarioId(usuarioId).map(Secretaria::getId).orElse(null);
+            case ADMIN -> null;
+        };
+
+        return new UsuarioActualResponse(
+                usuario.getId(),
+                usuario.getNombre(),
+                usuario.getApellido(),
+                usuario.getEmail(),
+                usuario.getTelefono(),
+                rol.name(),
+                idPerfil
+        );
     }
 }

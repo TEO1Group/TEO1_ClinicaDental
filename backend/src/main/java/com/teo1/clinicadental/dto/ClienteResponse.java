@@ -20,4 +20,5 @@ public class ClienteResponse {
     private LocalDate fechaNacimiento;
     private boolean enListaNegra;
     private String motivoListaNegra;
+    private String estado;
 }

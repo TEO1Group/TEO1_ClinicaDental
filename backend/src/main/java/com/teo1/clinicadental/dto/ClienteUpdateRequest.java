@@ -13,6 +13,12 @@ import lombok.Setter;
 @NoArgsConstructor
 public class ClienteUpdateRequest {
 
+    @Size(max = 80)
+    private String nombre;
+
+    @Size(max = 80)
+    private String apellido;
+
     @Pattern(regexp = "\\d{8}", message = "El telefono debe tener 8 digitos")
     private String telefono;
 
