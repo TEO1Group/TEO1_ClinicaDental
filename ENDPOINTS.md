@@ -24,7 +24,7 @@ Todos los errores vienen con este formato:
 - mensaje: texto listo para mostrar en pantalla (error.error?.mensaje en Angular)
 - errores: solo viene en los 400 de validacion, trae el mensaje de cada campo que fallo
 
-Codigos: 400 si el body esta mal, 401 si no mandaste token o esta vencido, 403 si tu rol no tiene permiso ahi, 404 si no existe, 409 si el email o dpi ya estan registrados o el horario choca con otro.
+Codigos: 400 si el body esta mal, 401 si no mandaste token, esta vencido o el usuario fue desactivado, 403 si tu rol no tiene permiso ahi, 404 si no existe, 409 si el email o dpi ya estan registrados o el horario choca con otro.
 
 ## Auth
 
@@ -54,6 +54,12 @@ POST /admin/usuarios - crea doctor, secretaria o admin (los clientes se registra
 body: nombre, apellido, email, password, telefono, idRol (DOCTOR, SECRETARIA o ADMIN)
 si es DOCTOR tambien pide: especialidad (obligatorio), numeroColegiado, numeroClinica
 si es SECRETARIA tambien pide: turno (MANANA/TARDE/NOCHE), area (los dos opcionales)
+PUT /admin/usuarios/{id} - edita nombre, apellido, email y telefono (todos opcionales, solo cambia lo que mandes)
+PATCH /admin/usuarios/{id}/estado - activa o desactiva un usuario
+body: estado (ACTIVO o INACTIVO)
+un usuario INACTIVO no puede iniciar sesion y su token deja de servir en ese momento (401)
+el admin no puede desactivar su propia cuenta (400)
+estos dos son para los botones de editar y cambiar estado del listado de usuarios
 GET /roles - lista los roles que existen
 
 ## Doctores
