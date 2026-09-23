@@ -1,0 +1,90 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "backend/**"
+      - "db/**"
+      - "clinica-dental-frontend/**"
+      - "docker-compose.yml"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "backend/**"
+      - "db/**"
+      - "clinica-dental-frontend/**"
+      - "docker-compose.yml"
+      - ".github/workflows/ci.yml"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: clinica_dental_ci
+          POSTGRES_USER: ci_user
+          POSTGRES_PASSWORD: ci_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci_user -d clinica_dental_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+          cache-dependency-path: backend/pom.xml
+
+      - name: Cargar esquema en la base de datos de pruebas
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          PGPASSWORD=ci_password psql -h localhost -U ci_user -d clinica_dental_ci -f db/clinica_dental_schema.sql
+
+      - name: Compilar y ejecutar pruebas
+        working-directory: backend
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/clinica_dental_ci
+          DB_USERNAME: ci_user
+          DB_PASSWORD: ci_password
+          JWT_SECRET: Y2ktb25seS10ZXN0LXNlY3JldC1uby11c2FyLWVuLXByb2R1Y2Npb24=
+        run: ./mvnw -B verify
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.15.0"
+          cache: npm
+          cache-dependency-path: clinica-dental-frontend/package-lock.json
+
+      - name: Instalar dependencias del frontend
+        working-directory: clinica-dental-frontend
+        run: npm ci
+
+      - name: Compilar frontend en producción
+        working-directory: clinica-dental-frontend
+        run: npm run build -- --configuration production
+
+      - name: Ejecutar pruebas del frontend
+        working-directory: clinica-dental-frontend
+        run: npm test -- --no-watch --no-progress
+
+      - name: Construir imagen Docker del backend
+        run: docker build --tag clinica-dental-backend:ci ./backend
+
+      - name: Construir imagen Docker del frontend
+        run: docker build --tag clinica-dental-frontend:ci ./clinica-dental-frontend

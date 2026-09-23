@@ -1,0 +1,34 @@
+<header class="header-principal shadow-sm">
+  <div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center py-3">
+
+      <div class="d-flex align-items-center gap-3">
+        <!-- Botón hamburguesa, solo visible en mobile -->
+        <button class="btn btn-hamburguesa text-white border-0 bg-transparent fs-4 p-0 d-lg-none" type="button" (click)="toggle()" aria-label="Abrir menú">
+          <i class="bi bi-list"></i>
+        </button>
+
+        <!-- Marca -->
+        <div class="d-flex align-items-center gap-2">
+          <div class="brand-logo-wrap bg-white rounded-3 p-1 d-flex align-items-center justify-content-center shadow-sm">
+            <img src="logo.jpeg" alt="Clínica Dental" class="brand-logo rounded-2" style="height: 32px; width: auto;" />
+          </div>
+          <span class="brand-text text-white fw-bold fs-5 tracking-wide">Clínica Dental</span>
+        </div>
+      </div>
+
+      <!-- Botón de Cerrar Sesión  -->
+      <div class="d-flex align-items-center">
+        <button 
+          type="button" 
+          class="btn btn-logout d-flex align-items-center gap-2 px-3 py-2 rounded-pill text-white fw-medium"
+          (click)="logout()"
+        >
+          <i class="bi bi-box-arrow-right fs-6"></i> 
+          <span>Cerrar Sesión</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+</header>

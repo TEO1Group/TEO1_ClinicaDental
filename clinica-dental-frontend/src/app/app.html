@@ -1,0 +1,11 @@
+<app-notificacion></app-notificacion>
+
+@if (mostrarLayout()) {
+  <app-header (toggleSidebar)="toggleSidebar()"></app-header>
+  <app-sidebar [visible]="sidebarVisible()" (cerrar)="cerrarSidebar()"></app-sidebar>
+  <main class="contenido-principal">
+    <router-outlet></router-outlet>
+  </main>
+} @else {
+  <router-outlet></router-outlet>
+}

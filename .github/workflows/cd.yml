@@ -1,0 +1,98 @@
+name: CD
+
+# Falta configurar en GitHub: Settings > Secrets and variables > Actions
+#   EC2_HOST, EC2_USERNAME, EC2_SSH_KEY (la llave .pem completa)
+#
+# La EC2 ya debe tener Docker y el repo con su .env configurado.
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - "backend/**"
+      - "clinica-dental-frontend/**"
+      - "db/**"
+      - "docker-compose.yml"
+      - ".github/workflows/cd.yml"
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      backend_image: ${{ steps.image.outputs.backend_image }}
+      frontend_image: ${{ steps.image.outputs.frontend_image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login en GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Definir nombre de imagen
+        id: image
+        run: |
+          owner=$(printf '%s' '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
+          echo "backend_image=ghcr.io/${owner}/clinica-dental-backend:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "frontend_image=ghcr.io/${owner}/clinica-dental-frontend:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build y push de la imagen del backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.image.outputs.backend_image }}
+
+      - name: Build y push de la imagen del frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./clinica-dental-frontend
+          push: true
+          tags: ${{ steps.image.outputs.frontend_image }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Desplegar en EC2 por SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            cd ~/TEO1_ClinicaDental
+            git checkout develop
+            git pull --ff-only origin develop
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            if [ ! -f .env ]; then
+              echo "No existe .env en ~/TEO1_ClinicaDental" >&2
+              exit 1
+            fi
+
+            persist_env_var() {
+              key="$1"
+              value="$2"
+              if grep -q "^${key}=" .env; then
+                sed -i -E "s|^${key}=.*$|${key}=${value}|" .env
+              else
+                printf '%s\n' "${key}=${value}" >> .env
+              fi
+            }
+
+            persist_env_var BACKEND_IMAGE '${{ needs.build-and-push.outputs.backend_image }}'
+            persist_env_var FRONTEND_IMAGE '${{ needs.build-and-push.outputs.frontend_image }}'
+            persist_env_var CORS_ALLOWED_ORIGINS 'http://${{ secrets.EC2_HOST }}:4200'
+            docker compose pull backend frontend
+            docker compose up -d --no-build --force-recreate backend frontend
+            docker image prune -f

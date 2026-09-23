@@ -1,0 +1,15 @@
+export interface PacienteRegistroRequest {
+  dpi: string;
+  nombre: string;
+  apellido: string;
+  email: string;
+  password: string;
+  telefono?: string;
+  direccion?: string;
+  fechaNacimiento?: string;
+}
+
+export interface RegistroResponse {
+  mensaje: string;
+  id: string;
+}

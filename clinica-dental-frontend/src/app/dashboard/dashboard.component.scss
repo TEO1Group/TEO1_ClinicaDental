@@ -1,0 +1,19 @@
+.text-primario {
+  color: var(--color-primario);
+}
+
+.brand-logo-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.brand-logo {
+  height: 100px;
+  width: auto;
+  display: block;
+}
+
+.card {
+  background-color: #ffffff;
+}

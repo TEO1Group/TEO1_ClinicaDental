@@ -1,0 +1,59 @@
+@use 'sass:color';
+
+.text-primario {
+  color: var(--color-primario);
+}
+
+.btn-primario {
+  background-color: var(--color-primario);
+  border-color: var(--color-primario);
+  transition: all 0.2s ease-in-out;
+
+  &:hover {
+    background-color: color.adjust(#2C7BE5, $lightness: -7%);
+    border-color: color.adjust(#2C7BE5, $lightness: -7%);
+  }
+
+  &:disabled {
+    background-color: #a0c4f7;
+    border-color: #a0c4f7;
+  }
+}
+
+.form-select:focus {
+  border-color: var(--color-secundario);
+  box-shadow: 0 0 0 0.25rem rgba(92, 201, 201, 0.25);
+}
+
+.card {
+  background-color: #ffffff;
+}
+
+.table {
+  th {
+    font-weight: 600;
+    color: var(--color-texto);
+    border-bottom: 2px solid #e9ecef;
+  }
+
+  td {
+    vertical-align: middle;
+    color: var(--color-texto);
+  }
+}
+
+.btn-outline-primary {
+  color: var(--color-primario);
+  border-color: var(--color-primario);
+
+  &:hover {
+    background-color: var(--color-primario);
+    border-color: var(--color-primario);
+    color: #ffffff;
+  }
+}
+
+.badge {
+  font-weight: 500;
+  padding: 0.4rem 0.75rem;
+}
