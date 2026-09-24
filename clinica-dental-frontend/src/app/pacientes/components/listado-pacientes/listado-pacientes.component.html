@@ -1,0 +1,131 @@
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-12 col-xl-11">
+      <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-4 p-md-5">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+            <div>
+              <h2 class="fw-bold text-primario mb-1">Pacientes</h2>
+              <p class="text-muted mb-0">Listado de pacientes registrados en la clínica</p>
+            </div>
+            <span class="badge text-bg-light fs-6 align-self-start align-self-md-center">
+              {{ pacientesFiltrados().length }} paciente(s)
+            </span>
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-12 col-md-4">
+              <label for="listaNegra" class="form-label fw-semibold">Filtrar por lista negra</label>
+              <select id="listaNegra" class="form-select" [formControl]="filtroForm.controls.listaNegra">
+                <option value="">Todos</option>
+                <option value="true">En lista negra</option>
+                <option value="false">Sin lista negra</option>
+              </select>
+            </div>
+          </div>
+
+          @if (error()) {
+            <div class="alert alert-danger" role="alert">
+              <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error() }}
+            </div>
+          }
+
+          @if (cargando()) {
+            <div class="text-center py-5">
+              <div class="spinner-border text-primario" role="status">
+                <span class="visually-hidden">Cargando...</span>
+              </div>
+              <p class="text-muted mt-3 mb-0">Cargando pacientes...</p>
+            </div>
+          }
+
+          @if (!cargando() && pacientesFiltrados().length > 0) {
+            <div class="table-responsive">
+              <table class="table table-hover align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th scope="col">Nombre</th>
+                    <th scope="col">Apellido</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Teléfono</th>
+                    <th scope="col">DPI</th>
+                    <th scope="col">Lista negra</th>
+                    <th scope="col" class="text-end">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (paciente of pacientesFiltrados(); track paciente.idCliente) {
+                    <tr>
+                      <td>{{ paciente.nombre }}</td>
+                      <td>{{ paciente.apellido }}</td>
+                      <td>{{ paciente.email }}</td>
+                      <td>{{ paciente.telefono || '—' }}</td>
+                      <td>{{ paciente.dpi }}</td>
+                      <td>
+                        @if (paciente.enListaNegra) {
+                          <span class="badge bg-danger">Sí</span>
+                        } @else {
+                          <span class="badge bg-success">No</span>
+                        }
+                      </td>
+                      <td class="text-end text-nowrap">
+                        <a
+                          class="btn btn-sm btn-outline-primary me-1"
+                          [routerLink]="['/pacientes', paciente.idCliente]"
+                          title="Ver detalle"
+                        >
+                          <i class="bi bi-eye"></i>
+                          <span class="visually-hidden">Ver detalle</span>
+                        </a>
+
+                        @if (puedeEditar()) {
+                          <a
+                            class="btn btn-sm btn-outline-secondary me-1"
+                            [routerLink]="['/pacientes', paciente.idCliente, 'editar']"
+                            title="Editar paciente"
+                          >
+                            <i class="bi bi-pencil"></i>
+                            <span class="visually-hidden">Editar paciente</span>
+                          </a>
+                        }
+
+                        @if (puedeGestionarListaNegra()) {
+                          <a
+                            class="btn btn-sm btn-outline-danger me-1"
+                            [routerLink]="['/pacientes', paciente.idCliente, 'lista-negra']"
+                            title="Gestionar lista negra"
+                          >
+                            <i class="bi bi-shield-exclamation"></i>
+                            <span class="visually-hidden">Gestionar lista negra</span>
+                          </a>
+                        }
+
+                        @if (puedeAgregarHistorial()) {
+                          <a
+                            class="btn btn-sm btn-outline-success"
+                            [routerLink]="['/pacientes', paciente.idCliente, 'historial']"
+                            title="Ver o agregar historial"
+                          >
+                            <i class="bi bi-journal-medical"></i>
+                            <span class="visually-hidden">Ver o agregar historial</span>
+                          </a>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+
+          @if (!cargando() && pacientesFiltrados().length === 0 && !error()) {
+            <div class="text-center py-5">
+              <i class="bi bi-people text-muted empty-icon"></i>
+              <p class="text-muted mt-3 mb-0">No se encontraron pacientes.</p>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

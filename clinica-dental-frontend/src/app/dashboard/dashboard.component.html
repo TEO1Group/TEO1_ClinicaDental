@@ -1,15 +1,131 @@
 <div class="container py-5">
   <div class="row justify-content-center">
-    <div class="col-12 col-md-10 col-lg-8">
-      <div class="card shadow-sm border-0 rounded-4">
+    <div class="col-12 col-md-10 col-lg-9">
+
+      <div class="card shadow-sm border-0 rounded-4 mb-4">
         <div class="card-body p-4 p-md-5 text-center">
           <div class="brand-logo-wrap mb-3">
             <img src="logo.jpeg" alt="Clínica Dental" class="brand-logo" />
           </div>
-          <h1 class="fw-bold text-primario mb-2">Bienvenido</h1>
-          <p class="text-muted mb-0">Has iniciado sesión como <strong>{{ rol() }}</strong></p>
+
+          @if (usuarioActual()) {
+            <h1 class="fw-bold text-primario mb-2">
+              Bienvenido, {{ usuarioActual()!.nombre }} {{ usuarioActual()!.apellido }}
+            </h1>
+            <p class="text-muted mb-0">Has iniciado sesión como <strong>{{ rol() }}</strong></p>
+          } @else {
+            <h1 class="fw-bold text-primario mb-2">Bienvenido</h1>
+            <p class="text-muted mb-0">Has iniciado sesión como <strong>{{ rol() }}</strong></p>
+          }
         </div>
       </div>
+
+      <!-- Accesos directos según rol -->
+      @if (rol() === 'ADMIN') {
+        <div class="row g-3">
+          <div class="col-md-6">
+            <a routerLink="/admin/usuarios" class="card-acceso text-decoration-none">
+              <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body p-4 text-center">
+                  <i class="bi bi-people acceso-icono text-primario"></i>
+                  <h5 class="fw-bold mt-3 mb-1">Usuarios</h5>
+                  <p class="text-muted mb-0">Gestiona los usuarios del sistema</p>
+                </div>
+              </div>
+            </a>
+          </div>
+          <div class="col-md-6">
+            <a routerLink="/doctores" class="card-acceso text-decoration-none">
+              <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body p-4 text-center">
+                  <i class="bi bi-person-badge acceso-icono text-primario"></i>
+                  <h5 class="fw-bold mt-3 mb-1">Doctores</h5>
+                  <p class="text-muted mb-0">Administra doctores y sus horarios</p>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+      }
+
+      @if (rol() === 'SECRETARIA') {
+        <div class="row g-3">
+          <div class="col-md-6">
+            <a routerLink="/doctores" class="card-acceso text-decoration-none">
+              <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body p-4 text-center">
+                  <i class="bi bi-person-badge acceso-icono text-primario"></i>
+                  <h5 class="fw-bold mt-3 mb-1">Doctores</h5>
+                  <p class="text-muted mb-0">Consulta doctores y sus horarios</p>
+                </div>
+              </div>
+            </a>
+          </div>
+          <!-- TODO: Descomentar cuando el módulo de pacientes esté listo -->
+          <!--
+          <div class="col-md-6">
+            <a routerLink="/pacientes" class="card-acceso text-decoration-none">
+              <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body p-4 text-center">
+                  <i class="bi bi-person-vcard acceso-icono text-primario"></i>
+                  <h5 class="fw-bold mt-3 mb-1">Pacientes</h5>
+                  <p class="text-muted mb-0">Gestiona pacientes y lista negra</p>
+                </div>
+              </div>
+            </a>
+          </div>
+          -->
+        </div>
+      }
+
+      @if (rol() === 'DOCTOR') {
+        <div class="row g-3">
+          @if (usuarioActual()?.idPerfil) {
+            <div class="col-md-6">
+              <a [routerLink]="['/doctores', usuarioActual()!.idPerfil]" class="card-acceso text-decoration-none">
+                <div class="card shadow-sm border-0 rounded-4 h-100">
+                  <div class="card-body p-4 text-center">
+                    <i class="bi bi-calendar-week acceso-icono text-primario"></i>
+                    <h5 class="fw-bold mt-3 mb-1">Mis Horarios</h5>
+                    <p class="text-muted mb-0">Consulta y administra tus horarios</p>
+                  </div>
+                </div>
+              </a>
+            </div>
+          }
+          <!-- TODO: Descomentar cuando el módulo de pacientes esté listo -->
+          <!--
+          <div class="col-md-6">
+            <a routerLink="/pacientes" class="card-acceso text-decoration-none">
+              <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body p-4 text-center">
+                  <i class="bi bi-person-vcard acceso-icono text-primario"></i>
+                  <h5 class="fw-bold mt-3 mb-1">Pacientes</h5>
+                  <p class="text-muted mb-0">Consulta el historial de tus pacientes</p>
+                </div>
+              </div>
+            </a>
+          </div>
+          -->
+        </div>
+      }
+
+      @if (rol() === 'CLIENTE') {
+        <div class="row g-3">
+          <div class="col-md-6 offset-md-3">
+            <a routerLink="/doctores" class="card-acceso text-decoration-none">
+              <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body p-4 text-center">
+                  <i class="bi bi-person-badge acceso-icono text-primario"></i>
+                  <h5 class="fw-bold mt-3 mb-1">Doctores</h5>
+                  <p class="text-muted mb-0">Consulta los doctores disponibles</p>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+      }
+
     </div>
   </div>
 </div>

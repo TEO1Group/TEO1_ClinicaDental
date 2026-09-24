@@ -29,14 +29,12 @@
             </div>
           </div>
 
-          <!-- Mensajes -->
           @if (error()) {
             <div class="alert alert-danger" role="alert">
               <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error() }}
             </div>
           }
 
-          <!-- Estado de carga -->
           @if (cargando()) {
             <div class="text-center py-5">
               <div class="spinner-border text-primario" role="status">
@@ -46,7 +44,6 @@
             </div>
           }
 
-          <!-- Tabla -->
           @if (!cargando() && usuariosFiltrados().length > 0) {
             <div class="table-responsive">
               <table class="table table-hover align-middle">
@@ -68,7 +65,7 @@
                       <td>{{ usuario.nombre }}</td>
                       <td>{{ usuario.apellido }}</td>
                       <td>{{ usuario.email }}</td>
-                      <td>{{ usuario.telefono }}</td>
+                      <td>{{ usuario.telefono || '—' }}</td>
                       <td>{{ usuario.rol }}</td>
                       <td>
                         <span 
@@ -83,23 +80,34 @@
                       </td>
                       <td>{{ usuario.fechaCreacion | date:'dd/MM/yyyy HH:mm' }}</td>
                       <td class="text-end">
-                        <!-- TODO: Implementar cuando el backend lo defina -->
                         <button 
                           type="button" 
                           class="btn btn-sm btn-outline-primary me-1"
-                          (click)="editarUsuario(usuario)"
+                          (click)="abrirModalEditar(usuario)"
                           title="Editar"
                         >
                           <i class="bi bi-pencil"></i>
                         </button>
-                        <button 
-                          type="button" 
-                          class="btn btn-sm btn-outline-secondary"
-                          (click)="cambiarEstado(usuario)"
-                          title="Cambiar estado"
-                        >
-                          <i class="bi bi-toggle-on"></i>
-                        </button>
+                        @if (usuarioActual()?.idUsuario === usuario.idUsuario) {
+                          <button 
+                            type="button" 
+                            class="btn btn-sm btn-outline-secondary"
+                            disabled
+                            title="No puedes cambiar tu propio estado"
+                          >
+                            <i class="bi bi-toggle-on"></i>
+                          </button>
+                        } @else {
+                          <button 
+                            type="button" 
+                            class="btn btn-sm"
+                            [ngClass]="usuario.estado === 'ACTIVO' ? 'btn-outline-danger' : 'btn-outline-success'"
+                            (click)="cambiarEstado(usuario)"
+                            [title]="usuario.estado === 'ACTIVO' ? 'Desactivar' : 'Activar'"
+                          >
+                            <i class="bi" [ngClass]="usuario.estado === 'ACTIVO' ? 'bi-toggle-on' : 'bi-toggle-off'"></i>
+                          </button>
+                        }
                       </td>
                     </tr>
                   }
@@ -108,7 +116,6 @@
             </div>
           }
 
-          <!-- Sin resultados -->
           @if (!cargando() && usuariosFiltrados().length === 0 && !error()) {
             <div class="text-center py-5">
               <i class="bi bi-people text-muted" style="font-size: 3rem;"></i>
@@ -122,3 +129,73 @@
     </div>
   </div>
 </div>
+
+<!-- Modal de edición -->
+@if (mostrarModalEditar) {
+  <div class="modal-backdrop-custom" (click)="cerrarModalEditar()"></div>
+  <div class="modal-custom">
+    <div class="modal-content-custom">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold text-primario mb-0">Editar Usuario</h4>
+        <button class="btn btn-sm btn-outline-secondary" (click)="cerrarModalEditar()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <form [formGroup]="editarForm" (ngSubmit)="guardarEdicion()" novalidate>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="nombre" class="form-label fw-semibold">Nombre</label>
+            <input type="text" id="nombre" class="form-control" formControlName="nombre"
+              [ngClass]="{ 'is-invalid': editarForm.get('nombre')?.touched && editarForm.get('nombre')?.invalid }" />
+            <div class="invalid-feedback" *ngIf="editarForm.get('nombre')?.hasError('maxlength')">
+              Máximo 80 caracteres.
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <label for="apellido" class="form-label fw-semibold">Apellido</label>
+            <input type="text" id="apellido" class="form-control" formControlName="apellido"
+              [ngClass]="{ 'is-invalid': editarForm.get('apellido')?.touched && editarForm.get('apellido')?.invalid }" />
+            <div class="invalid-feedback" *ngIf="editarForm.get('apellido')?.hasError('maxlength')">
+              Máximo 80 caracteres.
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <label for="email" class="form-label fw-semibold">Correo Electrónico</label>
+            <input type="email" id="email" class="form-control" formControlName="email"
+              [ngClass]="{ 'is-invalid': editarForm.get('email')?.touched && editarForm.get('email')?.invalid }" />
+            <div class="invalid-feedback" *ngIf="editarForm.get('email')?.hasError('email')">
+              Ingresa un correo válido.
+            </div>
+            <div class="invalid-feedback" *ngIf="editarForm.get('email')?.hasError('maxlength')">
+              Máximo 120 caracteres.
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <label for="telefono" class="form-label fw-semibold">Teléfono</label>
+            <input type="tel" id="telefono" class="form-control" formControlName="telefono"
+              [ngClass]="{ 'is-invalid': editarForm.get('telefono')?.touched && editarForm.get('telefono')?.invalid }" />
+            <div class="invalid-feedback" *ngIf="editarForm.get('telefono')?.hasError('pattern')">
+              El teléfono debe tener 8 dígitos.
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-outline-secondary" (click)="cerrarModalEditar()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primario text-white" [disabled]="isSubmittingEditar">
+            @if (isSubmittingEditar) {
+              <span class="spinner-border spinner-border-sm me-1"></span>
+            }
+            Guardar cambios
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
