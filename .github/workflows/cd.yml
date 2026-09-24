@@ -1,9 +1,9 @@
 name: CD
 
-# Falta configurar en GitHub: Settings > Secrets and variables > Actions
-#   EC2_HOST, EC2_USERNAME, EC2_SSH_KEY (la llave .pem completa)
+# Secrets configurados en GitHub (Settings > Secrets and variables > Actions):
+#   EC2_HOST, EC2_USERNAME, EC2_SSH_KEY
 #
-# La EC2 ya debe tener Docker y el repo con su .env configurado.
+# La EC2 tiene Docker, el repo clonado en ~/TEO1_ClinicaDental y su .env configurado.
 
 on:
   push:

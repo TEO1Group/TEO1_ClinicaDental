@@ -93,3 +93,54 @@ POST /pacientes/{id}/historial - ADMIN o DOCTOR
 body: descripcion (la fecha la pone el server solo)
 
 Las respuestas de doctor y paciente traen el campo estado (ACTIVO o INACTIVO).
+
+Respuesta de paciente: idCliente, idUsuario, nombre, apellido, email, telefono, dpi, direccion, fechaNacimiento, enListaNegra, motivoListaNegra, estado
+Respuesta de historial: idHistorial, idCliente, fecha, descripcion
+
+## Pendiente en frontend
+
+Estos endpoints ya funcionan en el backend pero todavia no tienen pantalla.
+
+Pacientes (no hay ninguna pantalla todavia, es lo mas importante para el sprint 2):
+- listado de pacientes: GET /pacientes
+- ficha del paciente con sus datos de contacto: GET /pacientes/{id}
+- crear paciente desde recepcion: POST /pacientes (se puede reutilizar el formulario de registro)
+- editar paciente: PUT /pacientes/{id}
+- desactivar paciente: DELETE /pacientes/{id}
+- historial visible dentro de la ficha: GET /pacientes/{id}/historial
+- agregar entrada al historial (solo ADMIN y DOCTOR): POST /pacientes/{id}/historial
+- lista negra (solo SECRETARIA): PATCH /pacientes/{id}/lista-negra
+- rutas sugeridas: /pacientes y /pacientes/:id con rolGuard(['ADMIN', 'DOCTOR', 'SECRETARIA'])
+
+- en sidebar.component.ts ya esta el item de Pacientes comentado, solo hay que descomentarlo cuando esten las pantallas
+
+Doctores:
+- boton para desactivar doctor (solo ADMIN): DELETE /doctores/{id}
+- editar horario: PUT /doctores/{id}/horarios/{idHorario}
+- eliminar horario: DELETE /doctores/{id}/horarios/{idHorario}
+- agregar, editar y eliminar horario: el backend lo permite a ADMIN, SECRETARIA y al mismo DOCTOR.
+  Ahora puedeAgregarHorario() en detalle-doctor solo deja ADMIN y DOCTOR, falta agregar SECRETARIA
+- el DOCTOR solo puede tocar sus propios horarios (en otro doctor el backend responde 403).
+  Mostrar los botones de horario al doctor solo si el id del detalle es igual a su idPerfil de GET /auth/me
+- "Mis horarios" para el DOCTOR: con el idPerfil de GET /auth/me se abre directo /doctores/{idPerfil},
+  hoy tiene que buscarse en el listado para ver sus horarios
+
+Usuarios (listado de admin):
+- boton editar: PUT /admin/usuarios/{id}
+- boton activar/desactivar: PATCH /admin/usuarios/{id}/estado (el admin no puede desactivarse a si mismo, responde 400)
+
+Dashboard:
+- GET /auth/me para mostrar el nombre del usuario y, si es doctor, obtener su idDoctor (idPerfil) para sus horarios
+- se pueden poner accesos directos segun el rol: ADMIN a usuarios y doctores, SECRETARIA a pacientes, DOCTOR a sus horarios y pacientes
+
+Cliente:
+- el backend le permite ver doctores y sus horarios (GET /doctores, GET /doctores/{id}/horarios),
+  pero la ruta /doctores del frontend no incluye CLIENTE en su rolGuard. No es prioridad para el sprint 2
+
+Resumen por rol de lo que el backend ya deja hacer:
+- ADMIN: usuarios, doctores, horarios, pacientes e historial
+- SECRETARIA: pacientes, lista negra y horarios de cualquier doctor
+- DOCTOR: ver pacientes, ver y agregar historial, sus propios horarios
+- CLIENTE: ver doctores y horarios
+
+Para mostrar los errores usar error.error?.mensaje, y en formularios error.error?.errores para marcar cada campo.
