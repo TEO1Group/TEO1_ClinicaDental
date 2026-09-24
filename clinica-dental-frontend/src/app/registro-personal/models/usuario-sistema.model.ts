@@ -20,3 +20,14 @@ export interface UsuarioSistemaResponse {
   mensaje: string;
   id: string;
 }
+
+export interface UsuarioUpdateRequest {
+  nombre?: string;
+  apellido?: string;
+  email?: string;
+  telefono?: string;
+}
+
+export interface EstadoUsuarioRequest {
+  estado: 'ACTIVO' | 'INACTIVO';
+}

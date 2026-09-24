@@ -33,11 +33,18 @@
                 </h2>
                 <p class="text-muted mb-0">{{ doctor()!.especialidad }}</p>
               </div>
-              @if (puedeEditar()) {
-                <button class="btn btn-primario text-white" (click)="abrirModalEditar()">
-                  <i class="bi bi-pencil me-2"></i> Editar
-                </button>
-              }
+              <div class="d-flex gap-2">
+                @if (puedeEditar()) {
+                  <button class="btn btn-primario text-white" (click)="abrirModalEditar()">
+                    <i class="bi bi-pencil me-2"></i> Editar
+                  </button>
+                }
+                @if (puedeDesactivar()) {
+                  <button class="btn btn-outline-danger" (click)="desactivarDoctor()">
+                    <i class="bi bi-person-x me-2"></i> Desactivar
+                  </button>
+                }
+              </div>
             </div>
 
             <div class="row g-3">
@@ -73,22 +80,18 @@
                 <h3 class="fw-bold text-primario mb-1">Horarios</h3>
                 <p class="text-muted mb-0">Días y horas de atención</p>
               </div>
-              @if (puedeAgregarHorario()) {
+              @if (puedeGestionarHorarios() && !mostrarFormHorario) {
                 <button class="btn btn-primario text-white" (click)="toggleFormHorario()">
-                  <i class="bi" [ngClass]="mostrarFormHorario ? 'bi-x-lg' : 'bi-plus-lg'"></i>
-                  {{ mostrarFormHorario ? 'Cancelar' : 'Agregar horario' }}
+                  <i class="bi bi-plus-lg me-2"></i> Agregar horario
                 </button>
               }
             </div>
 
             @if (mostrarFormHorario) {
               <div class="border rounded-3 p-3 mb-4 bg-light">
-                @if (successHorario) {
-                  <div class="alert alert-success" role="status">{{ successHorario }}</div>
-                }
-                @if (errorHorario) {
-                  <div class="alert alert-danger" role="alert">{{ errorHorario }}</div>
-                }
+                <h5 class="fw-bold text-primario mb-3">
+                  {{ horarioEditandoId ? 'Editar horario' : 'Nuevo horario' }}
+                </h5>
 
                 <form [formGroup]="horarioForm" (ngSubmit)="guardarHorario()" novalidate>
                   <div class="row g-3">
@@ -124,7 +127,7 @@
                       </div>
                     </div>
 
-                    <div class="col-md-2 d-flex align-items-end">
+                    <div class="col-md-2 d-flex align-items-end gap-2">
                       <button type="submit" class="btn btn-primario text-white w-100" [disabled]="isSubmittingHorario">
                         @if (isSubmittingHorario) {
                           <span class="spinner-border spinner-border-sm me-1"></span>
@@ -132,6 +135,12 @@
                         Guardar
                       </button>
                     </div>
+                  </div>
+
+                  <div class="mt-3">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" (click)="cancelarFormHorario()">
+                      Cancelar
+                    </button>
                   </div>
                 </form>
               </div>
@@ -145,14 +154,37 @@
                       <th scope="col">Día</th>
                       <th scope="col">Hora inicio</th>
                       <th scope="col">Hora fin</th>
+                      @if (puedeGestionarHorarios()) {
+                        <th scope="col" class="text-end">Acciones</th>
+                      }
                     </tr>
                   </thead>
                   <tbody>
                     @for (horario of horarios(); track horario.idHorario) {
                       <tr>
                         <td>{{ formatearDia(horario.diaSemana) }}</td>
-                        <td>{{ formatearHora(horario.horaInicio) }}</td>
-                        <td>{{ formatearHora(horario.horaFin) }}</td>
+                        <td>{{ horario.horaInicio.slice(0, 5) }}</td>
+                        <td>{{ horario.horaFin.slice(0, 5) }}</td>
+                        @if (puedeGestionarHorarios()) {
+                          <td class="text-end">
+                            <button 
+                              type="button" 
+                              class="btn btn-sm btn-outline-primary me-1"
+                              (click)="abrirFormEditarHorario(horario)"
+                              title="Editar horario"
+                            >
+                              <i class="bi bi-pencil"></i>
+                            </button>
+                            <button 
+                              type="button" 
+                              class="btn btn-sm btn-outline-danger"
+                              (click)="eliminarHorario(horario)"
+                              title="Eliminar horario"
+                            >
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </td>
+                        }
                       </tr>
                     }
                   </tbody>
@@ -184,31 +216,64 @@
         </button>
       </div>
 
-      @if (successEditar) {
-        <div class="alert alert-success" role="status">{{ successEditar }}</div>
-      }
-      @if (errorEditar) {
-        <div class="alert alert-danger" role="alert">{{ errorEditar }}</div>
-      }
-
       <form [formGroup]="editarForm" (ngSubmit)="guardarEdicion()" novalidate>
-        <div class="mb-3">
-          <label for="especialidad" class="form-label fw-semibold">Especialidad <span class="text-danger">*</span></label>
-          <input type="text" id="especialidad" class="form-control" formControlName="especialidad"
-            [ngClass]="{ 'is-invalid': editarForm.get('especialidad')?.touched && editarForm.get('especialidad')?.invalid }" />
-          <div class="invalid-feedback" *ngIf="editarForm.get('especialidad')?.hasError('required')">
-            La especialidad es obligatoria.
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="nombre" class="form-label fw-semibold">Nombre</label>
+            <input type="text" id="nombre" class="form-control" formControlName="nombre"
+              [ngClass]="{ 'is-invalid': editarForm.get('nombre')?.touched && editarForm.get('nombre')?.invalid }" />
+            <div class="invalid-feedback" *ngIf="editarForm.get('nombre')?.hasError('maxlength')">
+              Máximo 80 caracteres.
+            </div>
           </div>
-        </div>
 
-        <div class="mb-3">
-          <label for="numeroColegiado" class="form-label fw-semibold">Número de Colegiado</label>
-          <input type="text" id="numeroColegiado" class="form-control" formControlName="numeroColegiado" />
-        </div>
+          <div class="col-md-6">
+            <label for="apellido" class="form-label fw-semibold">Apellido</label>
+            <input type="text" id="apellido" class="form-control" formControlName="apellido"
+              [ngClass]="{ 'is-invalid': editarForm.get('apellido')?.touched && editarForm.get('apellido')?.invalid }" />
+            <div class="invalid-feedback" *ngIf="editarForm.get('apellido')?.hasError('maxlength')">
+              Máximo 80 caracteres.
+            </div>
+          </div>
 
-        <div class="mb-3">
-          <label for="numeroClinica" class="form-label fw-semibold">Número de Clínica</label>
-          <input type="text" id="numeroClinica" class="form-control" formControlName="numeroClinica" />
+          <div class="col-md-6">
+            <label for="telefono" class="form-label fw-semibold">Teléfono</label>
+            <input type="tel" id="telefono" class="form-control" formControlName="telefono"
+              [ngClass]="{ 'is-invalid': editarForm.get('telefono')?.touched && editarForm.get('telefono')?.invalid }" />
+            <div class="invalid-feedback" *ngIf="editarForm.get('telefono')?.hasError('pattern')">
+              El teléfono debe tener 8 dígitos.
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <label for="especialidad" class="form-label fw-semibold">Especialidad <span class="text-danger">*</span></label>
+            <input type="text" id="especialidad" class="form-control" formControlName="especialidad"
+              [ngClass]="{ 'is-invalid': editarForm.get('especialidad')?.touched && editarForm.get('especialidad')?.invalid }" />
+            <div class="invalid-feedback" *ngIf="editarForm.get('especialidad')?.hasError('required')">
+              La especialidad es obligatoria.
+            </div>
+            <div class="invalid-feedback" *ngIf="editarForm.get('especialidad')?.hasError('maxlength')">
+              Máximo 100 caracteres.
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <label for="numeroColegiado" class="form-label fw-semibold">Número de Colegiado</label>
+            <input type="text" id="numeroColegiado" class="form-control" formControlName="numeroColegiado"
+              [ngClass]="{ 'is-invalid': editarForm.get('numeroColegiado')?.touched && editarForm.get('numeroColegiado')?.invalid }" />
+            <div class="invalid-feedback" *ngIf="editarForm.get('numeroColegiado')?.hasError('maxlength')">
+              Máximo 30 caracteres.
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <label for="numeroClinica" class="form-label fw-semibold">Número de Clínica</label>
+            <input type="text" id="numeroClinica" class="form-control" formControlName="numeroClinica"
+              [ngClass]="{ 'is-invalid': editarForm.get('numeroClinica')?.touched && editarForm.get('numeroClinica')?.invalid }" />
+            <div class="invalid-feedback" *ngIf="editarForm.get('numeroClinica')?.hasError('maxlength')">
+              Máximo 20 caracteres.
+            </div>
+          </div>
         </div>
 
         <div class="d-flex justify-content-end gap-2 mt-4">

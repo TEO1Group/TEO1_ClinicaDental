@@ -17,6 +17,7 @@ export class HeaderComponent {
   @Output() toggleSidebar = new EventEmitter<void>();
 
   readonly rol = this.authService.rol;
+  readonly usuarioActual = this.authService.usuarioActual;
 
   toggle(): void {
     this.toggleSidebar.emit();

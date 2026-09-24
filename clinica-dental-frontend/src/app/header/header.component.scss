@@ -85,3 +85,24 @@
     display: none;
   }
 }
+.usuario-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+  margin-right: 0.5rem;
+
+  @media (max-width: 767px) {
+    display: none;
+  }
+}
+
+.usuario-nombre {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ffffff;
+
+  @media (max-width: 767px) {
+    display: none;
+  }
+}
