@@ -1,0 +1,99 @@
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-10">
+      <div class="mb-3">
+        <a [routerLink]="['/pacientes', pacienteId]" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i> Volver al detalle
+        </a>
+      </div>
+
+      <div class="card shadow-sm border-0 rounded-4 mb-4">
+        <div class="card-body p-4 p-md-5">
+          <h2 class="fw-bold text-primario mb-1">Historial clínico</h2>
+          @if (nombrePaciente()) {
+            <p class="text-muted mb-0">{{ nombrePaciente() }}</p>
+          }
+        </div>
+      </div>
+
+      @if (error()) {
+        <div class="alert alert-danger" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error() }}
+        </div>
+      }
+
+      @if (cargando()) {
+        <div class="text-center py-5">
+          <div class="spinner-border text-primario" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+          <p class="text-muted mt-3 mb-0">Cargando historial...</p>
+        </div>
+      } @else if (!error()) {
+        <div class="card shadow-sm border-0 rounded-4">
+          <div class="card-body p-4 p-md-5">
+            <div class="d-flex justify-content-between align-items-center gap-3 mb-4">
+              <div>
+                <h3 class="fw-bold text-primario mb-1">Registros</h3>
+                <p class="text-muted mb-0">Evolución clínica del paciente</p>
+              </div>
+              <span class="badge text-bg-light fs-6">{{ historial().length }} registro(s)</span>
+            </div>
+
+            @if (puedeAgregarHistorial()) {
+              @if (errorFormulario()) {
+                <div class="alert alert-danger" role="alert">{{ errorFormulario() }}</div>
+              }
+              @if (mensaje()) {
+                <div class="alert alert-success" role="status">{{ mensaje() }}</div>
+              }
+
+              <form [formGroup]="historialForm" (ngSubmit)="agregarRegistro()" class="border rounded-3 p-3 mb-4 bg-light" novalidate>
+                <label for="descripcion" class="form-label fw-semibold">Nuevo registro</label>
+                <textarea
+                  id="descripcion"
+                  class="form-control mb-3"
+                  rows="3"
+                  formControlName="descripcion"
+                  placeholder="Describe la evolución o atención clínica"
+                  [ngClass]="{ 'is-invalid': historialForm.controls.descripcion.touched && historialForm.controls.descripcion.invalid }"
+                ></textarea>
+                @if (historialForm.controls.descripcion.hasError('required')) {
+                  <div class="invalid-feedback">La descripción es obligatoria.</div>
+                }
+                <div class="d-flex justify-content-end">
+                  <button type="submit" class="btn btn-primario text-white" [disabled]="guardando()">
+                    @if (guardando()) {
+                      <span class="spinner-border spinner-border-sm me-2"></span>
+                    }
+                    <i class="bi bi-plus-lg me-2"></i>Agregar registro
+                  </button>
+                </div>
+              </form>
+            }
+
+            @if (historial().length > 0) {
+              <div class="list-group list-group-flush">
+                @for (registro of historial(); track registro.idHistorial) {
+                  <article class="list-group-item px-0 py-3">
+                    <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
+                      <p class="mb-0">{{ registro.descripcion }}</p>
+                      <time class="text-muted small text-nowrap" [attr.datetime]="registro.fecha">
+                        {{ registro.fecha | date:'dd/MM/yyyy HH:mm' }}
+                      </time>
+                    </div>
+                  </article>
+                }
+              </div>
+            } @else {
+              <div class="text-center py-4">
+                <i class="bi bi-journal-medical text-muted empty-icon"></i>
+                <p class="text-muted mt-3 mb-0">No hay registros clínicos.</p>
+              </div>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>

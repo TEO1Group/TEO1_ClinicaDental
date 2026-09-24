@@ -1,0 +1,116 @@
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-10">
+      <div class="mb-3">
+        <a routerLink="/pacientes" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i> Volver al listado
+        </a>
+      </div>
+
+      @if (error()) {
+        <div class="alert alert-danger" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error() }}
+        </div>
+      }
+
+      @if (cargando()) {
+        <div class="text-center py-5">
+          <div class="spinner-border text-primario" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+          <p class="text-muted mt-3 mb-0">Cargando paciente...</p>
+        </div>
+      }
+
+      @if (!cargando() && paciente(); as pacienteActual) {
+        <div class="card shadow-sm border-0 rounded-4">
+          <div class="card-body p-4 p-md-5">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3 mb-4">
+              <div>
+                <h2 class="fw-bold text-primario mb-1">
+                  {{ pacienteActual.nombre }} {{ pacienteActual.apellido }}
+                </h2>
+                <p class="text-muted mb-0">Detalle del paciente</p>
+              </div>
+
+              @if (pacienteActual.enListaNegra) {
+                <span class="badge bg-danger fs-6">
+                  <i class="bi bi-shield-exclamation me-1"></i> En lista negra
+                </span>
+              } @else {
+                <span class="badge bg-success fs-6">Sin lista negra</span>
+              }
+            </div>
+
+            <div class="row g-4">
+              <div class="col-md-6">
+                <p class="mb-1 text-muted small">Nombre</p>
+                <p class="mb-0 fw-semibold">{{ pacienteActual.nombre }}</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1 text-muted small">Apellido</p>
+                <p class="mb-0 fw-semibold">{{ pacienteActual.apellido }}</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1 text-muted small">Email</p>
+                <p class="mb-0 fw-semibold">{{ pacienteActual.email }}</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1 text-muted small">Teléfono</p>
+                <p class="mb-0 fw-semibold">{{ pacienteActual.telefono || '—' }}</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1 text-muted small">DPI</p>
+                <p class="mb-0 fw-semibold">{{ pacienteActual.dpi }}</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1 text-muted small">Fecha de nacimiento</p>
+                <p class="mb-0 fw-semibold">{{ pacienteActual.fechaNacimiento || '—' }}</p>
+              </div>
+              <div class="col-12">
+                <p class="mb-1 text-muted small">Dirección</p>
+                <p class="mb-0 fw-semibold">{{ pacienteActual.direccion || '—' }}</p>
+              </div>
+
+              @if (pacienteActual.enListaNegra) {
+                <div class="col-12">
+                  <p class="mb-1 text-muted small">Motivo de lista negra</p>
+                  <p class="mb-0 fw-semibold">{{ pacienteActual.motivoListaNegra || '—' }}</p>
+                </div>
+              }
+            </div>
+
+            <div class="d-flex flex-wrap gap-2 mt-4 pt-4 border-top">
+              @if (puedeEditar()) {
+                <a
+                  class="btn btn-primario text-white"
+                  [routerLink]="['/pacientes', pacienteActual.idCliente, 'editar']"
+                >
+                  <i class="bi bi-pencil me-2"></i> Editar
+                </a>
+              }
+
+              @if (puedeGestionarListaNegra()) {
+                <a
+                  class="btn btn-outline-danger"
+                  [routerLink]="['/pacientes', pacienteActual.idCliente, 'lista-negra']"
+                >
+                  <i class="bi bi-shield-exclamation me-2"></i> Lista negra
+                </a>
+              }
+
+              @if (puedeVerHistorial()) {
+                <a
+                  class="btn btn-outline-primary"
+                  [routerLink]="['/pacientes', pacienteActual.idCliente, 'historial']"
+                >
+                  <i class="bi bi-journal-medical me-2"></i> Ver historial
+                </a>
+              }
+            </div>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>

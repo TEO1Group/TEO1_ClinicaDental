@@ -44,13 +44,12 @@ export class SidebarComponent {
       ruta: '/doctores',
       roles: ['ADMIN', 'DOCTOR', 'SECRETARIA']
     },
-    // TODO: Descomentar cuando el módulo de pacientes esté listo
-    // {
-    //   label: 'Pacientes',
-    //   icono: 'bi-person-vcard',
-    //   ruta: '/pacientes',
-    //   roles: ['ADMIN', 'DOCTOR', 'SECRETARIA']
-    // }
+    {
+      label: 'Pacientes',
+      icono: 'bi-person-vcard',
+      ruta: '/pacientes',
+      roles: ['ADMIN', 'DOCTOR', 'SECRETARIA']
+    }
   ];
 
   itemsVisibles(): ItemSidebar[] {
