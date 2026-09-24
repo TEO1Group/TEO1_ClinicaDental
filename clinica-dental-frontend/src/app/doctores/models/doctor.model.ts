@@ -12,6 +12,9 @@ export interface DoctorResponse {
 }
 
 export interface DoctorUpdateRequest {
+  nombre?: string;
+  apellido?: string;
+  telefono?: string;
   especialidad: string;
   numeroColegiado?: string;
   numeroClinica?: string;
