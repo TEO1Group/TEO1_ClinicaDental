@@ -1,0 +1,19 @@
+@use 'sass:color';
+
+.text-primario {
+  color: var(--color-primario);
+}
+
+.btn-primario {
+  background-color: var(--color-primario);
+  border-color: var(--color-primario);
+
+  &:hover {
+    background-color: color.adjust(#2C7BE5, $lightness: -7%);
+    border-color: color.adjust(#2C7BE5, $lightness: -7%);
+  }
+}
+
+.card {
+  background-color: #ffffff;
+}
