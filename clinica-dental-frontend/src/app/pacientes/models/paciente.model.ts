@@ -21,5 +21,5 @@ export interface ClienteUpdateRequest {
 
 export interface ListaNegraRequest {
   enListaNegra: boolean;
-  motivoListaNegra?: string | null;
+  motivo?: string | null;
 }
