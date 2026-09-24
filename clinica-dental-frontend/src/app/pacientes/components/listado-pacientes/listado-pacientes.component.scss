@@ -1,0 +1,44 @@
+@use 'sass:color';
+
+.text-primario {
+  color: var(--color-primario);
+}
+
+.form-select:focus {
+  border-color: var(--color-secundario);
+  box-shadow: 0 0 0 0.25rem rgba(92, 201, 201, 0.25);
+}
+
+.btn-outline-primary {
+  color: var(--color-primario);
+  border-color: var(--color-primario);
+
+  &:hover {
+    background-color: var(--color-primario);
+    border-color: var(--color-primario);
+    color: #ffffff;
+  }
+}
+
+.table {
+  th {
+    font-weight: 600;
+    color: var(--color-texto);
+    border-bottom: 2px solid #e9ecef;
+  }
+
+  td {
+    vertical-align: middle;
+    color: var(--color-texto);
+  }
+}
+
+.badge {
+  font-weight: 500;
+  padding: 0.4rem 0.75rem;
+}
+
+.empty-icon {
+  display: inline-block;
+  font-size: 3rem;
+}
