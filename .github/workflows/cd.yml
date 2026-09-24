@@ -72,8 +72,8 @@ jobs:
           script: |
             set -e
             cd ~/TEO1_ClinicaDental
-            git checkout main
-            git pull --ff-only origin main
+            git fetch origin main
+            git checkout --force --detach FETCH_HEAD
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             if [ ! -f .env ]; then
               echo "No existe .env en ~/TEO1_ClinicaDental" >&2
@@ -94,5 +94,11 @@ jobs:
             persist_env_var FRONTEND_IMAGE '${{ needs.build-and-push.outputs.frontend_image }}'
             persist_env_var CORS_ALLOWED_ORIGINS 'http://${{ secrets.EC2_HOST }}:4200'
             docker compose pull backend frontend
-            docker compose up -d --no-build --force-recreate db backend frontend
+            db_container_id="$(docker compose ps --quiet db)"
+            if [ -z "$db_container_id" ]; then
+              echo "No se encontró un contenedor db en ejecución" >&2
+              exit 1
+            fi
+            docker update --restart unless-stopped "$db_container_id"
+            docker compose up -d --no-build --no-deps --force-recreate backend frontend
             docker image prune -f
