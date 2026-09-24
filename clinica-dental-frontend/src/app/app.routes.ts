@@ -6,6 +6,7 @@ import { DashboardComponent } from './dashboard/dashboard.component';
 import { LoginComponent } from './login/login.component';
 import { ListadoDoctoresComponent } from './doctores/listado-doctores/listado-doctores.component';
 import { DetalleDoctorComponent } from './doctores/detalle-doctor/detalle-doctor.component';
+import { ListadoPacientesComponent } from './pacientes/components/listado-pacientes/listado-pacientes.component';
 //guards
 import { rolGuard } from './core/guards/rol.guard';
 
@@ -17,5 +18,6 @@ export const routes: Routes = [
   { path: 'admin/usuarios/crear', component: FormularioUsuarioSistemaComponent, canActivate: [rolGuard(['ADMIN'])]},
   { path: 'doctores', component: ListadoDoctoresComponent, canActivate: [rolGuard(['ADMIN', 'DOCTOR', 'SECRETARIA'])]},
   { path: 'doctores/:id', component: DetalleDoctorComponent, canActivate: [rolGuard(['ADMIN', 'DOCTOR', 'SECRETARIA'])]},
+  { path: 'pacientes', component: ListadoPacientesComponent, canActivate: [rolGuard(['ADMIN', 'DOCTOR', 'SECRETARIA'])]},
   { path: '**', redirectTo: '' }
 ];
