@@ -1,8 +1,13 @@
 <app-notificacion></app-notificacion>
+<app-perfil-modal [visible]="perfilVisible()" (cerrar)="cerrarPerfil()"></app-perfil-modal>
 
 @if (mostrarLayout()) {
   <app-header (toggleSidebar)="toggleSidebar()"></app-header>
-  <app-sidebar [visible]="sidebarVisible()" (cerrar)="cerrarSidebar()"></app-sidebar>
+  <app-sidebar 
+    [visible]="sidebarVisible()" 
+    (cerrar)="cerrarSidebar()" 
+    (abrirPerfil)="abrirPerfil()"
+  ></app-sidebar>
   <main class="contenido-principal">
     <router-outlet></router-outlet>
   </main>

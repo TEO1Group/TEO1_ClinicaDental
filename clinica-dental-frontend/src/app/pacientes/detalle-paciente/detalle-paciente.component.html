@@ -1,0 +1,290 @@
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-10">
+
+      <div class="mb-3">
+        <a routerLink="/pacientes" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i> Volver al listado
+        </a>
+      </div>
+
+      @if (error()) {
+        <div class="alert alert-danger" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error() }}
+        </div>
+      }
+
+      @if (cargando()) {
+        <div class="text-center py-5">
+          <div class="spinner-border text-primario" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+        </div>
+      }
+
+      @if (!cargando() && paciente()) {
+        <!-- Card del paciente -->
+        <div class="card shadow-sm border-0 rounded-4 mb-4">
+          <div class="card-body p-4 p-md-5">
+
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3 mb-4">
+              <div>
+                <h2 class="fw-bold text-primario mb-1">
+                  {{ paciente()!.nombre }} {{ paciente()!.apellido }}
+                </h2>
+                <p class="text-muted mb-1">DPI: {{ paciente()!.dpi }}</p>
+                @if (paciente()!.enListaNegra) {
+                  <span class="badge bg-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i> En lista negra
+                  </span>
+                } @else {
+                  <span class="badge bg-success">Sin novedad</span>
+                }
+              </div>
+              <div class="d-flex gap-2 flex-wrap">
+                @if (puedeEditar()) {
+                  <button class="btn btn-primario text-white" (click)="abrirModalEditar()">
+                    <i class="bi bi-pencil me-2"></i> Editar
+                  </button>
+                }
+                @if (puedeGestionarListaNegra()) {
+                  <button class="btn btn-outline-warning" (click)="abrirModalListaNegra()">
+                    <i class="bi bi-exclamation-triangle me-2"></i> Lista Negra
+                  </button>
+                }
+                @if (puedeDesactivar()) {
+                  <button class="btn btn-outline-danger" (click)="desactivarPaciente()">
+                    <i class="bi bi-person-x me-2"></i> Desactivar
+                  </button>
+                }
+              </div>
+            </div>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <p class="mb-1 text-muted small">Email</p>
+                <p class="mb-0 fw-semibold">{{ paciente()!.email }}</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1 text-muted small">Teléfono</p>
+                <p class="mb-0 fw-semibold">{{ paciente()!.telefono || '—' }}</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1 text-muted small">Dirección</p>
+                <p class="mb-0 fw-semibold">{{ paciente()!.direccion || '—' }}</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1 text-muted small">Fecha de nacimiento</p>
+                <p class="mb-0 fw-semibold">{{ paciente()!.fechaNacimiento || '—' }}</p>
+              </div>
+              @if (paciente()!.enListaNegra && paciente()!.motivoListaNegra) {
+                <div class="col-md-12">
+                  <p class="mb-1 text-muted small">Motivo lista negra</p>
+                  <p class="mb-0 fw-semibold text-danger">{{ paciente()!.motivoListaNegra }}</p>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Card de historial -->
+        <div class="card shadow-sm border-0 rounded-4">
+          <div class="card-body p-4 p-md-5">
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+              <div>
+                <h3 class="fw-bold text-primario mb-1">Historial Clínico</h3>
+                <p class="text-muted mb-0">Registro de consultas y tratamientos</p>
+              </div>
+              @if (puedeAgregarHistorial() && !mostrarFormHistorial) {
+                <button class="btn btn-primario text-white" (click)="toggleFormHistorial()">
+                  <i class="bi bi-plus-lg me-2"></i> Agregar entrada
+                </button>
+              }
+            </div>
+
+            @if (mostrarFormHistorial) {
+              <div class="border rounded-3 p-3 mb-4 bg-light">
+                <h5 class="fw-bold text-primario mb-3">Nueva entrada</h5>
+
+                <form [formGroup]="historialForm" (ngSubmit)="guardarHistorial()" novalidate>
+                  <div class="mb-3">
+                    <label for="descripcion" class="form-label fw-semibold">Descripción</label>
+                    <textarea 
+                      id="descripcion" 
+                      class="form-control" 
+                      formControlName="descripcion"
+                      rows="3"
+                      placeholder="Describe el diagnóstico, tratamiento o notas relevantes..."
+                      [ngClass]="{ 'is-invalid': historialForm.get('descripcion')?.touched && historialForm.get('descripcion')?.invalid }"
+                    ></textarea>
+                    <div class="invalid-feedback" *ngIf="historialForm.get('descripcion')?.hasError('required')">
+                      La descripción es obligatoria.
+                    </div>
+                  </div>
+
+                  <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primario text-white" [disabled]="isSubmittingHistorial">
+                      @if (isSubmittingHistorial) {
+                        <span class="spinner-border spinner-border-sm me-1"></span>
+                      }
+                      Guardar
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" (click)="toggleFormHistorial()">
+                      Cancelar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            }
+
+            @if (historial().length > 0) {
+              <div class="historial-lista">
+                @for (entrada of historial(); track entrada.idHistorial) {
+                  <div class="historial-item">
+                    <div class="historial-fecha">
+                      <i class="bi bi-calendar-event me-2"></i>
+                      {{ entrada.fecha | date:'dd/MM/yyyy HH:mm' }}
+                    </div>
+                    <p class="historial-descripcion mb-0">{{ entrada.descripcion }}</p>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="text-center py-4">
+                <i class="bi bi-journal-text text-muted" style="font-size: 2.5rem;"></i>
+                <p class="text-muted mt-3 mb-0">No hay entradas en el historial.</p>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+    </div>
+  </div>
+</div>
+
+<!-- Modal editar paciente -->
+@if (mostrarModalEditar) {
+  <div class="modal-backdrop-custom" (click)="cerrarModalEditar()"></div>
+  <div class="modal-custom">
+    <div class="modal-content-custom">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold text-primario mb-0">Editar Paciente</h4>
+        <button class="btn btn-sm btn-outline-secondary" (click)="cerrarModalEditar()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <form [formGroup]="editarForm" (ngSubmit)="guardarEdicion()" novalidate>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label for="nombre" class="form-label fw-semibold">Nombre</label>
+            <input type="text" id="nombre" class="form-control" formControlName="nombre"
+              [ngClass]="{ 'is-invalid': editarForm.get('nombre')?.touched && editarForm.get('nombre')?.invalid }" />
+            <div class="invalid-feedback" *ngIf="editarForm.get('nombre')?.hasError('maxlength')">
+              Máximo 80 caracteres.
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <label for="apellido" class="form-label fw-semibold">Apellido</label>
+            <input type="text" id="apellido" class="form-control" formControlName="apellido"
+              [ngClass]="{ 'is-invalid': editarForm.get('apellido')?.touched && editarForm.get('apellido')?.invalid }" />
+            <div class="invalid-feedback" *ngIf="editarForm.get('apellido')?.hasError('maxlength')">
+              Máximo 80 caracteres.
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <label for="telefono" class="form-label fw-semibold">Teléfono</label>
+            <input type="tel" id="telefono" class="form-control" formControlName="telefono"
+              [ngClass]="{ 'is-invalid': editarForm.get('telefono')?.touched && editarForm.get('telefono')?.invalid }" />
+            <div class="invalid-feedback" *ngIf="editarForm.get('telefono')?.hasError('pattern')">
+              El teléfono debe tener 8 dígitos.
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <label for="fechaNacimiento" class="form-label fw-semibold">Fecha de Nacimiento</label>
+            <input type="date" id="fechaNacimiento" class="form-control" formControlName="fechaNacimiento" />
+          </div>
+
+          <div class="col-md-12">
+            <label for="direccion" class="form-label fw-semibold">Dirección</label>
+            <input type="text" id="direccion" class="form-control" formControlName="direccion"
+              [ngClass]="{ 'is-invalid': editarForm.get('direccion')?.touched && editarForm.get('direccion')?.invalid }" />
+            <div class="invalid-feedback" *ngIf="editarForm.get('direccion')?.hasError('maxlength')">
+              Máximo 200 caracteres.
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-outline-secondary" (click)="cerrarModalEditar()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primario text-white" [disabled]="isSubmittingEditar">
+            @if (isSubmittingEditar) {
+              <span class="spinner-border spinner-border-sm me-1"></span>
+            }
+            Guardar cambios
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Modal lista negra -->
+@if (mostrarModalListaNegra) {
+  <div class="modal-backdrop-custom" (click)="cerrarModalListaNegra()"></div>
+  <div class="modal-custom">
+    <div class="modal-content-custom">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold text-primario mb-0">Lista Negra</h4>
+        <button class="btn btn-sm btn-outline-secondary" (click)="cerrarModalListaNegra()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <form [formGroup]="listaNegraForm" (ngSubmit)="guardarListaNegra()" novalidate>
+        <div class="mb-3 form-check form-switch">
+          <input 
+            type="checkbox" 
+            class="form-check-input" 
+            id="enListaNegra" 
+            formControlName="enListaNegra"
+          />
+          <label class="form-check-label fw-semibold" for="enListaNegra">
+            Agregar a lista negra
+          </label>
+        </div>
+
+        @if (listaNegraForm.controls.enListaNegra.value) {
+          <div class="mb-3">
+            <label for="motivo" class="form-label fw-semibold">Motivo <span class="text-danger">*</span></label>
+            <textarea 
+              id="motivo" 
+              class="form-control" 
+              formControlName="motivo"
+              rows="3"
+              placeholder="Describe el motivo..."
+            ></textarea>
+          </div>
+        }
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-outline-secondary" (click)="cerrarModalListaNegra()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primario text-white" [disabled]="isSubmittingListaNegra">
+            @if (isSubmittingListaNegra) {
+              <span class="spinner-border spinner-border-sm me-1"></span>
+            }
+            Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

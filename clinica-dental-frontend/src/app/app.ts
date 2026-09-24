@@ -6,15 +6,17 @@ import { AuthService } from './core/services/auth.service';
 import { HeaderComponent } from './header/header.component';
 import { SidebarComponent } from './sidebar/sidebar.component';
 import { NotificacionComponent } from './core/notificacion/notificacion-component/notificacion.component';
+import { PerfilModalComponent } from './perfil/perfil-modal.component';
 
 @Component({
-  imports: [RouterOutlet, CommonModule, HeaderComponent, SidebarComponent, NotificacionComponent],
+  imports: [RouterOutlet, CommonModule, HeaderComponent, SidebarComponent, NotificacionComponent, PerfilModalComponent],
   selector: 'app-root',
   styleUrl: './app.scss',
   templateUrl: './app.html',
 })
 export class App implements OnInit {
   protected readonly title = signal('clinica-dental-frontend');
+  readonly perfilVisible = signal(false);
 
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
@@ -53,5 +55,13 @@ export class App implements OnInit {
   private actualizarLayoutPorUrl(url: string): void {
     const sinLayout = this.rutasSinLayout.includes(url);
     this.mostrarLayout.set(!sinLayout);
+  }
+
+  abrirPerfil(): void {
+    this.perfilVisible.set(true);
+  }
+
+  cerrarPerfil(): void {
+    this.perfilVisible.set(false);
   }
 }

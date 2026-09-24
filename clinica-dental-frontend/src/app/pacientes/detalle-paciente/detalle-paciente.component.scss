@@ -1,0 +1,92 @@
+@use 'sass:color';
+
+.text-primario {
+  color: var(--color-primario);
+}
+
+.btn-primario {
+  background-color: var(--color-primario);
+  border-color: var(--color-primario);
+  transition: all 0.2s ease-in-out;
+
+  &:hover {
+    background-color: color.adjust(#2C7BE5, $lightness: -7%);
+    border-color: color.adjust(#2C7BE5, $lightness: -7%);
+  }
+
+  &:disabled {
+    background-color: #a0c4f7;
+    border-color: #a0c4f7;
+  }
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--color-secundario);
+  box-shadow: 0 0 0 0.25rem rgba(92, 201, 201, 0.25);
+}
+
+.card {
+  background-color: #ffffff;
+}
+
+// Modal personalizado
+.modal-backdrop-custom {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1040;
+}
+
+.modal-custom {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+  padding: 1rem;
+}
+
+.modal-content-custom {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  padding: 2rem;
+  flex: 0 1 600px;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.15);
+}
+
+// Historial
+.historial-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.historial-item {
+  border-left: 3px solid var(--color-primario);
+  background-color: #f7f9fa;
+  padding: 1rem 1.25rem;
+  border-radius: 0.5rem;
+}
+
+.historial-fecha {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-primario);
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.historial-descripcion {
+  color: var(--color-texto);
+  line-height: 1.5;
+}
+
+.badge {
+  font-weight: 500;
+  padding: 0.4rem 0.75rem;
+}

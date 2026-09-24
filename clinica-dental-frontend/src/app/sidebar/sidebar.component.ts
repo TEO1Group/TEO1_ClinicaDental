@@ -22,6 +22,7 @@ export class SidebarComponent {
 
   @Input() visible = false;
   @Output() cerrar = new EventEmitter<void>();
+  @Output() abrirPerfil = new EventEmitter<void>();
 
   readonly rol = this.authService.rol;
 
@@ -42,15 +43,14 @@ export class SidebarComponent {
       label: 'Doctores',
       icono: 'bi-person-badge',
       ruta: '/doctores',
-      roles: ['ADMIN', 'DOCTOR', 'SECRETARIA']
+      roles: ['ADMIN', 'DOCTOR', 'SECRETARIA', 'CLIENTE']
     },
-    // TODO: Descomentar cuando el módulo de pacientes esté listo
-    // {
-    //   label: 'Pacientes',
-    //   icono: 'bi-person-vcard',
-    //   ruta: '/pacientes',
-    //   roles: ['ADMIN', 'DOCTOR', 'SECRETARIA']
-    // }
+    {
+      label: 'Pacientes',
+      icono: 'bi-person-vcard',
+      ruta: '/pacientes',
+      roles: ['ADMIN', 'DOCTOR', 'SECRETARIA']
+    }
   ];
 
   itemsVisibles(): ItemSidebar[] {
@@ -61,5 +61,9 @@ export class SidebarComponent {
 
   cerrarSidebar(): void {
     this.cerrar.emit();
+  }
+
+  verPerfil(): void {
+    this.abrirPerfil.emit();
   }
 }

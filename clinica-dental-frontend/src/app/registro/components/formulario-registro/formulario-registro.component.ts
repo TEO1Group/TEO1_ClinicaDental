@@ -1,9 +1,11 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { FormBuilder, Validators, FormGroup, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { CommonModule, NgClass } from '@angular/common';
 import { Router } from '@angular/router';
 import { PacienteRegistroRequest } from '../../models/paciente-registro.model';
 import { AuthService } from '../../../core/services/auth.service';
+import { PacienteService } from '../../../pacientes/models/service/paciente.service';
+import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 
 @Component({
   selector: 'app-formulario-registro-cliente',
@@ -12,9 +14,11 @@ import { AuthService } from '../../../core/services/auth.service';
   templateUrl: './formulario-registro.component.html',
   styleUrls: ['./formulario-registro.component.scss']
 })
-export class FormularioRegistroClienteComponent {
+export class FormularioRegistroClienteComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
+  private readonly pacienteService = inject(PacienteService);
+  private readonly notificacionService = inject(NotificacionService);
   private readonly router = inject(Router);
 
   registroForm: FormGroup;
@@ -24,6 +28,7 @@ export class FormularioRegistroClienteComponent {
   isSubmitting = false;
   successMessage = '';
   errorMessage = '';
+  modoRecepcion = false;
 
   constructor() {
     this.registroForm = this.fb.nonNullable.group({
@@ -41,6 +46,10 @@ export class FormularioRegistroClienteComponent {
       direccion: [''],
       fechaNacimiento: ['']
     }, { validators: this.passwordsIguales });
+  }
+
+  ngOnInit(): void {
+    this.modoRecepcion = this.router.url.includes('/pacientes/crear');
   }
 
   private passwordsIguales(group: AbstractControl): ValidationErrors | null {
@@ -73,20 +82,34 @@ export class FormularioRegistroClienteComponent {
       fechaNacimiento: valores.fechaNacimiento || undefined
     };
 
-    this.authService.registro(datosRegistro).subscribe({
-      next: (response) => {
-        this.isSubmitting = false;
-        this.successMessage = response.mensaje;
-        this.registroForm.reset();
-        setTimeout(() => {
-          this.router.navigate(['']);
-        }, 2000);
-      },
-      error: (error) => {
-        this.isSubmitting = false;
-        this.errorMessage = error.error?.mensaje || 'Error al registrarse. Intenta de nuevo.';
-      }
-    });
+    if (this.modoRecepcion) {
+      this.pacienteService.crearPaciente(datosRegistro).subscribe({
+        next: () => {
+          this.isSubmitting = false;
+          this.notificacionService.exito('Paciente creado correctamente.');
+          this.router.navigate(['/pacientes']);
+        },
+        error: (error) => {
+          this.isSubmitting = false;
+          this.errorMessage = error.error?.mensaje || 'Error al crear el paciente.';
+        }
+      });
+    } else {
+      this.authService.registro(datosRegistro).subscribe({
+        next: (response) => {
+          this.isSubmitting = false;
+          this.successMessage = response.mensaje;
+          this.registroForm.reset();
+          setTimeout(() => {
+            this.router.navigate(['']);
+          }, 2000);
+        },
+        error: (error) => {
+          this.isSubmitting = false;
+          this.errorMessage = error.error?.mensaje || 'Error al registrarse. Intenta de nuevo.';
+        }
+      });
+    }
   }
 
   togglePassword(): void {

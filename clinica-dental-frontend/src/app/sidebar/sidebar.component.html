@@ -23,17 +23,22 @@
 
   <!-- Footer de usuario integrado -->
   <div class="sidebar-footer p-3 border-top border-white border-opacity-10 bg-black bg-opacity-10">
-    <div class="sidebar-user d-flex align-items-center gap-3">
+    <button 
+      type="button" 
+      class="sidebar-user d-flex align-items-center gap-3 w-100 border-0 bg-transparent text-start"
+      (click)="verPerfil()"
+    >
       <div class="sidebar-avatar rounded-circle bg-white bg-opacity-20 text-white d-flex align-items-center justify-content-center flex-shrink-0">
         <i class="bi bi-person-fill fs-5"></i>
       </div>
       <div class="sidebar-user-info overflow-hidden">
-        <span class="d-block text-white-50 fs-8 text-uppercase">Rol actual</span>
+        <span class="d-block text-white-50 fs-8 text-uppercase">Ver Perfil</span>
         <span class="sidebar-user-rol text-truncate fw-semibold text-white">{{ rol() }}</span>
       </div>
-    </div>
+      <i class="bi bi-chevron-right text-white-50 ms-auto"></i>
+    </button>
   </div>
-</aside>
+  </aside>
 
 @if (visible) {
   <div class="sidebar-overlay position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 z-1025" (click)="cerrarSidebar()"></div>
