@@ -4,6 +4,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DoctorService } from '../service/doctor.service';
 import { AuthService } from '../../core/services/auth.service';
+import { NotificacionService } from '../../core/notificacion/service/notificacion.service';
 import { DoctorResponse } from '../models/doctor.model';
 import { HorarioResponse } from '../models/horario.mode';
 
@@ -18,9 +19,11 @@ export class DetalleDoctorComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly doctorService = inject(DoctorService);
   private readonly authService = inject(AuthService);
+  private readonly notificacionService = inject(NotificacionService);
   private readonly formBuilder = inject(FormBuilder);
 
   readonly rol = this.authService.rol;
+  readonly usuarioActual = this.authService.usuarioActual;
 
   readonly diasSemana = [
     { valor: 'LUNES', etiqueta: 'Lunes' },
@@ -42,23 +45,23 @@ export class DetalleDoctorComponent implements OnInit {
   readonly cargando = this._cargando.asReadonly();
   readonly error = this._error.asReadonly();
 
-  // Modal edición
+  // Modal edición doctor
   mostrarModalEditar = false;
   isSubmittingEditar = false;
-  successEditar = '';
-  errorEditar = '';
 
   readonly editarForm = this.formBuilder.nonNullable.group({
-    especialidad: ['', [Validators.required]],
-    numeroColegiado: [''],
-    numeroClinica: ['']
+    nombre: ['', [Validators.maxLength(80)]],
+    apellido: ['', [Validators.maxLength(80)]],
+    telefono: ['', [Validators.pattern(/^[0-9]{8}$/)]],
+    especialidad: ['', [Validators.required, Validators.maxLength(100)]],
+    numeroColegiado: ['', [Validators.maxLength(30)]],
+    numeroClinica: ['', [Validators.maxLength(20)]]
   });
 
-  // Agregar horario
+  // Formulario agregar/editar horario
   mostrarFormHorario = false;
   isSubmittingHorario = false;
-  successHorario = '';
-  errorHorario = '';
+  horarioEditandoId: string | null = null;
 
   readonly horarioForm = this.formBuilder.nonNullable.group({
     diaSemana: ['', [Validators.required]],
@@ -107,23 +110,40 @@ export class DetalleDoctorComponent implements OnInit {
     return this.rol() === 'ADMIN';
   }
 
-  puedeAgregarHorario(): boolean {
-    const rol = this.rol();
-    return rol === 'ADMIN' || rol === 'DOCTOR';
+  puedeDesactivar(): boolean {
+    return this.rol() === 'ADMIN';
   }
 
+  puedeGestionarHorarios(): boolean {
+    const rolActual = this.rol();
+    const usuario = this.usuarioActual();
+
+    if (rolActual === 'ADMIN' || rolActual === 'SECRETARIA') {
+      return true;
+    }
+
+    if (rolActual === 'DOCTOR') {
+      // Solo puede gestionar sus propios horarios
+      return usuario?.idPerfil === this.doctorId;
+    }
+
+    return false;
+  }
+
+  // Modal editar doctor
   abrirModalEditar(): void {
     const doc = this._doctor();
     if (!doc) return;
 
     this.editarForm.patchValue({
+      nombre: doc.nombre,
+      apellido: doc.apellido,
+      telefono: doc.telefono || '',
       especialidad: doc.especialidad,
       numeroColegiado: doc.numeroColegiado || '',
       numeroClinica: doc.numeroClinica || ''
     });
 
-    this.successEditar = '';
-    this.errorEditar = '';
     this.mostrarModalEditar = true;
   }
 
@@ -133,9 +153,6 @@ export class DetalleDoctorComponent implements OnInit {
   }
 
   guardarEdicion(): void {
-    this.successEditar = '';
-    this.errorEditar = '';
-
     if (this.editarForm.invalid) {
       this.editarForm.markAllAsTouched();
       return;
@@ -143,35 +160,70 @@ export class DetalleDoctorComponent implements OnInit {
 
     this.isSubmittingEditar = true;
 
-    this.doctorService.actualizarDoctor(this.doctorId, this.editarForm.getRawValue()).subscribe({
+    const valores = this.editarForm.getRawValue();
+    const request = {
+      nombre: valores.nombre || undefined,
+      apellido: valores.apellido || undefined,
+      telefono: valores.telefono || undefined,
+      especialidad: valores.especialidad,
+      numeroColegiado: valores.numeroColegiado || undefined,
+      numeroClinica: valores.numeroClinica || undefined
+    };
+
+    this.doctorService.actualizarDoctor(this.doctorId, request).subscribe({
       next: (response) => {
         this.isSubmittingEditar = false;
         this._doctor.set(response);
-        this.successEditar = 'Doctor actualizado correctamente.';
-        setTimeout(() => {
-          this.cerrarModalEditar();
-        }, 1500);
+        this.notificacionService.exito('Doctor actualizado correctamente.');
+        this.cerrarModalEditar();
       },
       error: (error) => {
         this.isSubmittingEditar = false;
-        this.errorEditar = error.error?.mensaje || 'Error al actualizar el doctor.';
+        this.notificacionService.error(error.error?.mensaje || 'Error al actualizar el doctor.');
       }
     });
   }
 
+  desactivarDoctor(): void {
+    if (!confirm('¿Estás seguro de desactivar este doctor? Ya no podrá iniciar sesión.')) {
+      return;
+    }
+
+    this.doctorService.desactivarDoctor(this.doctorId).subscribe({
+      next: () => {
+        this.notificacionService.exito('Doctor desactivado correctamente.');
+        window.history.back();
+      },
+      error: (error) => {
+        this.notificacionService.error(error.error?.mensaje || 'Error al desactivar el doctor.');
+      }
+    });
+  }
+
+  // Horarios
   toggleFormHorario(): void {
     this.mostrarFormHorario = !this.mostrarFormHorario;
-    this.successHorario = '';
-    this.errorHorario = '';
-    if (!this.mostrarFormHorario) {
-      this.horarioForm.reset();
-    }
+    this.horarioEditandoId = null;
+    this.horarioForm.reset();
+  }
+
+  abrirFormEditarHorario(horario: HorarioResponse): void {
+    this.horarioEditandoId = horario.idHorario;
+    this.horarioForm.patchValue({
+      diaSemana: horario.diaSemana,
+      horaInicio: horario.horaInicio.slice(0, 5),
+      horaFin: horario.horaFin.slice(0, 5)
+    });
+    this.mostrarFormHorario = true;
+  }
+
+  cancelarFormHorario(): void {
+    this.mostrarFormHorario = false;
+    this.horarioEditandoId = null;
+    this.horarioForm.reset();
   }
 
   guardarHorario(): void {
-    this.successHorario = '';
-    this.errorHorario = '';
-
     if (this.horarioForm.invalid) {
       this.horarioForm.markAllAsTouched();
       return;
@@ -179,20 +231,53 @@ export class DetalleDoctorComponent implements OnInit {
 
     this.isSubmittingHorario = true;
 
-    this.doctorService.agregarHorario(this.doctorId, this.horarioForm.getRawValue()).subscribe({
-      next: (response) => {
-        this.isSubmittingHorario = false;
-        this._horarios.update(h => [...h, response]);
-        this.successHorario = 'Horario agregado correctamente.';
-        this.horarioForm.reset();
-        setTimeout(() => {
-          this.mostrarFormHorario = false;
-          this.successHorario = '';
-        }, 1500);
+    const request = this.horarioForm.getRawValue();
+
+    if (this.horarioEditandoId) {
+      // Editar
+      this.doctorService.actualizarHorario(this.doctorId, this.horarioEditandoId, request).subscribe({
+        next: (response) => {
+          this.isSubmittingHorario = false;
+          this._horarios.update(h =>
+            h.map(item => item.idHorario === response.idHorario ? response : item)
+          );
+          this.notificacionService.exito('Horario actualizado correctamente.');
+          this.cancelarFormHorario();
+        },
+        error: (error) => {
+          this.isSubmittingHorario = false;
+          this.notificacionService.error(error.error?.mensaje || 'Error al actualizar el horario.');
+        }
+      });
+    } else {
+      // Agregar
+      this.doctorService.agregarHorario(this.doctorId, request).subscribe({
+        next: (response) => {
+          this.isSubmittingHorario = false;
+          this._horarios.update(h => [...h, response]);
+          this.notificacionService.exito('Horario agregado correctamente.');
+          this.cancelarFormHorario();
+        },
+        error: (error) => {
+          this.isSubmittingHorario = false;
+          this.notificacionService.error(error.error?.mensaje || 'Error al agregar el horario.');
+        }
+      });
+    }
+  }
+
+  eliminarHorario(horario: HorarioResponse): void {
+    if (!confirm('¿Estás seguro de eliminar este horario?')) {
+      return;
+    }
+
+    this.doctorService.eliminarHorario(this.doctorId, horario.idHorario).subscribe({
+      next: () => {
+        this._horarios.update(h => h.filter(item => item.idHorario !== horario.idHorario));
+        this.notificacionService.exito('Horario eliminado correctamente.');
       },
       error: (error) => {
-        this.isSubmittingHorario = false;
-        this.errorHorario = error.error?.mensaje || 'Error al agregar el horario.';
+        this.notificacionService.error(error.error?.mensaje || 'Error al eliminar el horario.');
       }
     });
   }
@@ -201,8 +286,4 @@ export class DetalleDoctorComponent implements OnInit {
     const encontrado = this.diasSemana.find(d => d.valor === dia);
     return encontrado?.etiqueta || dia;
   }
-
-  formatearHora(hora: string): string {
-    return hora.substring(0, 5);
-   }
 }
