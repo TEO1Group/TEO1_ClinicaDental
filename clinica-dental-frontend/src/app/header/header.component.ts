@@ -2,11 +2,12 @@ import { Component, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
+import { CampanaComponent } from '../campana/campana.component';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CampanaComponent],
   templateUrl: './header.component.html',
   styleUrl: './header.component.scss'
 })

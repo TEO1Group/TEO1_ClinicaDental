@@ -19,6 +19,7 @@
 
       <!-- Info del usuario y logout -->
       <div class="d-flex align-items-center gap-3">
+          <app-campana></app-campana>
         @if (usuarioActual()) {
           <span class="usuario-nombre">{{ usuarioActual()!.nombre }} {{ usuarioActual()!.apellido }}</span>
         }

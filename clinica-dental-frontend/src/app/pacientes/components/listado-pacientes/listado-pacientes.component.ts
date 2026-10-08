@@ -80,4 +80,9 @@ export class ListadoPacientesComponent implements OnInit {
   puedeAgregarHistorial(): boolean {
     return this.rol() === 'ADMIN' || this.rol() === 'DOCTOR';
   }
+
+  puedeCrear(): boolean {
+    const rol = this.rol();
+    return rol === 'ADMIN' || rol === 'SECRETARIA';
+  }
 }

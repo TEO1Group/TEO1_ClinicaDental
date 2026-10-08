@@ -1,0 +1,121 @@
+.campana-container {
+  position: relative;
+}
+
+.campana-btn {
+  background: transparent;
+  border: 0;
+  color: #ffffff;
+  font-size: 1.25rem;
+  padding: 0.25rem;
+  line-height: 1;
+  cursor: pointer;
+  position: relative;
+  transition: opacity 0.2s ease;
+
+  &:hover {
+    opacity: 0.85;
+  }
+}
+
+.campana-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background-color: #dc3545;
+  color: #ffffff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid var(--color-primario);
+}
+
+.campana-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  max-height: 400px;
+  background-color: #ffffff;
+  border-radius: 0.75rem;
+  box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.15);
+  z-index: 1100;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.campana-panel-header {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e9ecef;
+  color: var(--color-texto);
+}
+
+.campana-lista {
+  overflow-y: auto;
+  max-height: 340px;
+}
+
+.campana-item {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f1f3f5;
+  transition: background-color 0.15s ease;
+
+  &:last-child {
+    border-bottom: 0;
+  }
+
+  &:hover {
+    background-color: #f7f9fa;
+  }
+}
+
+.campana-item-fecha {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-primario);
+  margin-bottom: 0.25rem;
+
+  i {
+    font-size: 0.9rem;
+  }
+}
+
+.campana-item-descripcion {
+  font-size: 0.9rem;
+  color: var(--color-texto);
+  line-height: 1.3;
+}
+
+.campana-vacio {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: #7890a5;
+
+  i {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 0.5rem;
+    opacity: 0.5;
+  }
+
+  p {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .campana-panel {
+    width: 280px;
+    right: -8px;
+  }
+}
