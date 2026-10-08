@@ -97,3 +97,79 @@ Consulta Swagger/OpenAPI para ver los cuerpos, respuestas, errores y requisitos 
 
 - `ci.yml`: compila y ejecuta las pruebas del backend y frontend en cada push y pull request.
 - `cd.yml`: construye las imágenes, las publica en GHCR y despliega en EC2.
+
+## Cambios de esquema
+
+Las migraciones se aplican manualmente y por separado del despliegue de aplicaciones. El workflow de CD no modifica el esquema de PostgreSQL ni elimina el volumen `postgres_data`.
+
+> **No ejecutes `db/clinica_dental_schema.sql` sobre EC2 ni sobre una base con datos.** Ese archivo contiene instrucciones `DROP TABLE` y es solo para inicializar una base vacía.
+
+Realiza los pasos siguientes desde `~/TEO1_ClinicaDental` en el servidor, con acceso autorizado a la base. No actives `set -x` ni incluyas contraseñas en los comandos.
+
+1. **Inspecciona antes de cambiar.** Confirma que `docker compose ps db` muestra la base esperada como activa. Abre una sesión `psql` para revisar `\d+ cita` y los estados existentes:
+
+   ```bash
+   docker compose exec -it db sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+   ```
+
+   Antes de crear el índice parcial, busca horarios activos duplicados:
+
+   ```sql
+   SELECT id_doctor, fecha, hora, count(*)
+   FROM cita
+   WHERE estado <> 'CANCELADA'
+   GROUP BY id_doctor, fecha, hora
+   HAVING count(*) > 1;
+   ```
+
+   La consulta debe devolver cero filas. Si devuelve resultados, detén el procedimiento y resuelve el conflicto con el responsable de los datos; no borres ni combines citas automáticamente.
+
+2. **Crea un respaldo antes de migrar.** El siguiente ejemplo guarda un archivo de modo privado en el servidor; el contenedor usa las credenciales ya configuradas por Compose y el comando no imprime valores secretos:
+
+   ```bash
+   set -euo pipefail
+   umask 077
+   backup_file="../clinica_dental_$(date +%Y%m%d_%H%M%S).dump"
+   docker compose exec -T db sh -lc \
+     'pg_dump --format=custom --no-owner -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+     > "$backup_file"
+   ```
+
+3. **Valida el archivo de respaldo antes de continuar.** Esto comprueba que `pg_restore` puede leer su catálogo:
+
+   ```bash
+   docker compose exec -T db pg_restore --list - < "$backup_file" > /dev/null
+   ```
+
+   Conserva el archivo fuera del repositorio y verifica que esté incluido en el mecanismo de respaldo aprobado para EC2. Un archivo legible no demuestra por sí solo que pueda restaurarse con éxito; la restauración debe ensayarse en una base aislada.
+
+4. **Aplica la migración con errores fatales.** Solo después del respaldo y las verificaciones previas:
+
+   ```bash
+   docker compose exec -T db sh -lc \
+     'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1' \
+     < db/migrations/2026-10-sprint4-cita.sql
+   ```
+
+   La migración abre una transacción. `ON_ERROR_STOP=1` hace que `psql` termine ante un error SQL; PostgreSQL revierte la transacción al cerrar la conexión. Corrige la causa y vuelve a inspeccionar antes de reintentar.
+
+5. **Verifica el resultado antes de desplegar el backend.** Confirma las columnas, estados y definición del índice:
+
+   ```bash
+   docker compose exec -T db sh -lc \
+     'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1' <<'SQL'
+   \d+ cita
+   SELECT estado, count(*) FROM cita GROUP BY estado ORDER BY estado;
+   SELECT column_name, data_type, is_nullable, column_default
+   FROM information_schema.columns
+   WHERE table_name = 'cita' AND column_name = 'recordatorio_enviado';
+   SELECT indexdef FROM pg_indexes
+   WHERE tablename = 'cita' AND indexname = 'uq_cita_doctor_slot';
+   SQL
+   ```
+
+   Compara el total de citas con la inspección previa. Los estados antiguos se transforman así: `COMPLETADA` a `ATENDIDA`, `INASISTENCIA` a `NO_ASISTIO` y `APLAZADA` a `AGENDADA`. No se eliminan filas. El índice parcial permite reutilizar horarios cancelados y conserva la unicidad de los demás.
+
+6. **Despliega y verifica en este orden:** respaldo validado, migración aplicada, consultas posteriores correctas, despliegue de backend/frontend y comprobaciones de salud del CD. El backend usa `ddl-auto=validate`; no crea ni altera tablas automáticamente.
+
+Si falla la migración, no despliegues el backend nuevo. La transacción evita cambios parciales de esta migración, pero no revierte acciones ejecutadas fuera de ella ni protege contra fallos de disco o intervención externa. Si se necesita restaurar, detén el cambio y coordina una recuperación autorizada: restaura primero el respaldo en una base separada y valida los datos antes de decidir si reemplazar la base activa. Restaurar encima de la base activa puede borrar escrituras posteriores, y el respaldo puede contener información personal; no lo copies a Git ni lo compartas sin autorización.
