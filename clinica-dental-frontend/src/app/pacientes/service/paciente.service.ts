@@ -10,6 +10,7 @@ import {
   HistorialClinicoRequest,
   HistorialClinicoResponse
 } from '../models/historial-clinico.model';
+import { PacienteRegistroRequest } from '../../registro/models/paciente-registro.model';
 
 @Injectable({ providedIn: 'root' })
 export class PacienteService extends ApiService {
@@ -25,6 +26,10 @@ export class PacienteService extends ApiService {
 
   desactivarPaciente(id: string): Observable<void> {
     return this.http.delete<void>(`${this.pacientesUrl}/${id}`);
+  }
+
+  crearPaciente(request: PacienteRegistroRequest): Observable<ClienteResponse> {
+    return this.http.post<ClienteResponse>(this.pacientesUrl, request);
   }
 
   actualizarPaciente(

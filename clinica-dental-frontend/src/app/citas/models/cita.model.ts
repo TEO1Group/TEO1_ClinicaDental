@@ -8,14 +8,12 @@ export interface CitaResponse {
   hora: string;
   estado: EstadoCita;
   notas: string | null;
+  nombreCliente?: string;
+  apellidoCliente?: string;
   nombreDoctor?: string;
   apellidoDoctor?: string;
   nombrePaciente?: string;
   apellidoPaciente?: string;
-}
-
-export interface EstadoCitaRequest {
-  estado: EstadoCita;
 }
 
 export interface CitaRequest {
@@ -24,4 +22,17 @@ export interface CitaRequest {
   fecha: string;
   hora: string;
   notas?: string;
+}
+
+export interface EstadoCitaRequest {
+  estado: EstadoCita;
+}
+
+export type CambioEstadoCitaRequest = EstadoCitaRequest;
+
+export interface CitaFiltros {
+  estado?: EstadoCita;
+  fecha?: string;
+  idDoctor?: string;
+  idCliente?: string;
 }

@@ -107,7 +107,10 @@ export class ListadoCitasComponent implements OnInit {
   }
 
   nombrePaciente(cita: CitaResponse): string {
-    return [cita.nombrePaciente, cita.apellidoPaciente].filter(Boolean).join(' ') || cita.idCliente;
+    return [
+      cita.nombrePaciente ?? cita.nombreCliente,
+      cita.apellidoPaciente ?? cita.apellidoCliente
+    ].filter(Boolean).join(' ') || cita.idCliente;
   }
 
   etiquetaEstado(estado: EstadoCita): string {
