@@ -49,6 +49,12 @@ export class SidebarComponent {
       icono: 'bi-person-vcard',
       ruta: '/pacientes',
       roles: ['ADMIN', 'DOCTOR', 'SECRETARIA']
+    },
+    {
+      label: 'Citas',
+      icono: 'bi-calendar-check',
+      ruta: '/citas',
+      roles: ['ADMIN', 'DOCTOR', 'SECRETARIA', 'CLIENTE']
     }
   ];
 

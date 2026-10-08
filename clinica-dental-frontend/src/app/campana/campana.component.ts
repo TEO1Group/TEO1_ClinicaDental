@@ -1,6 +1,7 @@
 import { Component, HostListener, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CitaService } from '../citas/service/cita.service';
+import { CitaResponse } from '../citas/models/cita.model';
 import { AuthService } from '../core/services/auth.service';
 
 @Component({
@@ -42,16 +43,19 @@ export class CampanaComponent {
     return `${day}/${month}/${year}`;
   }
 
-  descripcionCita(cita: { nombreCliente: string; apellidoCliente: string; nombreDoctor: string; apellidoDoctor: string }): string {
+  descripcionCita(cita: CitaResponse): string {
     const rolActual = this.rol();
+    const nombreCliente = [cita.nombreCliente ?? cita.nombrePaciente, cita.apellidoCliente ?? cita.apellidoPaciente]
+      .filter(Boolean).join(' ') || cita.idCliente;
+    const nombreDoctor = [cita.nombreDoctor, cita.apellidoDoctor].filter(Boolean).join(' ') || cita.idDoctor;
 
     if (rolActual === 'CLIENTE') {
-      return `Dr. ${cita.nombreDoctor} ${cita.apellidoDoctor}`;
+      return `Dr. ${nombreDoctor}`;
     }
     if (rolActual === 'DOCTOR') {
-      return `${cita.nombreCliente} ${cita.apellidoCliente}`;
+      return nombreCliente;
     }
     // SECRETARIA / ADMIN
-    return `${cita.nombreCliente} ${cita.apellidoCliente} con Dr. ${cita.nombreDoctor} ${cita.apellidoDoctor}`;
+    return `${nombreCliente} con Dr. ${nombreDoctor}`;
   }
 }

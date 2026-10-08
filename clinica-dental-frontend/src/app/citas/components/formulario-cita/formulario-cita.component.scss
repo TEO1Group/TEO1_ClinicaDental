@@ -1,0 +1,15 @@
+.text-primario {
+  color: var(--color-primario);
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--color-secundario);
+  box-shadow: 0 0 0 0.25rem rgba(92, 201, 201, 0.25);
+}
+
+.horarios-ayuda {
+  border-left: 3px solid var(--color-secundario);
+  padding: 0.75rem 1rem;
+  background-color: #f8f9fa;
+}

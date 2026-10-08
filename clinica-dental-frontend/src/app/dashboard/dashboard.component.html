@@ -126,6 +126,22 @@
         </div>
       }
 
+      @if (rol() === 'CLIENTE' || rol() === 'SECRETARIA' || rol() === 'ADMIN') {
+        <div class="row g-3 mt-1">
+          <div class="col-12">
+            <a routerLink="/citas/nueva" class="card-acceso text-decoration-none">
+              <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body p-4 text-center">
+                  <i class="bi bi-calendar-plus acceso-icono text-primario"></i>
+                  <h5 class="fw-bold mt-3 mb-1">Agendar cita</h5>
+                  <p class="text-muted mb-0">Reserva una cita con un doctor</p>
+                </div>
+              </div>
+            </a>
+          </div>
+        </div>
+      }
+
     </div>
   </div>
 </div>

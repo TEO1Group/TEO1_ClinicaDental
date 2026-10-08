@@ -1,64 +1,67 @@
+import { HttpParams } from '@angular/common/http';
 import { Injectable, signal } from '@angular/core';
 import { Observable, tap } from 'rxjs';
-import { HttpParams } from '@angular/common/http';
 import { ApiService } from '../../core/services/api.service';
-import { CitaRequest, CitaResponse, CambioEstadoCitaRequest, CitaFiltros } from '../models/cita.model';
+import {
+  CitaFiltros,
+  CitaRequest,
+  CitaResponse,
+  EstadoCitaRequest
+} from '../models/cita.model';
 
 @Injectable({ providedIn: 'root' })
 export class CitaService extends ApiService {
-    private readonly citasUrl = `${this.baseUrl}/citas`;
+  private readonly citasUrl = `${this.baseUrl}/citas`;
 
-    private readonly _proximas = signal<CitaResponse[]>([]);
-    readonly proximasSignal = this._proximas.asReadonly();
+  private readonly _proximas = signal<CitaResponse[]>([]);
+  readonly proximasSignal = this._proximas.asReadonly();
 
-    
+  crear(request: CitaRequest): Observable<CitaResponse> {
+    return this.http.post<CitaResponse>(this.citasUrl, request);
+  }
 
-    crear(request: CitaRequest): Observable<CitaResponse> {
-        return this.http.post<CitaResponse>(this.citasUrl, request);
-    }
+  agendarCita(request: CitaRequest): Observable<CitaResponse> {
+    return this.crear(request);
+  }
 
-    listar(filtros?: CitaFiltros): Observable<CitaResponse[]> {
-        let params = new HttpParams();
+  listar(filtros?: CitaFiltros): Observable<CitaResponse[]> {
+    let params = new HttpParams();
 
-        if (filtros?.estado) {
-            params = params.set('estado', filtros.estado);
-        }
-        if (filtros?.fecha) {
-            params = params.set('fecha', filtros.fecha);
-        }
-        if (filtros?.idDoctor) {
-            params = params.set('idDoctor', filtros.idDoctor);
-        }
-        if (filtros?.idCliente) {
-            params = params.set('idCliente', filtros.idCliente);
-        }
+    if (filtros?.estado) params = params.set('estado', filtros.estado);
+    if (filtros?.fecha) params = params.set('fecha', filtros.fecha);
+    if (filtros?.idDoctor) params = params.set('idDoctor', filtros.idDoctor);
+    if (filtros?.idCliente) params = params.set('idCliente', filtros.idCliente);
 
-        return this.http.get<CitaResponse[]>(this.citasUrl, { params });
-    }
+    return this.http.get<CitaResponse[]>(this.citasUrl, { params });
+  }
 
-    obtener(id: string): Observable<CitaResponse> {
-        return this.http.get<CitaResponse>(`${this.citasUrl}/${id}`);
-    }
+  listarCitas(): Observable<CitaResponse[]> {
+    return this.listar();
+  }
 
-    cambiarEstado(id: string, request: CambioEstadoCitaRequest): Observable<CitaResponse> {
-        return this.http.patch<CitaResponse>(`${this.citasUrl}/${id}/estado`, request);
-    }
+  obtener(id: string): Observable<CitaResponse> {
+    return this.http.get<CitaResponse>(`${this.citasUrl}/${id}`);
+  }
 
-    cargarProximas(): Observable<CitaResponse[]> {
-        return this.http.get<CitaResponse[]>(`${this.citasUrl}/proximas`).pipe(
-            tap((citas) => this._proximas.set(citas))
-        );
-    }
+  cambiarEstado(id: string, request: EstadoCitaRequest): Observable<CitaResponse> {
+    return this.http.patch<CitaResponse>(`${this.citasUrl}/${id}/estado`, request);
+  }
 
-    limpiarProximas(): void {
-        this._proximas.set([]);
-    }
+  cargarProximas(): Observable<CitaResponse[]> {
+    return this.http.get<CitaResponse[]>(`${this.citasUrl}/proximas`).pipe(
+      tap(citas => this._proximas.set(citas))
+    );
+  }
 
-    cancelar(id: string): Observable<CitaResponse> {
-        return this.cambiarEstado(id, { estado: 'CANCELADA' });
-    }
+  limpiarProximas(): void {
+    this._proximas.set([]);
+  }
 
-    completar(id: string): Observable<CitaResponse> {
-        return this.cambiarEstado(id, { estado: 'COMPLETADA' });
-    }
+  cancelar(id: string): Observable<CitaResponse> {
+    return this.cambiarEstado(id, { estado: 'CANCELADA' });
+  }
+
+  completar(id: string): Observable<CitaResponse> {
+    return this.cambiarEstado(id, { estado: 'ATENDIDA' });
+  }
 }

@@ -1,7 +1,7 @@
 <div class="campana-container">
-  <button 
-    type="button" 
-    class="campana-btn" 
+  <button
+    type="button"
+    class="campana-btn"
     (click)="togglePanel($event)"
     [attr.aria-label]="proximas().length > 0 ? 'Tienes ' + proximas().length + ' citas próximas' : 'Sin citas próximas'"
   >

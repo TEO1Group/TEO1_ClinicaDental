@@ -24,6 +24,10 @@ export class PacienteService extends ApiService {
     return this.http.get<ClienteResponse>(`${this.pacientesUrl}/${id}`);
   }
 
+  desactivarPaciente(id: string): Observable<void> {
+    return this.http.delete<void>(`${this.pacientesUrl}/${id}`);
+  }
+
   crearPaciente(request: PacienteRegistroRequest): Observable<ClienteResponse> {
     return this.http.post<ClienteResponse>(this.pacientesUrl, request);
   }

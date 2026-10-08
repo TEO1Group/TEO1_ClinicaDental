@@ -1,36 +1,38 @@
-export type EstadoCita = 'AGENDADA' | 'COMPLETADA' | 'CANCELADA' | 'INASISTENCIA' | 'APLAZADA';
+export type EstadoCita = 'AGENDADA' | 'ATENDIDA' | 'CANCELADA' | 'NO_ASISTIO';
 
-//para crear una cita
-export interface CitaRequest {
-  idCliente: string;
-  idDoctor: string;
-  fecha: string;      // "yyyy-MM-dd"
-  hora: string;       // "HH:mm"
-  notas?: string;
-}
-
-// Respuesta del backend al consultar una cita
 export interface CitaResponse {
   idCita: string;
   idCliente: string;
   idDoctor: string;
-  nombreCliente: string;
-  apellidoCliente: string;
-  nombreDoctor: string;
-  apellidoDoctor: string;
-  fecha: string;      // "yyyy-MM-dd"
-  hora: string;       // "HH:mm:ss" (se formatea en el frontend)
+  fecha: string;
+  hora: string;
   estado: EstadoCita;
   notas: string | null;
+  nombreCliente?: string;
+  apellidoCliente?: string;
+  nombreDoctor?: string;
+  apellidoDoctor?: string;
+  nombrePaciente?: string;
+  apellidoPaciente?: string;
 }
 
-export interface CambioEstadoCitaRequest {
+export interface CitaRequest {
+  idDoctor: string;
+  idCliente?: string;
+  fecha: string;
+  hora: string;
+  notas?: string;
+}
+
+export interface EstadoCitaRequest {
   estado: EstadoCita;
 }
+
+export type CambioEstadoCitaRequest = EstadoCitaRequest;
 
 export interface CitaFiltros {
   estado?: EstadoCita;
-  fecha?: string;      // "yyyy-MM-dd"
+  fecha?: string;
   idDoctor?: string;
   idCliente?: string;
 }
