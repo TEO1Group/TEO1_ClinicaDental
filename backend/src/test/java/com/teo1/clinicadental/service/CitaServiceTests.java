@@ -2,6 +2,7 @@ package com.teo1.clinicadental.service;
 
 import com.teo1.clinicadental.dto.CitaRequest;
 import com.teo1.clinicadental.dto.CitaResponse;
+import com.teo1.clinicadental.dto.EstadoCitaRequest;
 import com.teo1.clinicadental.model.Cita;
 import com.teo1.clinicadental.model.Cliente;
 import com.teo1.clinicadental.model.DiaSemana;
@@ -305,6 +306,126 @@ class CitaServiceTests {
         assertEquals(ajena.getId(), citaService.obtenerCita(ajena.getId(), autenticacion("SECRETARIA")).getIdCita());
     }
 
+    @Test
+    void doctorMarcaSuCitaComoAtendida() {
+        Cita cita = prepararCambioEstado(EstadoCita.AGENDADA);
+
+        CitaResponse respuesta = citaService.cambiarEstado(
+                cita.getId(), estado(EstadoCita.ATENDIDA), autenticacion(doctor.getUsuario().getId(), "DOCTOR"));
+
+        assertEquals(EstadoCita.ATENDIDA, respuesta.getEstado());
+        verify(citaRepository).save(cita);
+    }
+
+    @Test
+    void doctorMarcaSuCitaComoNoAsistio() {
+        Cita cita = prepararCambioEstado(EstadoCita.AGENDADA);
+
+        CitaResponse respuesta = citaService.cambiarEstado(
+                cita.getId(), estado(EstadoCita.NO_ASISTIO), autenticacion(doctor.getUsuario().getId(), "DOCTOR"));
+
+        assertEquals(EstadoCita.NO_ASISTIO, respuesta.getEstado());
+    }
+
+    @Test
+    void clienteCancelaSuCita() {
+        Cita cita = prepararCambioEstado(EstadoCita.AGENDADA);
+
+        CitaResponse respuesta = citaService.cambiarEstado(cita.getId(), estado(EstadoCita.CANCELADA), autenticacion("CLIENTE"));
+
+        assertEquals(EstadoCita.CANCELADA, respuesta.getEstado());
+    }
+
+    @Test
+    void secretariaCancelaCualquierCita() {
+        Cita cita = prepararCambioEstado(EstadoCita.AGENDADA);
+
+        CitaResponse respuesta = citaService.cambiarEstado(cita.getId(), estado(EstadoCita.CANCELADA), autenticacion("SECRETARIA"));
+
+        assertEquals(EstadoCita.CANCELADA, respuesta.getEstado());
+    }
+
+    @Test
+    void adminPuedeCambiarACualquierEstadoFinal() {
+        for (EstadoCita nuevo : List.of(EstadoCita.ATENDIDA, EstadoCita.CANCELADA, EstadoCita.NO_ASISTIO)) {
+            Cita cita = prepararCambioEstado(EstadoCita.AGENDADA);
+
+            assertEquals(nuevo, citaService.cambiarEstado(cita.getId(), estado(nuevo), autenticacion("ADMIN")).getEstado());
+        }
+    }
+
+    @Test
+    void estadosFinalesNoPuedenCambiar() {
+        for (EstadoCita actual : List.of(EstadoCita.ATENDIDA, EstadoCita.CANCELADA, EstadoCita.NO_ASISTIO)) {
+            Cita cita = citaExistente(LocalTime.of(9, 0), actual);
+            when(citaRepository.findConRelacionesById(cita.getId())).thenReturn(Optional.of(cita));
+
+            assertEstado(HttpStatus.CONFLICT, () -> citaService.cambiarEstado(
+                    cita.getId(), estado(EstadoCita.CANCELADA), autenticacion("ADMIN")));
+        }
+        verify(citaRepository, never()).save(any());
+    }
+
+    @Test
+    void pedirAgendadaDevuelveSolicitudInvalida() {
+        assertEstado(HttpStatus.BAD_REQUEST, () -> citaService.cambiarEstado(
+                UUID.randomUUID(), estado(EstadoCita.AGENDADA), autenticacion("ADMIN")));
+    }
+
+    @Test
+    void cambiarEstadoDeCitaInexistenteDevuelveNoEncontrado() {
+        UUID id = UUID.randomUUID();
+        when(citaRepository.findConRelacionesById(id)).thenReturn(Optional.empty());
+
+        assertEstado(HttpStatus.NOT_FOUND, () -> citaService.cambiarEstado(id, estado(EstadoCita.CANCELADA), autenticacion("ADMIN")));
+    }
+
+    @Test
+    void clienteNoPuedeCancelarCitaAjena() {
+        Cita ajena = citaDeOtros();
+        when(citaRepository.findConRelacionesById(ajena.getId())).thenReturn(Optional.of(ajena));
+
+        assertEstado(HttpStatus.FORBIDDEN, () -> citaService.cambiarEstado(
+                ajena.getId(), estado(EstadoCita.CANCELADA), autenticacion("CLIENTE")));
+    }
+
+    @Test
+    void clienteNoPuedeMarcarSuCitaComoAtendida() {
+        Cita cita = citaExistente(LocalTime.of(9, 0), EstadoCita.AGENDADA);
+        when(citaRepository.findConRelacionesById(cita.getId())).thenReturn(Optional.of(cita));
+
+        assertEstado(HttpStatus.FORBIDDEN, () -> citaService.cambiarEstado(
+                cita.getId(), estado(EstadoCita.ATENDIDA), autenticacion("CLIENTE")));
+    }
+
+    @Test
+    void secretariaNoPuedeMarcarNoAsistio() {
+        Cita cita = citaExistente(LocalTime.of(9, 0), EstadoCita.AGENDADA);
+        when(citaRepository.findConRelacionesById(cita.getId())).thenReturn(Optional.of(cita));
+
+        assertEstado(HttpStatus.FORBIDDEN, () -> citaService.cambiarEstado(
+                cita.getId(), estado(EstadoCita.NO_ASISTIO), autenticacion("SECRETARIA")));
+    }
+
+    @Test
+    void doctorNoPuedeCancelar() {
+        Cita cita = citaExistente(LocalTime.of(9, 0), EstadoCita.AGENDADA);
+        when(citaRepository.findConRelacionesById(cita.getId())).thenReturn(Optional.of(cita));
+
+        assertEstado(HttpStatus.FORBIDDEN, () -> citaService.cambiarEstado(
+                cita.getId(), estado(EstadoCita.CANCELADA), autenticacion(doctor.getUsuario().getId(), "DOCTOR")));
+    }
+
+    @Test
+    void doctorNoPuedeMarcarCitaDeOtroDoctor() {
+        Cita ajena = citaDeOtros();
+        when(citaRepository.findConRelacionesById(ajena.getId())).thenReturn(Optional.of(ajena));
+
+        assertEstado(HttpStatus.FORBIDDEN, () -> citaService.cambiarEstado(
+                ajena.getId(), estado(EstadoCita.ATENDIDA), autenticacion(doctor.getUsuario().getId(), "DOCTOR")));
+        verify(citaRepository, never()).save(any());
+    }
+
     private void prepararPacienteYDoctor() {
         when(clienteRepository.findByUsuarioId(usuarioClienteId)).thenReturn(Optional.of(cliente));
         when(doctorRepository.findById(doctor.getId())).thenReturn(Optional.of(doctor));
@@ -366,6 +487,19 @@ class CitaServiceTests {
                 .hora(LocalTime.of(9, 0))
                 .estado(EstadoCita.AGENDADA)
                 .build();
+    }
+
+    private Cita prepararCambioEstado(EstadoCita actual) {
+        Cita cita = citaExistente(LocalTime.of(9, 0), actual);
+        when(citaRepository.findConRelacionesById(cita.getId())).thenReturn(Optional.of(cita));
+        when(citaRepository.save(cita)).thenReturn(cita);
+        return cita;
+    }
+
+    private EstadoCitaRequest estado(EstadoCita estado) {
+        EstadoCitaRequest request = new EstadoCitaRequest();
+        request.setEstado(estado);
+        return request;
     }
 
     private CitaRequest request(LocalTime hora) {
