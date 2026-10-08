@@ -5,7 +5,7 @@ Este proyecto tiene el objetivo de presentar una herramienta para el control de 
 - Backend: Spring Boot (Java 21) en `backend/`
 - Frontend: Angular en `clinica-dental-frontend/`
 - Base de datos: PostgreSQL, el esquema está en `db/clinica_dental_schema.sql`
-- Endpoints documentados en [ENDPOINTS.md](ENDPOINTS.md)
+- Swagger/OpenAPI es la fuente principal y actualizada de documentación de la API.
 
 ## Levantar con Docker
 
@@ -22,6 +22,8 @@ docker compose up --build
 - OpenAPI JSON directo al backend: http://localhost:8080/v3/api-docs
 - Swagger UI a través del proxy nginx: http://localhost:4200/api/swagger-ui.html
 - OpenAPI JSON a través del proxy nginx: http://localhost:4200/api/v3/api-docs
+
+La documentación muestra únicamente operaciones implementadas en los controllers. Los endpoints de citas se documentarán cuando exista su backend. El issue #98 necesita actualizar sus criterios, que todavía solicitan documentar citas en `ENDPOINTS.md`.
 
 En EC2, sustituye `<IP-PUBLICA-EC2>` por la IP pública asignada a la instancia:
 
@@ -89,7 +91,7 @@ Angular 22 en `clinica-dental-frontend/`. Llama al backend con el prefijo `/api`
 Pantallas actuales: login, registro de pacientes, dashboard, listado y creación de usuarios (admin), listado y detalle de doctores con sus horarios.
 Las rutas se protegen por rol con `rolGuard` y el token se agrega a cada petición con `auth.interceptor`.
 
-Lo que falta conectar está en la sección "Pendiente en frontend" de [ENDPOINTS.md](ENDPOINTS.md).
+Consulta Swagger/OpenAPI para ver los cuerpos, respuestas, errores y requisitos de autorización documentados por el backend.
 
 ## CI/CD
 
