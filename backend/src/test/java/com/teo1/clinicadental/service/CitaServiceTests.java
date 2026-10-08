@@ -426,6 +426,53 @@ class CitaServiceTests {
         verify(citaRepository, never()).save(any());
     }
 
+    @Test
+    void proximasDevuelveSoloLasDeLaVentana() {
+        // El reloj de las pruebas marca 2026-10-08 08:00
+        Cita pasada = citaEn(LocalDate.of(2026, 10, 8), LocalTime.of(7, 0));
+        Cita en10Horas = citaEn(LocalDate.of(2026, 10, 8), LocalTime.of(18, 0));
+        Cita en30Horas = citaEn(LocalDate.of(2026, 10, 9), LocalTime.of(14, 0));
+        Cita en60Horas = citaEn(LocalDate.of(2026, 10, 10), LocalTime.of(20, 0));
+        when(citaRepository.findByEstadoAndFechaBetweenOrderByFechaAscHoraAsc(
+                EstadoCita.AGENDADA, LocalDate.of(2026, 10, 8), LocalDate.of(2026, 10, 10)))
+                .thenReturn(List.of(pasada, en10Horas, en30Horas, en60Horas));
+
+        List<CitaResponse> proximas = citaService.listarProximas(48, autenticacion("SECRETARIA"));
+
+        assertEquals(List.of(en10Horas.getId(), en30Horas.getId()),
+                proximas.stream().map(CitaResponse::getIdCita).toList());
+    }
+
+    @Test
+    void proximasDelClienteSoloBuscaSusCitasAgendadas() {
+        when(clienteRepository.findByUsuarioId(usuarioClienteId)).thenReturn(Optional.of(cliente));
+        Cita en10Horas = citaEn(LocalDate.of(2026, 10, 8), LocalTime.of(18, 0));
+        when(citaRepository.findByClienteIdAndEstadoAndFechaBetweenOrderByFechaAscHoraAsc(
+                cliente.getId(), EstadoCita.AGENDADA, LocalDate.of(2026, 10, 8), LocalDate.of(2026, 10, 10)))
+                .thenReturn(List.of(en10Horas));
+
+        List<CitaResponse> proximas = citaService.listarProximas(48, autenticacion("CLIENTE"));
+
+        assertEquals(1, proximas.size());
+        verify(citaRepository, never()).findByEstadoAndFechaBetweenOrderByFechaAscHoraAsc(any(), any(), any());
+    }
+
+    @Test
+    void proximasDelDoctorSoloBuscaSusCitasAgendadas() {
+        when(doctorRepository.findByUsuarioId(doctor.getUsuario().getId())).thenReturn(Optional.of(doctor));
+        when(citaRepository.findByDoctorIdAndEstadoAndFechaBetweenOrderByFechaAscHoraAsc(
+                doctor.getId(), EstadoCita.AGENDADA, LocalDate.of(2026, 10, 8), LocalDate.of(2026, 10, 9)))
+                .thenReturn(List.of());
+
+        assertTrue(citaService.listarProximas(24, autenticacion(doctor.getUsuario().getId(), "DOCTOR")).isEmpty());
+    }
+
+    @Test
+    void proximasFueraDeRangoDevuelveSolicitudInvalida() {
+        assertEstado(HttpStatus.BAD_REQUEST, () -> citaService.listarProximas(0, autenticacion("ADMIN")));
+        assertEstado(HttpStatus.BAD_REQUEST, () -> citaService.listarProximas(73, autenticacion("ADMIN")));
+    }
+
     private void prepararPacienteYDoctor() {
         when(clienteRepository.findByUsuarioId(usuarioClienteId)).thenReturn(Optional.of(cliente));
         when(doctorRepository.findById(doctor.getId())).thenReturn(Optional.of(doctor));
@@ -487,6 +534,12 @@ class CitaServiceTests {
                 .hora(LocalTime.of(9, 0))
                 .estado(EstadoCita.AGENDADA)
                 .build();
+    }
+
+    private Cita citaEn(LocalDate fecha, LocalTime hora) {
+        Cita cita = citaExistente(hora, EstadoCita.AGENDADA);
+        cita.setFecha(fecha);
+        return cita;
     }
 
     private Cita prepararCambioEstado(EstadoCita actual) {

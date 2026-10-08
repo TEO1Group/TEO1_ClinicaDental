@@ -35,4 +35,8 @@ public interface CitaRepository extends JpaRepository<Cita, UUID> {
     @EntityGraph(attributePaths = {"cliente", "cliente.usuario", "doctor", "doctor.usuario"})
     List<Cita> findByDoctorIdAndEstadoAndFechaBetweenOrderByFechaAscHoraAsc(
             UUID doctorId, EstadoCita estado, LocalDate desde, LocalDate hasta);
+
+    @EntityGraph(attributePaths = {"cliente", "cliente.usuario", "doctor", "doctor.usuario"})
+    List<Cita> findByEstadoAndRecordatorioEnviadoFalseAndFechaBetweenOrderByFechaAscHoraAsc(
+            EstadoCita estado, LocalDate desde, LocalDate hasta);
 }
