@@ -85,6 +85,23 @@ public class CitaController {
         return ResponseEntity.ok(citaService.listarCitas(fecha, idDoctor, idCliente, estado, authentication));
     }
 
+    @GetMapping("/proximas")
+    @Operation(
+            summary = "Listar citas proximas",
+            description = "Requiere sesion. Devuelve las citas AGENDADA desde ahora hasta dentro de 'horas', "
+                    + "de la mas cercana a la mas lejana. CLIENTE y DOCTOR ven solo las suyas; SECRETARIA y ADMIN ven todas."
+    )
+    @ApiResponse(responseCode = "200", description = "Lista de citas proximas")
+    @ApiResponse(responseCode = "400", description = "Horas fuera del rango 1 a 72", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<List<CitaResponse>> listarProximas(
+            @Parameter(description = "Ventana en horas desde ahora (1 a 72)", example = "48")
+            @RequestParam(defaultValue = "48") int horas,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(citaService.listarProximas(horas, authentication));
+    }
+
     @GetMapping("/{id}")
     @Operation(
             summary = "Obtener una cita",

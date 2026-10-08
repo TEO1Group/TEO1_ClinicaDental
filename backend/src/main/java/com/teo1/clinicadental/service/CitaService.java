@@ -33,6 +33,7 @@ public class CitaService {
 
     private static final String MENSAJE_SOLAPE = "El doctor ya tiene una cita agendada en ese horario";
     private static final String INDICE_CITA_DOCTOR_SLOT = "uq_cita_doctor_slot";
+    private static final int MAXIMO_HORAS_PROXIMAS = 72;
 
     private final CitaRepository citaRepository;
     private final ClienteRepository clienteRepository;
@@ -123,6 +124,26 @@ public class CitaService {
     }
 
     @Transactional(readOnly = true)
+    public List<CitaResponse> listarProximas(int horas, Authentication authentication) {
+        if (horas < 1 || horas > MAXIMO_HORAS_PROXIMAS) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Las horas deben estar entre 1 y " + MAXIMO_HORAS_PROXIMAS);
+        }
+
+        LocalDateTime ahora = LocalDateTime.now(clock);
+        LocalDateTime limite = ahora.plusHours(horas);
+
+        // fecha y hora estan en columnas separadas: se trae por dias y se filtra la ventana exacta aqui
+        return proximasVisibles(ahora.toLocalDate(), limite.toLocalDate(), authentication).stream()
+                .filter(cita -> {
+                    LocalDateTime inicio = LocalDateTime.of(cita.getFecha(), cita.getHora());
+                    return !inicio.isBefore(ahora) && !inicio.isAfter(limite);
+                })
+                .map(citaMapper::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public CitaResponse obtenerCita(UUID id, Authentication authentication) {
         Cita cita = citaRepository.findConRelacionesById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cita no encontrada"));
@@ -187,6 +208,27 @@ public class CitaService {
         if (tieneRol(authentication, Rol.DOCTOR)) {
             return doctorRepository.findByUsuarioId(usuarioId)
                     .map(medico -> citaRepository.findByDoctorIdOrderByFechaAscHoraAsc(medico.getId()))
+                    .orElse(List.of());
+        }
+        return List.of();
+    }
+
+    private List<Cita> proximasVisibles(LocalDate desde, LocalDate hasta, Authentication authentication) {
+        if (veTodasLasCitas(authentication)) {
+            return citaRepository.findByEstadoAndFechaBetweenOrderByFechaAscHoraAsc(EstadoCita.AGENDADA, desde, hasta);
+        }
+
+        UUID usuarioId = UUID.fromString(authentication.getName());
+        if (tieneRol(authentication, Rol.CLIENTE)) {
+            return clienteRepository.findByUsuarioId(usuarioId)
+                    .map(paciente -> citaRepository.findByClienteIdAndEstadoAndFechaBetweenOrderByFechaAscHoraAsc(
+                            paciente.getId(), EstadoCita.AGENDADA, desde, hasta))
+                    .orElse(List.of());
+        }
+        if (tieneRol(authentication, Rol.DOCTOR)) {
+            return doctorRepository.findByUsuarioId(usuarioId)
+                    .map(medico -> citaRepository.findByDoctorIdAndEstadoAndFechaBetweenOrderByFechaAscHoraAsc(
+                            medico.getId(), EstadoCita.AGENDADA, desde, hasta))
                     .orElse(List.of());
         }
         return List.of();

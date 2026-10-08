@@ -10,6 +10,7 @@ Este proyecto tiene el objetivo de presentar una herramienta para el control de 
 ## Levantar con Docker
 
 1. Copiar `.env.example` a `.env` y llenar `DB_PASSWORD`, `JWT_SECRET`, `ADMIN_EMAIL` y `ADMIN_PASSWORD`. El `JWT_SECRET` va en base64, se puede generar con `openssl rand -base64 32`.
+   Las variables `SMTP_*` son opcionales: si `SMTP_HOST` o `SMTP_FROM` quedan vacíos, el backend arranca igual y no envía los correos de recordatorio de citas.
 2. Ejecutar:
 
 ```bash
