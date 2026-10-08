@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 import { ClienteResponse } from '../../models/paciente.model';
 import { PacienteService } from '../../service/paciente.service';
 
@@ -16,6 +17,7 @@ export class DetallePacienteComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly pacienteService = inject(PacienteService);
   private readonly authService = inject(AuthService);
+  private readonly notificacionService = inject(NotificacionService);
 
   readonly rol = this.authService.rol;
 
@@ -61,6 +63,23 @@ export class DetallePacienteComponent implements OnInit {
 
   puedeGestionarListaNegra(): boolean {
     return this.rol() === 'SECRETARIA';
+  }
+
+  desactivarPaciente(): void {
+    const paciente = this._paciente();
+    if (!paciente || !confirm(`¿Estás seguro de desactivar a ${paciente.nombre} ${paciente.apellido}?`)) {
+      return;
+    }
+
+    this.pacienteService.desactivarPaciente(paciente.idCliente).subscribe({
+      next: () => {
+        this.notificacionService.exito('Paciente desactivado correctamente.');
+        window.history.back();
+      },
+      error: (error) => {
+        this.notificacionService.error(error.error?.mensaje || 'Error al desactivar el paciente.');
+      }
+    });
   }
 
   puedeVerHistorial(): boolean {

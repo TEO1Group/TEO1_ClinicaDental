@@ -100,6 +100,18 @@
                           </a>
                         }
 
+                        @if (puedeEditar()) {
+                          <button
+                            type="button"
+                            class="btn btn-sm btn-outline-danger me-1"
+                            title="Desactivar paciente"
+                            (click)="desactivarPaciente(paciente)"
+                          >
+                            <i class="bi bi-person-slash"></i>
+                            <span class="visually-hidden">Desactivar paciente</span>
+                          </button>
+                        }
+
                         @if (puedeAgregarHistorial()) {
                           <a
                             class="btn btn-sm btn-outline-success"
