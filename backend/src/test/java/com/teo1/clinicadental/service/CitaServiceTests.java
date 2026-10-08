@@ -475,7 +475,7 @@ class CitaServiceTests {
 
     private void prepararPacienteYDoctor() {
         when(clienteRepository.findByUsuarioId(usuarioClienteId)).thenReturn(Optional.of(cliente));
-        when(doctorRepository.findById(doctor.getId())).thenReturn(Optional.of(doctor));
+        when(doctorRepository.findByIdForUpdate(doctor.getId())).thenReturn(Optional.of(doctor));
     }
 
     private void prepararHorario() {

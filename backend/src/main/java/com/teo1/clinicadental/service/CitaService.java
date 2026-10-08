@@ -311,7 +311,7 @@ public class CitaService {
     }
 
     private Doctor buscarDoctor(UUID id) {
-        return doctorRepository.findById(id)
+        return doctorRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Doctor no encontrado"));
     }
 
