@@ -14,6 +14,11 @@ import lombok.Setter;
 public class EstadoCitaRequest {
 
     @NotNull(message = "El estado es obligatorio")
-    @Schema(description = "Estado final: ATENDIDA, CANCELADA o NO_ASISTIO", example = "CANCELADA", requiredMode = Schema.RequiredMode.REQUIRED)
+    @Schema(
+            description = "Estado final: ATENDIDA, CANCELADA o NO_ASISTIO",
+            allowableValues = {"ATENDIDA", "CANCELADA", "NO_ASISTIO"},
+            example = "CANCELADA",
+            requiredMode = Schema.RequiredMode.REQUIRED
+    )
     private EstadoCita estado;
 }

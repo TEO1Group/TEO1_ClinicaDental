@@ -24,7 +24,7 @@ docker compose up --build
 - Swagger UI a través del proxy nginx: http://localhost:4200/api/swagger-ui.html
 - OpenAPI JSON a través del proxy nginx: http://localhost:4200/api/v3/api-docs
 
-La documentación muestra únicamente operaciones implementadas en los controllers. Los endpoints de citas se documentarán cuando exista su backend. El issue #98 necesita actualizar sus criterios, que todavía solicitan documentar citas en `ENDPOINTS.md`.
+Swagger/OpenAPI documenta las cinco operaciones implementadas por `CitaController`, además de las operaciones actuales de autenticación, usuarios, doctores y pacientes. No se publican operaciones que aún no existan en los controllers. El issue #98 necesita actualizar sus criterios: todavía solicita mantener citas en `ENDPOINTS.md`, que fue eliminado al consolidar Swagger como fuente principal.
 
 En EC2, sustituye `<IP-PUBLICA-EC2>` por la IP pública asignada a la instancia:
 
@@ -66,10 +66,10 @@ Roles y permisos:
 
 | Rol | Puede |
 |-----|-------|
-| ADMIN | Crear y editar usuarios, activar/desactivar cuentas, editar y desactivar doctores, pacientes, historial y horarios (la lista negra es solo de la secretaria) |
-| SECRETARIA | Pacientes (crear, editar, desactivar, lista negra) y horarios de los doctores |
-| DOCTOR | Ver pacientes, agregar al historial clínico y manejar sus propios horarios |
-| CLIENTE | Registrarse, iniciar sesión y ver doctores |
+| ADMIN | Administrar usuarios, doctores y pacientes; consultar y gestionar citas; administrar historial clínico y horarios. |
+| SECRETARIA | Administrar pacientes y horarios; consultar todas las citas, agendarlas y cancelarlas; gestionar la lista negra. |
+| DOCTOR | Ver pacientes, agregar al historial clínico, manejar sus horarios y consultar/cerrar sus propias citas como atendidas o no asistidas. |
+| CLIENTE | Registrarse, iniciar sesión, ver doctores, agendar y consultar sus propias citas, y cancelar las suyas. |
 
 El token se valida en cada petición; si un usuario se desactiva, su token deja de servir al momento.
 Los datos se guardan en PostgreSQL y se mantienen al reiniciar el backend.
@@ -89,7 +89,7 @@ cd backend
 
 Angular 22 en `clinica-dental-frontend/`. Llama al backend con el prefijo `/api` (en desarrollo lo redirige `proxy.conf.json` y en Docker lo hace `nginx.conf`).
 
-Pantallas actuales: login, registro de pacientes, dashboard, listado y creación de usuarios (admin), listado y detalle de doctores con sus horarios.
+Pantallas actuales: login, registro de pacientes, dashboard, administración de usuarios, listado/detalle/edición de pacientes, historial clínico y lista negra según rol, listado y detalle de doctores con horarios, listado y agendamiento de citas, y campana con próximas citas. El backend implementa consulta de próximas citas y recordatorios por correo opcionales mediante SMTP.
 Las rutas se protegen por rol con `rolGuard` y el token se agrega a cada petición con `auth.interceptor`.
 
 Consulta Swagger/OpenAPI para ver los cuerpos, respuestas, errores y requisitos de autorización documentados por el backend.
@@ -174,3 +174,41 @@ Realiza los pasos siguientes desde `~/TEO1_ClinicaDental` en el servidor, con ac
 6. **Despliega y verifica en este orden:** respaldo validado, migración aplicada, consultas posteriores correctas, despliegue de backend/frontend y comprobaciones de salud del CD. El backend usa `ddl-auto=validate`; no crea ni altera tablas automáticamente.
 
 Si falla la migración, no despliegues el backend nuevo. La transacción evita cambios parciales de esta migración, pero no revierte acciones ejecutadas fuera de ella ni protege contra fallos de disco o intervención externa. Si se necesita restaurar, detén el cambio y coordina una recuperación autorizada: restaura primero el respaldo en una base separada y valida los datos antes de decidir si reemplazar la base activa. Restaurar encima de la base activa puede borrar escrituras posteriores, y el respaldo puede contener información personal; no lo copies a Git ni lo compartas sin autorización.
+
+### Obtener el archivo de migración desde el commit aprobado
+
+El checkout de `main` en EC2 puede no contener todavía la migración que está en `develop`. No cambies de rama ni hagas checkout del release para obtenerla. Después de aprobar el SHA de `develop` y el SHA-256 del archivo, puedes extraer esa versión exacta sin mover el checkout desplegado:
+
+```bash
+set -euo pipefail
+umask 077
+git fetch origin develop
+migration_commit='<SHA-COMPLETO-APROBADO-DE-DEVELOP>'
+git cat-file -e "${migration_commit}^{commit}"
+migration_file="../2026-10-sprint4-cita-${migration_commit}.sql"
+git show "${migration_commit}:db/migrations/2026-10-sprint4-cita.sql" > "$migration_file"
+sha256sum "$migration_file"
+```
+
+Compara el SHA-256 con el valor comunicado en la revisión aprobada antes de continuar. Ejecuta el archivo extraído únicamente después de completar el preflight, respaldo y autorización descritos arriba. `git fetch` solo actualiza referencias/objetos de Git; no despliega ni cambia el checkout activo.
+
+### Recuperación de backend y frontend
+
+Antes de publicar imágenes nuevas, guarda una copia privada del `.env` actual fuera del repositorio. Contiene configuración sensible y debe conservar permisos restrictivos:
+
+```bash
+set -euo pipefail
+umask 077
+release_env_backup="../clinica_dental_env_$(date +%Y%m%d_%H%M%S).bak"
+cp .env "$release_env_backup"
+```
+
+Si falla la comprobación de salud del backend o frontend, conserva los logs y no vuelvas a desplegar automáticamente. Para recuperar la versión anterior de aplicación, restaura esa copia, verifica que sus `BACKEND_IMAGE` y `FRONTEND_IMAGE` sean las imágenes anteriores y recrea solo esos dos servicios:
+
+```bash
+cp "$release_env_backup" .env
+docker compose up -d --no-build --no-deps --force-recreate backend frontend
+docker compose ps
+```
+
+La recreación usa las imágenes anteriores que dejó en caché el paso de `pull` del despliegue fallido; si alguna no está disponible localmente, vuelve a autenticar Docker en GHCR por el mecanismo aprobado antes de intentar descargarla. Confirma Swagger/OpenAPI, la interfaz y el acceso a PostgreSQL antes de reanudar el servicio. No reviertas automáticamente el esquema: una restauración de PostgreSQL es una acción separada que puede borrar escrituras posteriores y requiere decisión autorizada. La instancia EC2, sus logs y la base no se han validado mediante este procedimiento de documentación.
