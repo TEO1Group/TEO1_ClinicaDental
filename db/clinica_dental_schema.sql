@@ -115,11 +115,15 @@ CREATE TABLE cita (
     fecha       DATE NOT NULL,
     hora        TIME NOT NULL,
     estado      VARCHAR(15) NOT NULL DEFAULT 'AGENDADA' CHECK (estado IN
-                    ('AGENDADA','COMPLETADA','CANCELADA','INASISTENCIA','APLAZADA')),
+                    ('AGENDADA','ATENDIDA','CANCELADA','NO_ASISTIO')),
     notas       TEXT,
-    -- Evita que un mismo doctor tenga dos citas activas en la misma fecha y hora
-    UNIQUE (id_doctor, fecha, hora)
+    recordatorio_enviado BOOLEAN NOT NULL DEFAULT FALSE
 );
+
+-- Evita que un mismo doctor tenga dos citas activas en la misma fecha y hora.
+-- Las canceladas no cuentan, asi la hora se puede volver a agendar.
+CREATE UNIQUE INDEX uq_cita_doctor_slot ON cita (id_doctor, fecha, hora)
+    WHERE estado <> 'CANCELADA';
 
 CREATE TABLE cita_tratamiento (
     id_cita         UUID NOT NULL REFERENCES cita(id_cita) ON DELETE CASCADE,
