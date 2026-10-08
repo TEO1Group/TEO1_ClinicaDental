@@ -23,6 +23,7 @@ export const routes: Routes = [
   { path: 'doctores', component: ListadoDoctoresComponent, canActivate: [rolGuard(['ADMIN', 'DOCTOR', 'SECRETARIA', 'CLIENTE'])]},
   { path: 'doctores/:id', component: DetalleDoctorComponent, canActivate: [rolGuard(['ADMIN', 'DOCTOR', 'SECRETARIA', 'CLIENTE'])]},
   { path: 'pacientes', component: ListadoPacientesComponent, canActivate: [rolGuard(['ADMIN', 'DOCTOR', 'SECRETARIA'])]},
+  { path: 'pacientes/crear', component: FormularioRegistroClienteComponent, canActivate: [rolGuard(['ADMIN', 'SECRETARIA'])] },
   { path: 'pacientes/:id/editar', component: FormularioPacienteComponent, canActivate: [rolGuard(['ADMIN', 'SECRETARIA'])]},
   { path: 'pacientes/:id/lista-negra', component: FormularioListaNegraComponent, canActivate: [rolGuard(['SECRETARIA'])]},
   { path: 'pacientes/:id/historial', component: HistorialPacienteComponent, canActivate: [rolGuard(['ADMIN', 'DOCTOR', 'SECRETARIA'])]},

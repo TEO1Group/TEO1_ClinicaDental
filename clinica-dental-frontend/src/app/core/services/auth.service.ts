@@ -1,10 +1,12 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
 import { Observable, tap } from 'rxjs';
 import { ApiService } from './api.service';
 import { jwtDecode } from 'jwt-decode';
 import { PacienteRegistroRequest, RegistroResponse } from '../../registro/models/paciente-registro.model';
 import { LoginRequest, LoginResponse } from '../../login/models/login.model';
 import { UsuarioActualResponse } from '../models/usuario-actual.model';
+import { NotificacionService } from '../notificacion/service/notificacion.service';
+import { CitaService } from '../../citas/service/cita.service';
 
 interface DecodedToken {
   sub: string;
@@ -19,9 +21,13 @@ export class AuthService extends ApiService {
   private readonly registroUrl = `${this.baseUrl}/auth/registro`;
   private readonly meUrl = `${this.baseUrl}/auth/me`;
 
+  private readonly notificacionService = inject(NotificacionService);
+  private readonly citaService = inject(CitaService);
+
   private readonly _token = signal<string | null>(null);
   private readonly _rol = signal<string | null>(null);
   private readonly _usuarioActual = signal<UsuarioActualResponse | null>(null);
+  private notificacionProximasMostrada = false;
 
   readonly token = this._token.asReadonly();
   readonly rol = this._rol.asReadonly();
@@ -50,8 +56,27 @@ export class AuthService extends ApiService {
 
   cargarUsuarioActual(): void {
     this.http.get<UsuarioActualResponse>(this.meUrl).subscribe({
-      next: (usuario) => this._usuarioActual.set(usuario),
+      next: (usuario) => {
+        this._usuarioActual.set(usuario);
+        this.cargarCitasProximas();
+      },
       error: () => this._usuarioActual.set(null)
+    });
+  }
+
+  private cargarCitasProximas(): void {
+    this.citaService.cargarProximas().subscribe({
+      next: (citas) => {
+        if (citas.length > 0 && !this.notificacionProximasMostrada) {
+          this.notificacionProximasMostrada = true;
+          this.notificacionService.info(
+            `Tienes ${citas.length} cita${citas.length === 1 ? '' : 's'} en las próximas 48 horas.`
+          );
+        }
+      },
+      error: () => {
+        // Silencioso: si falla, la campana queda sin citas
+      }
     });
   }
 
@@ -59,6 +84,8 @@ export class AuthService extends ApiService {
     this._token.set(null);
     this._rol.set(null);
     this._usuarioActual.set(null);
+    this.notificacionProximasMostrada = false;
+    this.citaService.limpiarProximas();
     localStorage.removeItem('token');
   }
 

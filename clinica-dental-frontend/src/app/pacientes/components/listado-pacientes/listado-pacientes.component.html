@@ -8,9 +8,16 @@
               <h2 class="fw-bold text-primario mb-1">Pacientes</h2>
               <p class="text-muted mb-0">Listado de pacientes registrados en la clínica</p>
             </div>
-            <span class="badge text-bg-light fs-6 align-self-start align-self-md-center">
-              {{ pacientesFiltrados().length }} paciente(s)
-            </span>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge text-bg-light fs-6">
+                {{ pacientesFiltrados().length }} paciente(s)
+              </span>
+              @if (puedeCrear()) {
+                <a routerLink="/pacientes/crear" class="btn btn-primario text-white">
+                  <i class="bi bi-person-plus-fill me-2"></i> Nuevo Paciente
+                </a>
+              }
+            </div>
           </div>
 
           <div class="row g-3 mb-4">
