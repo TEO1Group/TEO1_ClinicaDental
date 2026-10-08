@@ -18,6 +18,17 @@ docker compose up --build
 
 - Frontend: http://localhost:4200
 - Backend: http://localhost:8080
+- Swagger UI directo al backend: http://localhost:8080/swagger-ui.html
+- OpenAPI JSON directo al backend: http://localhost:8080/v3/api-docs
+- Swagger UI a través del proxy nginx: http://localhost:4200/api/swagger-ui.html
+- OpenAPI JSON a través del proxy nginx: http://localhost:4200/api/v3/api-docs
+
+En EC2, sustituye `<IP-PUBLICA-EC2>` por la IP pública asignada a la instancia:
+
+- Swagger UI: `http://<IP-PUBLICA-EC2>:4200/api/swagger-ui.html`
+- OpenAPI JSON: `http://<IP-PUBLICA-EC2>:4200/api/v3/api-docs`
+
+En macOS, si el puerto 5432 ya está ocupado, configura solo en el `.env` local ignorado por Git `DB_HOST_PORT=5434` y `DB_URL=jdbc:postgresql://localhost:5434/clinica_dental`. El backend dentro de Docker sigue conectándose a `db:5432`; el puerto publicado por defecto continúa siendo 5432.
 
 ## Levantar sin Docker
 
@@ -60,11 +71,15 @@ Roles y permisos:
 El token se valida en cada petición; si un usuario se desactiva, su token deja de servir al momento.
 Los datos se guardan en PostgreSQL y se mantienen al reiniciar el backend.
 
-Las pruebas necesitan una base de datos PostgreSQL con el esquema cargado (así corren en el CI):
+Las pruebas necesitan una base de datos PostgreSQL con el esquema cargado. Con Compose, inicia la base de datos y luego exporta las variables de `.env` antes de ejecutar Maven (Maven no carga `.env` por sí solo):
 
 ```bash
+docker compose up -d db
+set -a
+. ./.env
+set +a
 cd backend
-DB_URL=jdbc:postgresql://localhost:5432/clinica_dental DB_USERNAME=postgres DB_PASSWORD=... JWT_SECRET=... ./mvnw test
+./mvnw test
 ```
 
 ## Frontend
