@@ -17,3 +17,11 @@ export interface CitaResponse {
 export interface EstadoCitaRequest {
   estado: EstadoCita;
 }
+
+export interface CitaRequest {
+  idDoctor: string;
+  idCliente?: string;
+  fecha: string;
+  hora: string;
+  notas?: string;
+}

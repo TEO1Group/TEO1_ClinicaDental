@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
-import { CitaResponse, EstadoCitaRequest } from '../models/cita.model';
+import { CitaRequest, CitaResponse, EstadoCitaRequest } from '../models/cita.model';
 
 @Injectable({ providedIn: 'root' })
 export class CitaService extends ApiService {
@@ -9,6 +9,10 @@ export class CitaService extends ApiService {
 
   listarCitas(): Observable<CitaResponse[]> {
     return this.http.get<CitaResponse[]>(this.citasUrl);
+  }
+
+  agendarCita(request: CitaRequest): Observable<CitaResponse> {
+    return this.http.post<CitaResponse>(this.citasUrl, request);
   }
 
   cambiarEstado(id: string, request: EstadoCitaRequest): Observable<CitaResponse> {
