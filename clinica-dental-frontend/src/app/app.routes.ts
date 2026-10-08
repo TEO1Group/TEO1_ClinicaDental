@@ -11,6 +11,7 @@ import { DetallePacienteComponent } from './pacientes/components/detalle-pacient
 import { FormularioPacienteComponent } from './pacientes/components/formulario-paciente/formulario-paciente.component';
 import { FormularioListaNegraComponent } from './pacientes/components/formulario-lista-negra/formulario-lista-negra.component';
 import { HistorialPacienteComponent } from './pacientes/components/historial-paciente/historial-paciente.component';
+import { ListadoCitasComponent } from './citas/components/listado-citas/listado-citas.component';
 //guards
 import { rolGuard } from './core/guards/rol.guard';
 
@@ -27,5 +28,6 @@ export const routes: Routes = [
   { path: 'pacientes/:id/lista-negra', component: FormularioListaNegraComponent, canActivate: [rolGuard(['SECRETARIA'])]},
   { path: 'pacientes/:id/historial', component: HistorialPacienteComponent, canActivate: [rolGuard(['ADMIN', 'DOCTOR', 'SECRETARIA'])]},
   { path: 'pacientes/:id', component: DetallePacienteComponent, canActivate: [rolGuard(['ADMIN', 'DOCTOR', 'SECRETARIA'])]},
+  { path: 'citas', component: ListadoCitasComponent, canActivate: [rolGuard(['ADMIN', 'DOCTOR', 'SECRETARIA', 'CLIENTE'])]},
   { path: '**', redirectTo: '' }
 ];
