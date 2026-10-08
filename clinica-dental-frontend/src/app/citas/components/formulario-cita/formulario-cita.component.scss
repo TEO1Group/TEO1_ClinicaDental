@@ -1,5 +1,23 @@
+@use 'sass:color';
+
 .text-primario {
   color: var(--color-primario);
+}
+
+.btn-primario {
+  background-color: var(--color-primario);
+  border-color: var(--color-primario);
+  transition: all 0.2s ease-in-out;
+
+  &:hover {
+    background-color: color.adjust(#2C7BE5, $lightness: -7%);
+    border-color: color.adjust(#2C7BE5, $lightness: -7%);
+  }
+
+  &:disabled {
+    background-color: #a0c4f7;
+    border-color: #a0c4f7;
+  }
 }
 
 .form-control:focus,

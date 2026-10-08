@@ -6,11 +6,12 @@ import { NotificacionService } from '../../../core/notificacion/service/notifica
 import { AuthService } from '../../../core/services/auth.service';
 import { CitaResponse, EstadoCita, EstadoCitaRequest } from '../../models/cita.model';
 import { CitaService } from '../../service/cita.service';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-listado-citas',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './listado-citas.component.html',
   styleUrl: './listado-citas.component.scss'
 })
@@ -129,5 +130,10 @@ export class ListadoCitasComponent implements OnInit {
       CANCELADA: 'bg-danger',
       NO_ASISTIO: 'bg-warning text-dark'
     }[estado];
+  }
+
+  puedeCrear(): boolean {
+    const rol = this.rol();
+    return rol === 'CLIENTE' || rol === 'SECRETARIA' || rol === 'ADMIN';
   }
 }
