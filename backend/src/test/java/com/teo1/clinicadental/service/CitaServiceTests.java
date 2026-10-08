@@ -38,6 +38,7 @@ import org.springframework.web.server.ResponseStatusException;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -205,6 +206,105 @@ class CitaServiceTests {
         assertEstado(HttpStatus.CONFLICT, () -> citaService.crearCita(request(LocalTime.of(9, 0)), autenticacion("CLIENTE")));
     }
 
+    @Test
+    void secretariaYAdminVenTodasLasCitas() {
+        List<Cita> todas = List.of(citaExistente(LocalTime.of(9, 0), EstadoCita.AGENDADA), citaDeOtros());
+        when(citaRepository.findAllByOrderByFechaAscHoraAsc()).thenReturn(todas);
+
+        assertEquals(2, citaService.listarCitas(null, null, null, null, autenticacion("SECRETARIA")).size());
+        assertEquals(2, citaService.listarCitas(null, null, null, null, autenticacion("ADMIN")).size());
+    }
+
+    @Test
+    void clienteVeSoloSusCitas() {
+        when(clienteRepository.findByUsuarioId(usuarioClienteId)).thenReturn(Optional.of(cliente));
+        when(citaRepository.findByClienteIdOrderByFechaAscHoraAsc(cliente.getId()))
+                .thenReturn(List.of(citaExistente(LocalTime.of(9, 0), EstadoCita.AGENDADA)));
+
+        List<CitaResponse> citas = citaService.listarCitas(null, null, null, null, autenticacion("CLIENTE"));
+
+        assertEquals(1, citas.size());
+        assertEquals(cliente.getId(), citas.get(0).getIdCliente());
+        verify(citaRepository, never()).findAllByOrderByFechaAscHoraAsc();
+    }
+
+    @Test
+    void doctorVeSoloSusCitas() {
+        when(doctorRepository.findByUsuarioId(doctor.getUsuario().getId())).thenReturn(Optional.of(doctor));
+        when(citaRepository.findByDoctorIdOrderByFechaAscHoraAsc(doctor.getId()))
+                .thenReturn(List.of(citaExistente(LocalTime.of(9, 0), EstadoCita.AGENDADA)));
+
+        List<CitaResponse> citas = citaService.listarCitas(
+                null, null, null, null, autenticacion(doctor.getUsuario().getId(), "DOCTOR"));
+
+        assertEquals(1, citas.size());
+        assertEquals(doctor.getId(), citas.get(0).getIdDoctor());
+        verify(citaRepository, never()).findAllByOrderByFechaAscHoraAsc();
+    }
+
+    @Test
+    void clienteSinPacienteAsociadoNoVeCitas() {
+        when(clienteRepository.findByUsuarioId(usuarioClienteId)).thenReturn(Optional.empty());
+
+        assertTrue(citaService.listarCitas(null, null, null, null, autenticacion("CLIENTE")).isEmpty());
+    }
+
+    @Test
+    void filtrosDelListadoSeCombinan() {
+        Cita buscada = citaExistente(LocalTime.of(9, 0), EstadoCita.AGENDADA);
+        Cita cancelada = citaExistente(LocalTime.of(10, 0), EstadoCita.CANCELADA);
+        Cita otroDia = citaExistente(LocalTime.of(9, 0), EstadoCita.AGENDADA);
+        otroDia.setFecha(FECHA.plusDays(1));
+        when(citaRepository.findAllByOrderByFechaAscHoraAsc()).thenReturn(List.of(buscada, cancelada, otroDia, citaDeOtros()));
+
+        List<CitaResponse> citas = citaService.listarCitas(
+                FECHA, doctor.getId(), cliente.getId(), EstadoCita.AGENDADA, autenticacion("SECRETARIA"));
+
+        assertEquals(1, citas.size());
+        assertEquals(buscada.getId(), citas.get(0).getIdCita());
+    }
+
+    @Test
+    void obtenerCitaInexistenteDevuelveNoEncontrado() {
+        UUID id = UUID.randomUUID();
+        when(citaRepository.findConRelacionesById(id)).thenReturn(Optional.empty());
+
+        assertEstado(HttpStatus.NOT_FOUND, () -> citaService.obtenerCita(id, autenticacion("ADMIN")));
+    }
+
+    @Test
+    void clienteObtieneSuPropiaCita() {
+        Cita cita = citaExistente(LocalTime.of(9, 0), EstadoCita.AGENDADA);
+        when(citaRepository.findConRelacionesById(cita.getId())).thenReturn(Optional.of(cita));
+
+        assertEquals(cita.getId(), citaService.obtenerCita(cita.getId(), autenticacion("CLIENTE")).getIdCita());
+    }
+
+    @Test
+    void clienteNoPuedeVerCitaAjena() {
+        Cita ajena = citaDeOtros();
+        when(citaRepository.findConRelacionesById(ajena.getId())).thenReturn(Optional.of(ajena));
+
+        assertEstado(HttpStatus.FORBIDDEN, () -> citaService.obtenerCita(ajena.getId(), autenticacion("CLIENTE")));
+    }
+
+    @Test
+    void doctorNoPuedeVerCitaDeOtroDoctor() {
+        Cita ajena = citaDeOtros();
+        when(citaRepository.findConRelacionesById(ajena.getId())).thenReturn(Optional.of(ajena));
+
+        assertEstado(HttpStatus.FORBIDDEN, () -> citaService.obtenerCita(
+                ajena.getId(), autenticacion(doctor.getUsuario().getId(), "DOCTOR")));
+    }
+
+    @Test
+    void secretariaPuedeVerCualquierCita() {
+        Cita ajena = citaDeOtros();
+        when(citaRepository.findConRelacionesById(ajena.getId())).thenReturn(Optional.of(ajena));
+
+        assertEquals(ajena.getId(), citaService.obtenerCita(ajena.getId(), autenticacion("SECRETARIA")).getIdCita());
+    }
+
     private void prepararPacienteYDoctor() {
         when(clienteRepository.findByUsuarioId(usuarioClienteId)).thenReturn(Optional.of(cliente));
         when(doctorRepository.findById(doctor.getId())).thenReturn(Optional.of(doctor));
@@ -247,6 +347,27 @@ class CitaServiceTests {
                 .build();
     }
 
+    private Cita citaDeOtros() {
+        Doctor otroDoctor = Doctor.builder()
+                .id(UUID.randomUUID())
+                .usuario(usuario(UUID.randomUUID(), "Laura", "Diaz"))
+                .especialidad("Ortodoncia")
+                .build();
+        Cliente otroCliente = Cliente.builder()
+                .id(UUID.randomUUID())
+                .usuario(usuario(UUID.randomUUID(), "Pedro", "Gomez"))
+                .dpi("9876543210101")
+                .build();
+        return Cita.builder()
+                .id(UUID.randomUUID())
+                .cliente(otroCliente)
+                .doctor(otroDoctor)
+                .fecha(FECHA)
+                .hora(LocalTime.of(9, 0))
+                .estado(EstadoCita.AGENDADA)
+                .build();
+    }
+
     private CitaRequest request(LocalTime hora) {
         CitaRequest request = new CitaRequest();
         request.setIdDoctor(doctor.getId());
@@ -260,6 +381,11 @@ class CitaServiceTests {
         String usuarioId = "CLIENTE".equals(rol) ? usuarioClienteId.toString() : UUID.randomUUID().toString();
         return UsernamePasswordAuthenticationToken.authenticated(
                 usuarioId, null, List.of(new SimpleGrantedAuthority("ROLE_" + rol)));
+    }
+
+    private Authentication autenticacion(UUID usuarioId, String rol) {
+        return UsernamePasswordAuthenticationToken.authenticated(
+                usuarioId.toString(), null, List.of(new SimpleGrantedAuthority("ROLE_" + rol)));
     }
 
     private Usuario usuario(UUID id, String nombre, String apellido) {
