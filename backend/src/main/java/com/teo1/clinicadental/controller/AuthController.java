@@ -21,6 +21,9 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import com.teo1.clinicadental.dto.ErrorResponse;
 
 @RestController
 @RequestMapping("/auth")
@@ -31,10 +34,10 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/registro")
-    @Operation(summary = "Registrar una cuenta de cliente")
+    @Operation(summary = "Registrar una cuenta de cliente", description = "Pública. Registra una cuenta de cliente; devuelve 201.")
     @ApiResponse(responseCode = "201", description = "Cuenta registrada")
-    @ApiResponse(responseCode = "400", description = "Datos inválidos")
-    @ApiResponse(responseCode = "409", description = "Conflicto con una restricción de datos")
+    @ApiResponse(responseCode = "400", description = "Datos inválidos", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "409", description = "Conflicto con una restricción de datos", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<RegistroResponse> registrar(
             @Valid @RequestBody RegistroRequest request
     ) {
@@ -43,11 +46,11 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    @Operation(summary = "Iniciar sesión")
+    @Operation(summary = "Iniciar sesión", description = "Pública. Devuelve un JWT cuando las credenciales son válidas.")
     @ApiResponse(responseCode = "200", description = "Credenciales aceptadas; devuelve el token JWT")
-    @ApiResponse(responseCode = "400", description = "Datos inválidos")
-    @ApiResponse(responseCode = "401", description = "Credenciales no válidas")
-    @ApiResponse(responseCode = "403", description = "La cuenta está inactiva")
+    @ApiResponse(responseCode = "400", description = "Datos inválidos", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "401", description = "Credenciales no válidas", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "La cuenta está inactiva", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<LoginResponse> login(
             @Valid @RequestBody LoginRequest request
     ) {
@@ -56,9 +59,9 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    @Operation(summary = "Obtener el usuario autenticado", security = @SecurityRequirement(name = "bearerAuth"))
+    @Operation(summary = "Obtener el usuario autenticado", description = "Requiere un JWT válido; devuelve el usuario autenticado y su perfil.", security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponse(responseCode = "200", description = "Usuario actual")
-    @ApiResponse(responseCode = "401", description = "Falta autenticación válida")
+    @ApiResponse(responseCode = "401", description = "Falta autenticación válida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<UsuarioActualResponse> usuarioActual(Authentication authentication) {
         return ResponseEntity.ok(authService.usuarioActual(UUID.fromString(authentication.getName())));
     }
