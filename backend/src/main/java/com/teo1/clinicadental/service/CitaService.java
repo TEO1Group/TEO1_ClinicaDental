@@ -2,6 +2,7 @@ package com.teo1.clinicadental.service;
 
 import com.teo1.clinicadental.dto.CitaRequest;
 import com.teo1.clinicadental.dto.CitaResponse;
+import com.teo1.clinicadental.dto.EstadoCitaRequest;
 import com.teo1.clinicadental.model.Cita;
 import com.teo1.clinicadental.model.Cliente;
 import com.teo1.clinicadental.model.DiaSemana;
@@ -131,6 +132,44 @@ public class CitaService {
         }
 
         return citaMapper.toResponse(cita);
+    }
+
+    @Transactional
+    public CitaResponse cambiarEstado(UUID id, EstadoCitaRequest request, Authentication authentication) {
+        EstadoCita nuevoEstado = request.getEstado();
+        if (nuevoEstado == EstadoCita.AGENDADA) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Una cita no puede volver a AGENDADA");
+        }
+
+        Cita cita = citaRepository.findConRelacionesById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cita no encontrada"));
+
+        validarPermisoCambioEstado(cita, nuevoEstado, authentication);
+
+        if (cita.getEstado() != EstadoCita.AGENDADA) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "La cita ya esta " + cita.getEstado() + " y no puede cambiar de estado");
+        }
+
+        cita.setEstado(nuevoEstado);
+        return citaMapper.toResponse(citaRepository.save(cita));
+    }
+
+    // CANCELADA: CLIENTE (su cita), SECRETARIA y ADMIN. ATENDIDA y NO_ASISTIO: DOCTOR (su cita) y ADMIN
+    private void validarPermisoCambioEstado(Cita cita, EstadoCita nuevoEstado, Authentication authentication) {
+        if (tieneRol(authentication, Rol.ADMIN)) {
+            return;
+        }
+
+        UUID usuarioId = UUID.fromString(authentication.getName());
+        boolean permitido = nuevoEstado == EstadoCita.CANCELADA
+                ? tieneRol(authentication, Rol.SECRETARIA)
+                        || (tieneRol(authentication, Rol.CLIENTE) && usuarioId.equals(cita.getCliente().getUsuario().getId()))
+                : tieneRol(authentication, Rol.DOCTOR) && usuarioId.equals(cita.getDoctor().getUsuario().getId());
+
+        if (!permitido) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para marcar esta cita como " + nuevoEstado);
+        }
     }
 
     // CLIENTE y DOCTOR ven solo sus citas; SECRETARIA y ADMIN ven todas

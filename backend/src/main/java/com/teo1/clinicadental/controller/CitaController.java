@@ -3,6 +3,7 @@ package com.teo1.clinicadental.controller;
 import com.teo1.clinicadental.dto.CitaRequest;
 import com.teo1.clinicadental.dto.CitaResponse;
 import com.teo1.clinicadental.dto.ErrorResponse;
+import com.teo1.clinicadental.dto.EstadoCitaRequest;
 import com.teo1.clinicadental.model.EstadoCita;
 import com.teo1.clinicadental.service.CitaService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -95,5 +97,27 @@ public class CitaController {
     @ApiResponse(responseCode = "404", description = "Cita no encontrada", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<CitaResponse> obtenerCita(@PathVariable UUID id, Authentication authentication) {
         return ResponseEntity.ok(citaService.obtenerCita(id, authentication));
+    }
+
+    @PatchMapping("/{id}/estado")
+    @Operation(
+            summary = "Cambiar el estado de una cita",
+            description = "Solo una cita AGENDADA puede cambiar; ATENDIDA, CANCELADA y NO_ASISTIO son finales. "
+                    + "CANCELADA la pueden hacer el CLIENTE (solo su cita), SECRETARIA y ADMIN. "
+                    + "ATENDIDA y NO_ASISTIO las pueden hacer el DOCTOR (solo sus citas) y ADMIN. "
+                    + "Cancelar una cita libera el horario para volver a agendarlo."
+    )
+    @ApiResponse(responseCode = "200", description = "Estado actualizado")
+    @ApiResponse(responseCode = "400", description = "Estado invalido o se pidio AGENDADA", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "Rol sin permiso para ese estado o la cita es de otra persona", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "404", description = "Cita no encontrada", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "409", description = "La cita ya esta en un estado final", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<CitaResponse> cambiarEstado(
+            @PathVariable UUID id,
+            @Valid @RequestBody EstadoCitaRequest request,
+            Authentication authentication
+    ) {
+        return ResponseEntity.ok(citaService.cambiarEstado(id, request, authentication));
     }
 }

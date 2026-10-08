@@ -78,6 +78,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/doctores/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/citas").hasAnyRole("CLIENTE", "SECRETARIA", "ADMIN")
                         .requestMatchers(HttpMethod.GET, "/citas/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/citas/*/estado").authenticated()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(
