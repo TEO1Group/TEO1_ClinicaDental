@@ -77,6 +77,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/doctores/*/horarios/*").hasAnyRole("ADMIN", "DOCTOR", "SECRETARIA")
                         .requestMatchers(HttpMethod.GET, "/doctores/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/citas").hasAnyRole("CLIENTE", "SECRETARIA", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/citas/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(

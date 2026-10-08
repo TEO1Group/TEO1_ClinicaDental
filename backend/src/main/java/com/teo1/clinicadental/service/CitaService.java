@@ -17,6 +17,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -101,6 +102,74 @@ public class CitaService {
             }
             throw exception;
         }
+    }
+
+    @Transactional(readOnly = true)
+    public List<CitaResponse> listarCitas(
+            LocalDate fecha,
+            UUID idDoctor,
+            UUID idCliente,
+            EstadoCita estado,
+            Authentication authentication
+    ) {
+        return citasVisibles(authentication).stream()
+                .filter(cita -> fecha == null || fecha.equals(cita.getFecha()))
+                .filter(cita -> idDoctor == null || idDoctor.equals(cita.getDoctor().getId()))
+                .filter(cita -> idCliente == null || idCliente.equals(cita.getCliente().getId()))
+                .filter(cita -> estado == null || estado == cita.getEstado())
+                .map(citaMapper::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public CitaResponse obtenerCita(UUID id, Authentication authentication) {
+        Cita cita = citaRepository.findConRelacionesById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cita no encontrada"));
+
+        if (!puedeVerCita(cita, authentication)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para ver esta cita");
+        }
+
+        return citaMapper.toResponse(cita);
+    }
+
+    // CLIENTE y DOCTOR ven solo sus citas; SECRETARIA y ADMIN ven todas
+    private List<Cita> citasVisibles(Authentication authentication) {
+        if (veTodasLasCitas(authentication)) {
+            return citaRepository.findAllByOrderByFechaAscHoraAsc();
+        }
+
+        UUID usuarioId = UUID.fromString(authentication.getName());
+        if (tieneRol(authentication, Rol.CLIENTE)) {
+            return clienteRepository.findByUsuarioId(usuarioId)
+                    .map(paciente -> citaRepository.findByClienteIdOrderByFechaAscHoraAsc(paciente.getId()))
+                    .orElse(List.of());
+        }
+        if (tieneRol(authentication, Rol.DOCTOR)) {
+            return doctorRepository.findByUsuarioId(usuarioId)
+                    .map(medico -> citaRepository.findByDoctorIdOrderByFechaAscHoraAsc(medico.getId()))
+                    .orElse(List.of());
+        }
+        return List.of();
+    }
+
+    private boolean puedeVerCita(Cita cita, Authentication authentication) {
+        if (veTodasLasCitas(authentication)) {
+            return true;
+        }
+
+        UUID usuarioId = UUID.fromString(authentication.getName());
+        if (tieneRol(authentication, Rol.CLIENTE)) {
+            return usuarioId.equals(cita.getCliente().getUsuario().getId());
+        }
+        if (tieneRol(authentication, Rol.DOCTOR)) {
+            return usuarioId.equals(cita.getDoctor().getUsuario().getId());
+        }
+        return false;
+    }
+
+    private boolean veTodasLasCitas(Authentication authentication) {
+        return tieneRol(authentication, Rol.ADMIN) || tieneRol(authentication, Rol.SECRETARIA);
     }
 
     private Cliente resolverPaciente(CitaRequest request, Authentication authentication) {
