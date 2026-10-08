@@ -1,0 +1,42 @@
+<div class="campana-container">
+  <button
+    type="button"
+    class="campana-btn"
+    (click)="togglePanel($event)"
+    [attr.aria-label]="proximas().length > 0 ? 'Tienes ' + proximas().length + ' citas próximas' : 'Sin citas próximas'"
+  >
+    <i class="bi bi-bell-fill"></i>
+    @if (proximas().length > 0) {
+      <span class="campana-badge">{{ proximas().length }}</span>
+    }
+  </button>
+
+  @if (panelAbierto()) {
+    <div class="campana-panel" (click)="$event.stopPropagation()">
+      <div class="campana-panel-header">
+        <h6 class="mb-0 fw-bold">Citas Próximas</h6>
+      </div>
+
+      @if (proximas().length > 0) {
+        <div class="campana-lista">
+          @for (cita of proximas(); track cita.idCita) {
+            <div class="campana-item">
+              <div class="campana-item-fecha">
+                <i class="bi bi-calendar-event"></i>
+                <span>{{ formatearFecha(cita.fecha) }} · {{ formatearHora(cita.hora) }}</span>
+              </div>
+              <div class="campana-item-descripcion">
+                {{ descripcionCita(cita) }}
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="campana-vacio">
+          <i class="bi bi-calendar-x"></i>
+          <p class="mb-0">No tienes citas próximas</p>
+        </div>
+      }
+    </div>
+  }
+</div>

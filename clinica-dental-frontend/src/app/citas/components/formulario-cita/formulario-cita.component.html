@@ -1,0 +1,109 @@
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-9">
+      <div class="d-flex justify-content-between align-items-center mb-3 gap-3">
+        <a routerLink="/citas" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-arrow-left me-1"></i> Volver a citas
+        </a>
+      </div>
+
+      <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-body p-4 p-md-5">
+          <div class="mb-4">
+            <h2 class="fw-bold text-primario mb-1">Agendar cita</h2>
+            <p class="text-muted mb-0">Completa los datos de la cita</p>
+          </div>
+
+          @if (error()) {
+            <div class="alert alert-danger" role="alert">
+              <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error() }}
+            </div>
+          }
+
+          <form [formGroup]="formulario" (ngSubmit)="agendar()" novalidate>
+            @if (puedeElegirPaciente()) {
+              <div class="mb-3">
+                <label for="idCliente" class="form-label fw-semibold">Paciente</label>
+                <select id="idCliente" class="form-select" formControlName="idCliente">
+                  <option value="">Selecciona un paciente</option>
+                  @for (paciente of pacientes(); track paciente.idCliente) {
+                    <option [value]="paciente.idCliente">{{ paciente.nombre }} {{ paciente.apellido }} - {{ paciente.dpi }}</option>
+                  }
+                </select>
+                @if (cargandoPacientes()) {
+                  <small class="text-muted">Cargando pacientes...</small>
+                }
+              </div>
+            }
+
+            <div class="mb-3">
+              <label for="idDoctor" class="form-label fw-semibold">Doctor</label>
+              <select id="idDoctor" class="form-select" formControlName="idDoctor">
+                <option value="">Selecciona un doctor</option>
+                @for (doctor of doctores(); track doctor.idDoctor) {
+                  <option [value]="doctor.idDoctor">{{ doctor.nombre }} {{ doctor.apellido }} - {{ doctor.especialidad }}</option>
+                }
+              </select>
+              @if (cargandoDoctores()) {
+                <small class="text-muted">Cargando doctores...</small>
+              }
+              @if (formulario.controls.idDoctor.invalid && formulario.controls.idDoctor.touched) {
+                <div class="invalid-feedback d-block">Selecciona un doctor.</div>
+              }
+            </div>
+
+            @if (formulario.controls.idDoctor.value) {
+              <div class="horarios-ayuda mb-4">
+                <h6 class="fw-bold mb-2"><i class="bi bi-calendar-week me-2"></i>Horarios del doctor</h6>
+                @if (cargandoHorarios()) {
+                  <span class="text-muted">Cargando horarios...</span>
+                } @else if (horarios().length > 0) {
+                  <div class="d-flex flex-wrap gap-2">
+                    @for (horario of horarios(); track horario.idHorario) {
+                      <span class="badge text-bg-light">{{ horario.diaSemana }}: {{ horario.horaInicio.slice(0, 5) }} - {{ horario.horaFin.slice(0, 5) }}</span>
+                    }
+                  </div>
+                } @else {
+                  <span class="text-muted">Este doctor no tiene horarios registrados.</span>
+                }
+              </div>
+            }
+
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label for="fecha" class="form-label fw-semibold">Fecha</label>
+                <input id="fecha" type="date" class="form-control" formControlName="fecha" [min]="fechaMinima" />
+                @if (formulario.controls.fecha.invalid && formulario.controls.fecha.touched) {
+                  <div class="invalid-feedback d-block">Selecciona una fecha.</div>
+                }
+              </div>
+              <div class="col-12 col-md-6">
+                <label for="hora" class="form-label fw-semibold">Hora</label>
+                <input id="hora" type="time" class="form-control" formControlName="hora" />
+                @if (formulario.controls.hora.invalid && formulario.controls.hora.touched) {
+                  <div class="invalid-feedback d-block">Selecciona una hora.</div>
+                }
+              </div>
+            </div>
+
+            <div class="mt-3 mb-4">
+              <label for="notas" class="form-label fw-semibold">Notas</label>
+              <textarea id="notas" class="form-control" rows="4" formControlName="notas" placeholder="Información adicional para la cita"></textarea>
+            </div>
+
+            <div class="d-flex justify-content-end gap-2">
+              <a routerLink="/citas" class="btn btn-outline-secondary">Cancelar</a>
+              <button type="submit" class="btn btn-primario text-white" [disabled]="isSubmitting()">
+                @if (isSubmitting()) {
+                  <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Guardando...
+                } @else {
+                  <i class="bi bi-calendar-plus me-2"></i>Agendar cita
+                }
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

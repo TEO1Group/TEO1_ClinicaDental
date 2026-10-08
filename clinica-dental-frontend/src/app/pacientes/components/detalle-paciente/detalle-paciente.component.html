@@ -99,6 +99,16 @@
                 </a>
               }
 
+              @if (puedeEditar()) {
+                <button
+                  type="button"
+                  class="btn btn-outline-danger"
+                  (click)="desactivarPaciente()"
+                >
+                  <i class="bi bi-person-slash me-2"></i> Desactivar
+                </button>
+              }
+
               @if (puedeVerHistorial()) {
                 <a
                   class="btn btn-outline-primary"

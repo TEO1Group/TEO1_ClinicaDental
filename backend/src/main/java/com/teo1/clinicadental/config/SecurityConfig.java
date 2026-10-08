@@ -56,6 +56,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(HttpMethod.OPTIONS).permitAll()
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/registro", "/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/admin/usuarios").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/admin/usuarios").hasRole("ADMIN")
@@ -75,6 +76,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/doctores/*/horarios/*").hasAnyRole("ADMIN", "DOCTOR", "SECRETARIA")
                         .requestMatchers(HttpMethod.DELETE, "/doctores/*/horarios/*").hasAnyRole("ADMIN", "DOCTOR", "SECRETARIA")
                         .requestMatchers(HttpMethod.GET, "/doctores/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/citas").hasAnyRole("CLIENTE", "SECRETARIA", "ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/citas/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/citas/*/estado").authenticated()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(

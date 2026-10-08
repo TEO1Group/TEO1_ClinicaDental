@@ -21,25 +21,51 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import com.teo1.clinicadental.dto.ErrorResponse;
 
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "Usuarios", description = "Administración de usuarios y catálogo de roles")
+@SecurityRequirement(name = "bearerAuth")
 public class UsuarioController {
 
     private final AdminUsuarioService adminUsuarioService;
 
     @GetMapping("/admin/usuarios")
+    @Operation(summary = "Listar usuarios", description = "Requiere rol ADMIN. Incluye usuarios activos e inactivos.")
+    @ApiResponse(responseCode = "200", description = "Lista de usuarios")
+    @ApiResponse(responseCode = "401", description = "Falta autenticación válida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "Se requiere el rol ADMIN", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<List<UsuarioListadoResponse>> listarUsuarios() {
         return ResponseEntity.ok(adminUsuarioService.listarUsuarios());
     }
 
     @PostMapping("/admin/usuarios")
+    @Operation(summary = "Crear personal", description = "Requiere rol ADMIN. Crea cuentas de DOCTOR, SECRETARIA o ADMIN; la especialidad se requiere para DOCTOR.")
+    @ApiResponse(responseCode = "201", description = "Personal creado")
+    @ApiResponse(responseCode = "400", description = "Datos inválidos", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "401", description = "Falta autenticación válida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "Se requiere el rol ADMIN", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "409", description = "Conflicto con una restricción de datos", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<RegistroResponse> crearPersonal(@Valid @RequestBody CrearPersonalRequest request) {
         RegistroResponse response = adminUsuarioService.crearPersonal(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PutMapping("/admin/usuarios/{id}")
+    @Operation(summary = "Actualizar un usuario", description = "Requiere rol ADMIN. Actualiza solo los campos enviados.")
+    @ApiResponse(responseCode = "200", description = "Usuario actualizado")
+    @ApiResponse(responseCode = "400", description = "Datos inválidos o identificador no válido", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "401", description = "Falta autenticación válida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "Se requiere el rol ADMIN", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "404", description = "Usuario no encontrado", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "409", description = "El email ya está registrado", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<UsuarioListadoResponse> actualizarUsuario(
             @PathVariable UUID id,
             @Valid @RequestBody UsuarioUpdateRequest request
@@ -48,6 +74,12 @@ public class UsuarioController {
     }
 
     @PatchMapping("/admin/usuarios/{id}/estado")
+    @Operation(summary = "Cambiar el estado de un usuario", description = "Requiere rol ADMIN. El administrador no puede desactivar su propia cuenta.")
+    @ApiResponse(responseCode = "200", description = "Estado actualizado")
+    @ApiResponse(responseCode = "400", description = "Datos inválidos o identificador no válido", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "401", description = "Falta autenticación válida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "Se requiere el rol ADMIN", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "404", description = "Usuario no encontrado", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<UsuarioListadoResponse> cambiarEstado(
             @PathVariable UUID id,
             @Valid @RequestBody EstadoUsuarioRequest request,
@@ -57,6 +89,10 @@ public class UsuarioController {
     }
 
     @GetMapping("/roles")
+    @Operation(summary = "Listar roles", description = "Requiere rol ADMIN.")
+    @ApiResponse(responseCode = "200", description = "Lista de roles")
+    @ApiResponse(responseCode = "401", description = "Falta autenticación válida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "Se requiere el rol ADMIN", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<List<RolResponse>> listarRoles() {
         return ResponseEntity.ok(adminUsuarioService.listarRoles());
     }

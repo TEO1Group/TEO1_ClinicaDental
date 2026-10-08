@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../../core/services/auth.service';
+import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 import { ClienteResponse } from '../../models/paciente.model';
 import { PacienteService } from '../../service/paciente.service';
 
@@ -18,6 +19,7 @@ export class ListadoPacientesComponent implements OnInit {
   private readonly pacienteService = inject(PacienteService);
   private readonly formBuilder = inject(FormBuilder);
   private readonly authService = inject(AuthService);
+  private readonly notificacionService = inject(NotificacionService);
 
   readonly rol = this.authService.rol;
   readonly filtroForm = this.formBuilder.nonNullable.group({
@@ -77,7 +79,28 @@ export class ListadoPacientesComponent implements OnInit {
     return this.rol() === 'SECRETARIA';
   }
 
+  desactivarPaciente(paciente: ClienteResponse): void {
+    if (!confirm(`¿Estás seguro de desactivar a ${paciente.nombre} ${paciente.apellido}?`)) {
+      return;
+    }
+
+    this.pacienteService.desactivarPaciente(paciente.idCliente).subscribe({
+      next: () => {
+        this.notificacionService.exito('Paciente desactivado correctamente.');
+        this.cargarPacientes();
+      },
+      error: (error) => {
+        this.notificacionService.error(error.error?.mensaje || 'Error al desactivar el paciente.');
+      }
+    });
+  }
+
   puedeAgregarHistorial(): boolean {
     return this.rol() === 'ADMIN' || this.rol() === 'DOCTOR';
+  }
+
+  puedeCrear(): boolean {
+    const rol = this.rol();
+    return rol === 'ADMIN' || rol === 'SECRETARIA';
   }
 }

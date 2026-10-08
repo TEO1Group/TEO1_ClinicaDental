@@ -12,6 +12,7 @@ on:
       - "backend/**"
       - "clinica-dental-frontend/**"
       - "db/**"
+      - "scripts/deploy-ec2.sh"
       - "docker-compose.yml"
       - ".github/workflows/cd.yml"
 
@@ -26,10 +27,10 @@ jobs:
       frontend_image: ${{ steps.image.outputs.frontend_image }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Login en GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -43,14 +44,14 @@ jobs:
           echo "frontend_image=ghcr.io/${owner}/clinica-dental-frontend:${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
       - name: Build y push de la imagen del backend
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./backend
           push: true
           tags: ${{ steps.image.outputs.backend_image }}
 
       - name: Build y push de la imagen del frontend
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./clinica-dental-frontend
           push: true
@@ -65,60 +66,21 @@ jobs:
     steps:
       - name: Desplegar en EC2 por SSH
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          DEPLOY_SHA: ${{ github.sha }}
+          BACKEND_IMAGE: ${{ needs.build-and-push.outputs.backend_image }}
+          FRONTEND_IMAGE: ${{ needs.build-and-push.outputs.frontend_image }}
+          CORS_ALLOWED_ORIGINS: http://${{ secrets.EC2_HOST }}:4200
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: DEPLOY_SHA,BACKEND_IMAGE,FRONTEND_IMAGE,CORS_ALLOWED_ORIGINS,GHCR_USERNAME,GHCR_TOKEN
           script: |
             set -e
             cd ~/TEO1_ClinicaDental
             git fetch origin main
-            git checkout --force --detach '${{ github.sha }}'
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            if [ ! -f .env ]; then
-              echo "No existe .env en ~/TEO1_ClinicaDental" >&2
-              exit 1
-            fi
-
-            persist_env_var() {
-              key="$1"
-              value="$2"
-              if grep -q "^${key}=" .env; then
-                sed -i -E "s|^${key}=.*$|${key}=${value}|" .env
-              else
-                printf '%s\n' "${key}=${value}" >> .env
-              fi
-            }
-
-            persist_env_var BACKEND_IMAGE '${{ needs.build-and-push.outputs.backend_image }}'
-            persist_env_var FRONTEND_IMAGE '${{ needs.build-and-push.outputs.frontend_image }}'
-            persist_env_var CORS_ALLOWED_ORIGINS 'http://${{ secrets.EC2_HOST }}:4200'
-            docker compose pull backend frontend
-            db_container_id="$(docker compose ps --all --quiet db)"
-            if [ -z "$db_container_id" ]; then
-              docker compose up -d --no-deps db
-              db_container_id="$(docker compose ps --all --quiet db)"
-            elif [ -z "$(docker compose ps --quiet db)" ]; then
-              docker compose start db
-            fi
-            if [ -z "$db_container_id" ]; then
-              echo "No se pudo resolver el contenedor db de Docker Compose" >&2
-              exit 1
-            fi
-            docker update --restart unless-stopped "$db_container_id"
-            db_status=""
-            attempt=0
-            while [ "$attempt" -lt 60 ]; do
-              db_status="$(docker inspect --format '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$db_container_id")"
-              if [ "$db_status" = "running healthy" ]; then
-                break
-              fi
-              attempt=$((attempt + 1))
-              sleep 2
-            done
-            if [ "$db_status" != "running healthy" ]; then
-              echo "El contenedor db no alcanzó el estado healthy" >&2
-              exit 1
-            fi
-            docker compose up -d --no-build --no-deps --force-recreate backend frontend
-            docker image prune -f
+            git checkout --force --detach "$DEPLOY_SHA"
+            bash scripts/deploy-ec2.sh

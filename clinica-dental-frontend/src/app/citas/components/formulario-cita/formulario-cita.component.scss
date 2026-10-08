@@ -1,0 +1,33 @@
+@use 'sass:color';
+
+.text-primario {
+  color: var(--color-primario);
+}
+
+.btn-primario {
+  background-color: var(--color-primario);
+  border-color: var(--color-primario);
+  transition: all 0.2s ease-in-out;
+
+  &:hover {
+    background-color: color.adjust(#2C7BE5, $lightness: -7%);
+    border-color: color.adjust(#2C7BE5, $lightness: -7%);
+  }
+
+  &:disabled {
+    background-color: #a0c4f7;
+    border-color: #a0c4f7;
+  }
+}
+
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--color-secundario);
+  box-shadow: 0 0 0 0.25rem rgba(92, 201, 201, 0.25);
+}
+
+.horarios-ayuda {
+  border-left: 3px solid var(--color-secundario);
+  padding: 0.75rem 1rem;
+  background-color: #f8f9fa;
+}
