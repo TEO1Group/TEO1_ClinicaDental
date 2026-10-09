@@ -43,6 +43,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -399,12 +400,14 @@ class CitaServiceTests {
     }
 
     @Test
-    void secretariaNoPuedeMarcarNoAsistio() {
-        Cita cita = citaExistente(LocalTime.of(9, 0), EstadoCita.AGENDADA);
-        when(citaRepository.findConRelacionesById(cita.getId())).thenReturn(Optional.of(cita));
+    void secretariaMarcaCualquierEstadoFinalEnCitaAjena() {
+        for (EstadoCita nuevo : List.of(EstadoCita.ATENDIDA, EstadoCita.NO_ASISTIO, EstadoCita.CANCELADA)) {
+            Cita ajena = citaDeOtros();
+            when(citaRepository.findConRelacionesById(ajena.getId())).thenReturn(Optional.of(ajena));
+            when(citaRepository.save(ajena)).thenReturn(ajena);
 
-        assertEstado(HttpStatus.FORBIDDEN, () -> citaService.cambiarEstado(
-                cita.getId(), estado(EstadoCita.NO_ASISTIO), autenticacion("SECRETARIA")));
+            assertEquals(nuevo, citaService.cambiarEstado(ajena.getId(), estado(nuevo), autenticacion("SECRETARIA")).getEstado());
+        }
     }
 
     @Test
@@ -414,6 +417,7 @@ class CitaServiceTests {
 
         assertEstado(HttpStatus.FORBIDDEN, () -> citaService.cambiarEstado(
                 cita.getId(), estado(EstadoCita.CANCELADA), autenticacion(doctor.getUsuario().getId(), "DOCTOR")));
+        verify(citaRepository, never()).save(any());
     }
 
     @Test
@@ -433,11 +437,12 @@ class CitaServiceTests {
         Cita en10Horas = citaEn(LocalDate.of(2026, 10, 8), LocalTime.of(18, 0));
         Cita en30Horas = citaEn(LocalDate.of(2026, 10, 9), LocalTime.of(14, 0));
         Cita en60Horas = citaEn(LocalDate.of(2026, 10, 10), LocalTime.of(20, 0));
-        when(citaRepository.findByEstadoAndFechaBetweenOrderByFechaAscHoraAsc(
-                EstadoCita.AGENDADA, LocalDate.of(2026, 10, 8), LocalDate.of(2026, 10, 10)))
+        when(clienteRepository.findByUsuarioId(usuarioClienteId)).thenReturn(Optional.of(cliente));
+        when(citaRepository.findByClienteIdAndEstadoAndFechaBetweenOrderByFechaAscHoraAsc(
+                cliente.getId(), EstadoCita.AGENDADA, LocalDate.of(2026, 10, 8), LocalDate.of(2026, 10, 10)))
                 .thenReturn(List.of(pasada, en10Horas, en30Horas, en60Horas));
 
-        List<CitaResponse> proximas = citaService.listarProximas(48, autenticacion("SECRETARIA"));
+        List<CitaResponse> proximas = citaService.listarProximas(48, autenticacion("CLIENTE"));
 
         assertEquals(List.of(en10Horas.getId(), en30Horas.getId()),
                 proximas.stream().map(CitaResponse::getIdCita).toList());
@@ -460,11 +465,23 @@ class CitaServiceTests {
     @Test
     void proximasDelDoctorSoloBuscaSusCitasAgendadas() {
         when(doctorRepository.findByUsuarioId(doctor.getUsuario().getId())).thenReturn(Optional.of(doctor));
+        Cita en10Horas = citaEn(LocalDate.of(2026, 10, 8), LocalTime.of(18, 0));
         when(citaRepository.findByDoctorIdAndEstadoAndFechaBetweenOrderByFechaAscHoraAsc(
                 doctor.getId(), EstadoCita.AGENDADA, LocalDate.of(2026, 10, 8), LocalDate.of(2026, 10, 9)))
-                .thenReturn(List.of());
+                .thenReturn(List.of(en10Horas));
 
-        assertTrue(citaService.listarProximas(24, autenticacion(doctor.getUsuario().getId(), "DOCTOR")).isEmpty());
+        List<CitaResponse> proximas = citaService.listarProximas(24, autenticacion(doctor.getUsuario().getId(), "DOCTOR"));
+
+        assertEquals(List.of(en10Horas.getId()), proximas.stream().map(CitaResponse::getIdCita).toList());
+        verify(citaRepository, never()).findByEstadoAndFechaBetweenOrderByFechaAscHoraAsc(any(), any(), any());
+    }
+
+    @Test
+    void proximasDevuelveListaVaciaParaAdminYSecretaria() {
+        assertTrue(citaService.listarProximas(48, autenticacion("ADMIN")).isEmpty());
+        assertTrue(citaService.listarProximas(48, autenticacion("SECRETARIA")).isEmpty());
+
+        verifyNoInteractions(citaRepository, clienteRepository, doctorRepository);
     }
 
     @Test
