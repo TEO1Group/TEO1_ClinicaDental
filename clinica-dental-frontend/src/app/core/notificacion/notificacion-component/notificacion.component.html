@@ -1,16 +1,39 @@
+<!-- Notificaciones no centradas (a la derecha) -->
 <div class="notificacion-container">
   @for (notif of notificaciones(); track notif.id) {
-    <div class="notificacion" [ngClass]="'notificacion-' + notif.tipo" role="alert">
-      <i class="bi" [ngClass]="iconoPorTipo(notif.tipo)"></i>
-      <span class="notificacion-mensaje">{{ notif.mensaje }}</span>
-      <button 
-        type="button" 
-        class="notificacion-cerrar" 
-        (click)="cerrar(notif.id)"
-        aria-label="Cerrar notificación"
-      >
-        <i class="bi bi-x-lg"></i>
-      </button>
-    </div>
+    @if (!notif.centrada) {
+      <div class="notificacion" [ngClass]="'notificacion-' + notif.tipo" role="alert">
+        <i class="bi" [ngClass]="iconoPorTipo(notif.tipo)"></i>
+        <span class="notificacion-mensaje">{{ notif.mensaje }}</span>
+        <button 
+          type="button" 
+          class="notificacion-cerrar" 
+          (click)="cerrar(notif.id)"
+          aria-label="Cerrar notificación"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    }
+  }
+</div>
+
+<!-- Notificaciones centradas -->
+<div class="notificacion-container-centrada">
+  @for (notif of notificaciones(); track notif.id) {
+    @if (notif.centrada) {
+      <div class="notificacion" [ngClass]="'notificacion-' + notif.tipo" role="alert">
+        <i class="bi" [ngClass]="iconoPorTipo(notif.tipo)"></i>
+        <span class="notificacion-mensaje">{{ notif.mensaje }}</span>
+        <button 
+          type="button" 
+          class="notificacion-cerrar" 
+          (click)="cerrar(notif.id)"
+          aria-label="Cerrar notificación"
+        >
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+    }
   }
 </div>

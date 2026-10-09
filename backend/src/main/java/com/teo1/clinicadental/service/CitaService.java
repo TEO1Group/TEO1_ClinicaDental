@@ -176,16 +176,15 @@ public class CitaService {
         return citaMapper.toResponse(citaRepository.save(cita));
     }
 
-    // CANCELADA: CLIENTE (su cita), SECRETARIA y ADMIN. ATENDIDA y NO_ASISTIO: DOCTOR (su cita) y ADMIN
+    // CANCELADA: CLIENTE (su cita), SECRETARIA y ADMIN. ATENDIDA y NO_ASISTIO: DOCTOR (su cita), SECRETARIA y ADMIN.
     private void validarPermisoCambioEstado(Cita cita, EstadoCita nuevoEstado, Authentication authentication) {
-        if (tieneRol(authentication, Rol.ADMIN)) {
+        if (veTodasLasCitas(authentication)) {
             return;
         }
 
         UUID usuarioId = UUID.fromString(authentication.getName());
         boolean permitido = nuevoEstado == EstadoCita.CANCELADA
-                ? tieneRol(authentication, Rol.SECRETARIA)
-                        || (tieneRol(authentication, Rol.CLIENTE) && usuarioId.equals(cita.getCliente().getUsuario().getId()))
+                ? tieneRol(authentication, Rol.CLIENTE) && usuarioId.equals(cita.getCliente().getUsuario().getId())
                 : tieneRol(authentication, Rol.DOCTOR) && usuarioId.equals(cita.getDoctor().getUsuario().getId());
 
         if (!permitido) {
@@ -215,7 +214,7 @@ public class CitaService {
 
     private List<Cita> proximasVisibles(LocalDate desde, LocalDate hasta, Authentication authentication) {
         if (veTodasLasCitas(authentication)) {
-            return citaRepository.findByEstadoAndFechaBetweenOrderByFechaAscHoraAsc(EstadoCita.AGENDADA, desde, hasta);
+            return List.of();
         }
 
         UUID usuarioId = UUID.fromString(authentication.getName());

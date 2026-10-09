@@ -4,9 +4,8 @@
   left: 0;
   right: 0;
   height: 64px;
-  z-index: 1040; // Por encima del sidebar para persistencia
+  z-index: 1040;
   background: linear-gradient(160deg, var(--color-primario) 0%, #1c5fc4 60%, var(--color-secundario) 100%);
-  
   color: #ffffff;
   box-shadow: 0 4px 20px rgba(44, 123, 229, 0.15);
   display: flex;
@@ -29,12 +28,20 @@
   width: auto;
   display: block;
   border-radius: 6px;
+
+  @media (max-width: 576px) {
+    height: 36px;
+  }
 }
 
 .brand-text {
   font-size: 1.15rem;
   font-weight: 600;
   letter-spacing: 0.3px;
+
+  @media (max-width: 576px) {
+    display: none;
+  }
 }
 
 .btn-outline-light {
@@ -65,6 +72,20 @@
   &:active {
     transform: scale(0.97);
   }
+
+  // En mobile: solo el ícono, sin texto
+  @media (max-width: 767px) {
+    padding: 0.5rem 0.65rem;
+
+    .logout-texto {
+      display: none;
+    }
+
+    i {
+      margin: 0 !important;
+      font-size: 1.1rem;
+    }
+  }
 }
 
 .btn-hamburguesa {
@@ -85,6 +106,7 @@
     display: none;
   }
 }
+
 .usuario-info {
   display: flex;
   flex-direction: column;

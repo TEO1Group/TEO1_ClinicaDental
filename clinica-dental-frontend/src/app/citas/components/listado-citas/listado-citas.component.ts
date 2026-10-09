@@ -72,11 +72,11 @@ export class ListadoCitasComponent implements OnInit {
   }
 
   puedeMarcarAtendida(cita: CitaResponse): boolean {
-    return cita.estado === 'AGENDADA' && ['DOCTOR', 'ADMIN'].includes(this.rol() || '');
+    return cita.estado === 'AGENDADA' && ['DOCTOR', 'SECRETARIA', 'ADMIN'].includes(this.rol() || '');
   }
 
   puedeMarcarNoAsistio(cita: CitaResponse): boolean {
-    return cita.estado === 'AGENDADA' && ['DOCTOR', 'ADMIN'].includes(this.rol() || '');
+    return cita.estado === 'AGENDADA' && ['DOCTOR', 'SECRETARIA', 'ADMIN'].includes(this.rol() || '');
   }
 
   cambiarEstado(cita: CitaResponse, estado: EstadoCita): void {

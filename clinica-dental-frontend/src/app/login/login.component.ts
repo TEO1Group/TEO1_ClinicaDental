@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
+import { NotificacionService } from '../core/notificacion/service/notificacion.service';
 
 @Component({
   selector: 'app-login',
@@ -14,6 +15,7 @@ import { AuthService } from '../core/services/auth.service';
 export class LoginComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly authService = inject(AuthService);
+  private readonly notificacionService = inject(NotificacionService);
   private readonly router = inject(Router);
 
   readonly loginForm = this.formBuilder.nonNullable.group({
@@ -21,35 +23,30 @@ export class LoginComponent {
     password: ['', [Validators.required]]
   });
 
-  isSubmitting = false;
-  showPassword = false;
-  successMessage = '';
-  errorMessage = '';
+  readonly isSubmitting = signal(false);
+  readonly showPassword = signal(false);
 
   togglePasswordVisibility(): void {
-    this.showPassword = !this.showPassword;
+    this.showPassword.update(v => !v);
   }
 
   onSubmit(): void {
-    this.successMessage = '';
-    this.errorMessage = '';
-
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
       return;
     }
 
-    this.isSubmitting = true;
+    this.isSubmitting.set(true);
 
     this.authService.login(this.loginForm.getRawValue()).subscribe({
       next: () => {
-        this.isSubmitting = false;
-        this.successMessage = 'Inicio de sesión exitoso';
+        this.isSubmitting.set(false);
+        this.notificacionService.exito('Bienvenido');
         this.router.navigate(['/dashboard']);
       },
       error: (error) => {
-        this.isSubmitting = false;
-        this.errorMessage = error.error?.mensaje || 'Error al iniciar sesión. Verifica tus credenciales.';
+        this.isSubmitting.set(false);
+        this.notificacionService.error(error.error?.mensaje || 'Datos incorrectos', true);
       }
     });
   }

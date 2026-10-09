@@ -27,6 +27,7 @@
   width: auto;
   display: block;
 }
+
 .eyebrow {
   margin: 0 0 .4rem;
   color: var(--color-primario);
@@ -36,21 +37,166 @@
   text-transform: uppercase;
 }
 
-h1 { margin: 0; color: var(--color-texto); font-size: 2.25rem; font-weight: 700; }
-.intro { margin: .65rem 0 2rem; color: #687786; line-height: 1.55; }
-.field-group { margin-bottom: 1.25rem; }
-label { display: block; margin-bottom: .45rem; font-weight: 600; }
-.input-wrap { position: relative; }
-.input-wrap i { position: absolute; top: 50%; left: 1rem; color: #7890a5; transform: translateY(-50%); }
-input { width: 100%; padding: .8rem 3rem .8rem 2.8rem; border: 1px solid #d9e2eb; border-radius: .65rem; outline: 0; }
-input:focus { border-color: var(--color-secundario); box-shadow: 0 0 0 .2rem rgba(92, 201, 201, .2); }
-input.is-invalid { border-color: #dc3545; }
-.password-toggle { position: absolute; top: 50%; right: .75rem; display: grid; width: 2rem; height: 2rem; place-items: center; padding: 0; border: 0; color: #7890a5; background: transparent; transform: translateY(-50%); }
-.password-toggle:hover, .password-toggle:focus-visible { color: var(--color-primario); }
-.password-toggle:focus-visible { border-radius: .35rem; outline: 2px solid var(--color-secundario); outline-offset: 2px; }
-.field-error { display: block; margin-top: .35rem; color: #dc3545; }
-.login-button { width: 100%; padding: .85rem; border: 0; border-radius: .65rem; color: #fff; background: var(--color-primario); font-weight: 700; }
-.login-button:hover:not(:disabled) { background: #216aca; }
-.login-button:disabled { opacity: .7; }
-.register-prompt { margin: 1.75rem 0 0; color: #687786; text-align: center; }
-.register-prompt a { color: var(--color-primario); font-weight: 700; text-decoration: none; }
+h1 {
+  margin: 0;
+  color: var(--color-texto);
+  font-size: 2.25rem;
+  font-weight: 700;
+}
+
+.intro {
+  margin: .65rem 0 2rem;
+  color: #687786;
+  line-height: 1.55;
+}
+
+.field-group {
+  margin-bottom: 1.25rem;
+}
+
+label {
+  display: block;
+  margin-bottom: .45rem;
+  font-weight: 600;
+}
+
+.input-wrap {
+  position: relative;
+}
+
+.input-wrap i {
+  position: absolute;
+  top: 50%;
+  left: 1rem;
+  color: #7890a5;
+  transform: translateY(-50%);
+}
+
+input {
+  width: 100%;
+  padding: .8rem 3rem .8rem 2.8rem;
+  border: 1px solid #d9e2eb;
+  border-radius: .65rem;
+  outline: 0;
+}
+
+input:focus {
+  border-color: var(--color-secundario);
+  box-shadow: 0 0 0 .2rem rgba(92, 201, 201, .2);
+}
+
+input.is-invalid {
+  border-color: #dc3545;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: .75rem;
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  color: #7890a5;
+  background: transparent;
+  transform: translateY(-50%);
+}
+
+.password-toggle:hover,
+.password-toggle:focus-visible {
+  color: var(--color-primario);
+}
+
+.password-toggle:focus-visible {
+  border-radius: .35rem;
+  outline: 2px solid var(--color-secundario);
+  outline-offset: 2px;
+}
+
+.field-error {
+  display: block;
+  margin-top: .35rem;
+  color: #dc3545;
+}
+
+.login-button {
+  width: 100%;
+  padding: .85rem;
+  border: 0;
+  border-radius: .65rem;
+  color: #fff;
+  background: var(--color-primario);
+  font-weight: 700;
+}
+
+.login-button:hover:not(:disabled) {
+  background: #216aca;
+}
+
+.login-button:disabled {
+  opacity: .7;
+}
+
+.register-prompt {
+  margin: 1.75rem 0 0;
+  color: #687786;
+  text-align: center;
+}
+
+.register-prompt a {
+  color: var(--color-primario);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+
+@media (max-width: 576px) {
+  .login-page {
+    padding: 1rem 0.75rem;
+  }
+
+  .login-panel {
+    padding: 1.5rem 1.25rem;
+    border-radius: 1rem;
+  }
+
+  .brand-logo {
+    height: 80px;
+  }
+
+  .brand-logo-wrap {
+    margin-bottom: 1rem;
+  }
+
+  .eyebrow {
+    font-size: 0.7rem;
+  }
+
+  h1 {
+    font-size: 1.75rem;
+  }
+
+  .intro {
+    margin: 0.5rem 0 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  .field-group {
+    margin-bottom: 1rem;
+  }
+
+  input {
+    padding: 0.7rem 2.8rem 0.7rem 2.5rem;
+  }
+
+  .login-button {
+    padding: 0.75rem;
+  }
+
+  .register-prompt {
+    margin-top: 1.25rem;
+    font-size: 0.9rem;
+  }
+}
