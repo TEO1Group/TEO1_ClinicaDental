@@ -30,6 +30,7 @@ import java.time.LocalTime;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -188,6 +189,9 @@ class CitasIntegrationTests {
         String idCita = idCita(agendar(tokenCliente, fecha, "09:00", null).andExpect(status().isCreated()));
 
         cambiarEstado(idCita, "ATENDIDA", tokenOtroDoctor).andExpect(status().isForbidden());
+        cambiarEstado(idCita, "CANCELADA", tokenDoctor).andExpect(status().isForbidden());
+        cambiarEstado(idCita, "ATENDIDA", tokenCliente).andExpect(status().isForbidden());
+        cambiarEstado(idCita, "NO_ASISTIO", tokenCliente).andExpect(status().isForbidden());
 
         cambiarEstado(idCita, "ATENDIDA", tokenDoctor)
                 .andExpect(status().isOk())
@@ -195,6 +199,55 @@ class CitasIntegrationTests {
 
         cambiarEstado(idCita, "CANCELADA", tokenAdmin).andExpect(status().isConflict());
         cambiarEstado(idCita, "AGENDADA", tokenAdmin).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void secretariaCambiaCualquierEstadoFinalEnCitasAjenas() throws Exception {
+        String atendida = idCita(agendar(tokenCliente, fecha, "09:00", null).andExpect(status().isCreated()));
+        String noAsistio = idCita(agendar(tokenOtroCliente, fecha, "10:00", null).andExpect(status().isCreated()));
+        String cancelada = idCita(agendar(tokenCliente, fecha, "11:00", null).andExpect(status().isCreated()));
+
+        cambiarEstado(atendida, "ATENDIDA", tokenSecretaria)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("ATENDIDA"));
+        cambiarEstado(noAsistio, "NO_ASISTIO", tokenSecretaria)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("NO_ASISTIO"));
+        cambiarEstado(cancelada, "CANCELADA", tokenSecretaria)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("CANCELADA"));
+    }
+
+    @Test
+    void proximasSoloParaClienteYDoctor() throws Exception {
+        LocalDate manana = LocalDate.now(clock).plusDays(1);
+        horarioRepository.save(Horario.builder()
+                .doctor(doctor)
+                .diaSemana(DiaSemana.desde(manana.getDayOfWeek()))
+                .horaInicio(LocalTime.of(8, 0))
+                .horaFin(LocalTime.of(12, 0))
+                .build());
+        String idCita = idCita(agendar(tokenCliente, manana, "09:00", null).andExpect(status().isCreated()));
+
+        mockMvc.perform(conToken(get("/citas/proximas"), tokenCliente))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].idCita", hasItem(idCita)));
+
+        mockMvc.perform(conToken(get("/citas/proximas"), tokenDoctor))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].idCita", hasItem(idCita)));
+
+        mockMvc.perform(conToken(get("/citas/proximas"), tokenOtroCliente))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].idCita", not(hasItem(idCita))));
+
+        mockMvc.perform(conToken(get("/citas/proximas"), tokenSecretaria))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+
+        mockMvc.perform(conToken(get("/citas/proximas"), tokenAdmin))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
     }
 
     @Test

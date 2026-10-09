@@ -89,7 +89,8 @@ public class CitaController {
     @Operation(
             summary = "Listar citas proximas",
             description = "Requiere sesion. Devuelve las citas AGENDADA desde ahora hasta dentro de 'horas', "
-                    + "de la mas cercana a la mas lejana. CLIENTE y DOCTOR ven solo las suyas; SECRETARIA y ADMIN ven todas."
+                    + "de la mas cercana a la mas lejana. CLIENTE y DOCTOR reciben solo las suyas; SECRETARIA y ADMIN reciben "
+                    + "siempre una lista vacia."
     )
     @ApiResponse(responseCode = "200", description = "Lista de citas proximas")
     @ApiResponse(responseCode = "400", description = "Horas fuera del rango 1 a 72", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -120,8 +121,8 @@ public class CitaController {
     @Operation(
             summary = "Cambiar el estado de una cita",
             description = "Solo una cita AGENDADA puede cambiar; ATENDIDA, CANCELADA y NO_ASISTIO son finales. "
-                    + "CANCELADA la pueden hacer el CLIENTE (solo su cita), SECRETARIA y ADMIN. "
-                    + "ATENDIDA y NO_ASISTIO las pueden hacer el DOCTOR (solo sus citas) y ADMIN. "
+                    + "CANCELADA la pueden hacer el CLIENTE (solo su cita), SECRETARIA y ADMIN; el DOCTOR no. "
+                    + "ATENDIDA y NO_ASISTIO las pueden hacer el DOCTOR (solo sus citas), SECRETARIA y ADMIN; el CLIENTE no. "
                     + "Cancelar una cita libera el horario para volver a agendarlo."
     )
     @ApiResponse(responseCode = "200", description = "Estado actualizado")
