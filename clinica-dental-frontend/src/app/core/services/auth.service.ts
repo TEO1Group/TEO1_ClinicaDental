@@ -58,7 +58,9 @@ export class AuthService extends ApiService {
     this.http.get<UsuarioActualResponse>(this.meUrl).subscribe({
       next: (usuario) => {
         this._usuarioActual.set(usuario);
-        this.cargarCitasProximas();
+        if (usuario.rol === 'CLIENTE' || usuario.rol === 'DOCTOR') {
+          this.cargarCitasProximas();
+        }
       },
       error: () => this._usuarioActual.set(null)
     });
