@@ -22,7 +22,9 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
     return next(req).pipe(
         catchError(err => {
-            if (err.status === 401) {
+            const esRutaPublica = req.url.includes('/auth/login') || req.url.includes('/auth/registro');
+
+            if (err.status === 401 && !esRutaPublica) {
                 authService.limpiarSesion();
                 notificacionService.error('Tu sesión expiró. Inicia sesión nuevamente.');
                 router.navigate(['']);

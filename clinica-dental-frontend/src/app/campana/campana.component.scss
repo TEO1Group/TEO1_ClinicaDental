@@ -113,9 +113,18 @@
   }
 }
 
-@media (max-width: 480px) {
+// Mobile: el panel ocupa casi todo el ancho, alineado al borde derecho de la pantalla
+@media (max-width: 576px) {
   .campana-panel {
-    width: 280px;
-    right: -8px;
+    position: fixed;
+    top: 72px;
+    left: 0.75rem;
+    right: 0.75rem;
+    width: auto;
+    max-height: calc(100vh - 96px);
+  }
+
+  .campana-lista {
+    max-height: calc(100vh - 200px);
   }
 }
