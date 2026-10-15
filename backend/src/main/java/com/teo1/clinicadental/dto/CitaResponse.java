@@ -45,4 +45,7 @@ public class CitaResponse {
 
     @Schema(description = "Apellido del doctor", example = "Perez")
     private String apellidoDoctor;
+
+    @Schema(description = "Motivo del ultimo cambio de estado; null si no se indico", example = "El paciente tuvo un imprevisto de trabajo", nullable = true)
+    private String motivo;
 }

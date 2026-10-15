@@ -20,6 +20,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,6 +39,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -74,7 +76,7 @@ class CitaServiceTests {
     void setUp() {
         Clock clock = Clock.fixed(ZonedDateTime.of(2026, 10, 8, 8, 0, 0, 0, ZONA).toInstant(), ZONA);
         DisponibilidadCitaService disponibilidadCitaService =
-                new DisponibilidadCitaService(citaRepository, horarioRepository, clock, 30);
+                new DisponibilidadCitaService(citaRepository, horarioRepository, clock, 30, 24);
         citaService = new CitaService(
                 citaRepository, clienteRepository, doctorRepository, disponibilidadCitaService, new CitaMapper(), clock);
 
@@ -311,7 +313,7 @@ class CitaServiceTests {
 
     @Test
     void doctorMarcaSuCitaComoAtendida() {
-        Cita cita = prepararCambioEstado(EstadoCita.AGENDADA);
+        Cita cita = prepararCambioEstado(LocalDate.of(2026, 10, 7), LocalTime.of(9, 0));
 
         CitaResponse respuesta = citaService.cambiarEstado(
                 cita.getId(), estado(EstadoCita.ATENDIDA), autenticacion(doctor.getUsuario().getId(), "DOCTOR"));
@@ -322,7 +324,7 @@ class CitaServiceTests {
 
     @Test
     void doctorMarcaSuCitaComoNoAsistio() {
-        Cita cita = prepararCambioEstado(EstadoCita.AGENDADA);
+        Cita cita = prepararCambioEstado(LocalDate.of(2026, 10, 7), LocalTime.of(9, 0));
 
         CitaResponse respuesta = citaService.cambiarEstado(
                 cita.getId(), estado(EstadoCita.NO_ASISTIO), autenticacion(doctor.getUsuario().getId(), "DOCTOR"));
@@ -430,6 +432,123 @@ class CitaServiceTests {
         assertEstado(HttpStatus.FORBIDDEN, () -> citaService.cambiarEstado(
                 ajena.getId(), estado(EstadoCita.ATENDIDA), autenticacion(doctor.getUsuario().getId(), "DOCTOR")));
         verify(citaRepository, never()).save(any());
+    }
+
+    @Test
+    void cancelarONoAsistioSinMotivoDevuelveSolicitudInvalida() {
+        for (EstadoCita nuevo : List.of(EstadoCita.CANCELADA, EstadoCita.NO_ASISTIO)) {
+            for (String motivo : Arrays.asList(null, "", "   ")) {
+                ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                        () -> citaService.cambiarEstado(UUID.randomUUID(), estado(nuevo, motivo), autenticacion("ADMIN")));
+                assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+                assertEquals("Debes indicar el motivo para marcar la cita como " + nuevo, exception.getReason());
+            }
+        }
+        verifyNoInteractions(citaRepository);
+    }
+
+    @Test
+    void atendidaSinMotivoSeAceptaYGuardaNull() {
+        for (String motivo : Arrays.asList(null, "   ")) {
+            Cita cita = prepararCambioEstado(EstadoCita.AGENDADA);
+
+            CitaResponse respuesta = citaService.cambiarEstado(cita.getId(), estado(EstadoCita.ATENDIDA, motivo), autenticacion("ADMIN"));
+
+            assertEquals(EstadoCita.ATENDIDA, respuesta.getEstado());
+            assertNull(cita.getMotivoEstado());
+            assertNull(respuesta.getMotivo());
+        }
+    }
+
+    @Test
+    void motivoSeRecortaYSeGuarda() {
+        Cita cita = prepararCambioEstado(EstadoCita.AGENDADA);
+
+        CitaResponse respuesta = citaService.cambiarEstado(
+                cita.getId(), estado(EstadoCita.CANCELADA, "  El paciente viajo  "), autenticacion("SECRETARIA"));
+
+        assertEquals("El paciente viajo", cita.getMotivoEstado());
+        assertEquals("El paciente viajo", respuesta.getMotivo());
+        verify(citaRepository).save(cita);
+    }
+
+    @Test
+    void clienteCancelaConMasDe24HorasSeAcepta() {
+        Cita cita = prepararCambioEstado(LocalDate.of(2026, 10, 9), LocalTime.of(9, 0));
+
+        CitaResponse respuesta = citaService.cambiarEstado(cita.getId(), estado(EstadoCita.CANCELADA), autenticacion("CLIENTE"));
+
+        assertEquals(EstadoCita.CANCELADA, respuesta.getEstado());
+    }
+
+    @Test
+    void clienteCancelaConExactamente24HorasSeAcepta() {
+        Cita cita = prepararCambioEstado(LocalDate.of(2026, 10, 9), LocalTime.of(8, 0));
+
+        CitaResponse respuesta = citaService.cambiarEstado(cita.getId(), estado(EstadoCita.CANCELADA), autenticacion("CLIENTE"));
+
+        assertEquals(EstadoCita.CANCELADA, respuesta.getEstado());
+    }
+
+    @Test
+    void clienteCancelaConMenosDe24HorasDevuelveConflicto() {
+        Cita cita = citaEn(LocalDate.of(2026, 10, 9), LocalTime.of(7, 30));
+        when(citaRepository.findConRelacionesById(cita.getId())).thenReturn(Optional.of(cita));
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> citaService.cambiarEstado(cita.getId(), estado(EstadoCita.CANCELADA), autenticacion("CLIENTE")));
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        assertEquals("Solo puedes cancelar tu cita con al menos 24 horas de anticipacion", exception.getReason());
+        assertEquals(EstadoCita.AGENDADA, cita.getEstado());
+        verify(citaRepository, never()).save(any());
+    }
+
+    @Test
+    void secretariaYAdminCancelanConMenosDe24Horas() {
+        for (String rol : List.of("SECRETARIA", "ADMIN")) {
+            Cita cita = prepararCambioEstado(LocalDate.of(2026, 10, 8), LocalTime.of(10, 0));
+
+            CitaResponse respuesta = citaService.cambiarEstado(cita.getId(), estado(EstadoCita.CANCELADA), autenticacion(rol));
+
+            assertEquals(EstadoCita.CANCELADA, respuesta.getEstado());
+        }
+    }
+
+    @Test
+    void doctorMarcaAntesDeLaHoraDevuelveConflicto() {
+        for (EstadoCita nuevo : List.of(EstadoCita.ATENDIDA, EstadoCita.NO_ASISTIO)) {
+            Cita cita = citaEn(LocalDate.of(2026, 10, 8), LocalTime.of(9, 0));
+            when(citaRepository.findConRelacionesById(cita.getId())).thenReturn(Optional.of(cita));
+
+            ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> citaService.cambiarEstado(
+                    cita.getId(), estado(nuevo), autenticacion(doctor.getUsuario().getId(), "DOCTOR")));
+
+            assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+            assertEquals("No puedes marcar la cita como " + nuevo + " antes de su hora de inicio", exception.getReason());
+        }
+        verify(citaRepository, never()).save(any());
+    }
+
+    @Test
+    void doctorMarcaDesdeLaHoraDeInicioSeAcepta() {
+        for (LocalTime hora : List.of(LocalTime.of(8, 0), LocalTime.of(7, 30))) {
+            Cita cita = prepararCambioEstado(LocalDate.of(2026, 10, 8), hora);
+
+            CitaResponse respuesta = citaService.cambiarEstado(
+                    cita.getId(), estado(EstadoCita.ATENDIDA, null), autenticacion(doctor.getUsuario().getId(), "DOCTOR"));
+
+            assertEquals(EstadoCita.ATENDIDA, respuesta.getEstado());
+        }
+    }
+
+    @Test
+    void adminMarcaUnaCitaFuturaSeAcepta() {
+        for (EstadoCita nuevo : List.of(EstadoCita.ATENDIDA, EstadoCita.NO_ASISTIO)) {
+            Cita cita = prepararCambioEstado(FECHA, LocalTime.of(9, 0));
+
+            assertEquals(nuevo, citaService.cambiarEstado(cita.getId(), estado(nuevo), autenticacion("ADMIN")).getEstado());
+        }
     }
 
     @Test
@@ -568,9 +687,21 @@ class CitaServiceTests {
         return cita;
     }
 
+    private Cita prepararCambioEstado(LocalDate fecha, LocalTime hora) {
+        Cita cita = citaEn(fecha, hora);
+        when(citaRepository.findConRelacionesById(cita.getId())).thenReturn(Optional.of(cita));
+        when(citaRepository.save(cita)).thenReturn(cita);
+        return cita;
+    }
+
     private EstadoCitaRequest estado(EstadoCita estado) {
+        return estado(estado, "Motivo de prueba");
+    }
+
+    private EstadoCitaRequest estado(EstadoCita estado, String motivo) {
         EstadoCitaRequest request = new EstadoCitaRequest();
         request.setEstado(estado);
+        request.setMotivo(motivo);
         return request;
     }
 
