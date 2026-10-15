@@ -36,7 +36,7 @@ jobs:
         env:
           POSTGRES_DB: clinica_dental_ci
           POSTGRES_USER: ci_user
-          POSTGRES_PASSWORD: ci_password
+          POSTGRES_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
         ports:
           - 5432:5432
         options: >-
@@ -48,6 +48,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Validar secretos de CI
+        env:
+          CI_DB_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
+          CI_JWT_SECRET: ${{ secrets.CI_JWT_SECRET }}
+        run: |
+          test -n "$CI_DB_PASSWORD" || { echo 'Configure CI_DB_PASSWORD en Actions Secrets' >&2; exit 1; }
+          test -n "$CI_JWT_SECRET" || { echo 'Configure CI_JWT_SECRET en Actions Secrets' >&2; exit 1; }
 
       - name: Validar sintaxis del script de despliegue
         run: bash -n scripts/deploy-ec2.sh
@@ -61,19 +69,21 @@ jobs:
           cache-dependency-path: backend/pom.xml
 
       - name: Cargar esquema en la base de datos de pruebas
+        env:
+          PGPASSWORD: ${{ secrets.CI_DB_PASSWORD }}
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client
-          PGPASSWORD=ci_password psql -h localhost -U ci_user -d clinica_dental_ci -f db/clinica_dental_schema.sql
+          psql -h localhost -U ci_user -d clinica_dental_ci -v ON_ERROR_STOP=1 -f db/clinica_dental_schema.sql
 
       - name: Compilar y ejecutar pruebas
         working-directory: backend
         env:
           DB_URL: jdbc:postgresql://localhost:5432/clinica_dental_ci
           DB_USERNAME: ci_user
-          DB_PASSWORD: ci_password
-          JWT_SECRET: Y2ktb25seS10ZXN0LXNlY3JldC1uby11c2FyLWVuLXByb2R1Y2Npb24=
-          # Sin SMTP: el recordatorio por correo queda desactivado en el CI
+          DB_PASSWORD: ${{ secrets.CI_DB_PASSWORD }}
+          JWT_SECRET: ${{ secrets.CI_JWT_SECRET }}
+          # Keep email reminders disabled in CI.
           SMTP_HOST: ""
           SMTP_FROM: ""
         run: ./mvnw -B verify

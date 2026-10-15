@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-for variable in BACKEND_IMAGE FRONTEND_IMAGE CORS_ALLOWED_ORIGINS GHCR_USERNAME GHCR_TOKEN; do
+for variable in DEPLOY_SHA BACKEND_IMAGE FRONTEND_IMAGE CORS_ALLOWED_ORIGINS GHCR_USERNAME GHCR_TOKEN; do
   if [[ -z "${!variable:-}" ]]; then
     printf 'Required deployment variable is missing: %s\n' "$variable" >&2
     exit 1
   fi
 done
+
+if [[ "$(git rev-parse HEAD)" != "$DEPLOY_SHA" ]]; then
+  echo "The checkout does not match the commit validated by CI" >&2
+  exit 1
+fi
 
 if [[ ! -f .env ]]; then
   echo "No existe .env en ~/TEO1_ClinicaDental" >&2
