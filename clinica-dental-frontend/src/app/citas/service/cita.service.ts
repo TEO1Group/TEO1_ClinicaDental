@@ -6,7 +6,8 @@ import {
   CitaFiltros,
   CitaRequest,
   CitaResponse,
-  EstadoCitaRequest
+  EstadoCitaRequest,
+  ReprogramarCitaRequest
 } from '../models/cita.model';
 import { CitaTratamientoRequest, CitaTratamientoResponse } from '../../pacientes/models/tratamiento.model';
 
@@ -48,22 +49,36 @@ export class CitaService extends ApiService {
     return this.http.patch<CitaResponse>(`${this.citasUrl}/${id}/estado`, request);
   }
 
+  reprogramar(id: string, request: ReprogramarCitaRequest): Observable<CitaResponse> {
+    return this.http.patch<CitaResponse>(`${this.citasUrl}/${id}/reprogramar`, request);
+  }
+
   cargarProximas(): Observable<CitaResponse[]> {
     return this.http.get<CitaResponse[]>(`${this.citasUrl}/proximas`).pipe(
       tap(citas => this._proximas.set(citas))
     );
   }
 
+  recargarProximas(): void {
+    this.cargarProximas().subscribe({
+      error: () => {}
+    });
+  }
+
   limpiarProximas(): void {
     this._proximas.set([]);
   }
 
-  cancelar(id: string): Observable<CitaResponse> {
-    return this.cambiarEstado(id, { estado: 'CANCELADA' });
+  cancelar(id: string, motivo: string): Observable<CitaResponse> {
+    return this.cambiarEstado(id, { estado: 'CANCELADA', motivo });
   }
 
-  completar(id: string): Observable<CitaResponse> {
-    return this.cambiarEstado(id, { estado: 'ATENDIDA' });
+  marcarAtendida(id: string, motivo?: string): Observable<CitaResponse> {
+    return this.cambiarEstado(id, { estado: 'ATENDIDA', motivo });
+  }
+
+  marcarNoAsistio(id: string, motivo: string): Observable<CitaResponse> {
+    return this.cambiarEstado(id, { estado: 'NO_ASISTIO', motivo });
   }
 
   registrarTratamiento(idCita: string, request: CitaTratamientoRequest): Observable<CitaTratamientoResponse> {

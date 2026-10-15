@@ -141,16 +141,25 @@ export class FormularioCitaComponent implements OnInit {
       request.idCliente = valores.idCliente || undefined;
     }
 
-    this.citaService.agendarCita(request).subscribe({
+    this.citaService.crear(request).subscribe({
       next: () => {
         this.isSubmitting.set(false);
         this.notificacionService.exito('Cita agendada correctamente.');
+        this.recargarCampanaSiAplica();
         this.router.navigate(['/citas']);
       },
       error: (error) => {
         this.isSubmitting.set(false);
+        if (error.status === 403) return;
         this.notificacionService.error(error.error?.mensaje || 'Error al agendar la cita.');
       }
     });
+  }
+
+  private recargarCampanaSiAplica(): void {
+    const rol = this.rol();
+    if (rol === 'CLIENTE' || rol === 'DOCTOR') {
+      this.citaService.recargarProximas();
+    }
   }
 }

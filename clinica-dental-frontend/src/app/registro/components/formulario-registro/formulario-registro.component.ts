@@ -6,6 +6,7 @@ import { PacienteRegistroRequest } from '../../models/paciente-registro.model';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 import { PacienteService } from '../../../pacientes/service/paciente.service';
+import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 
 @Component({
   selector: 'app-formulario-registro-cliente',
@@ -20,6 +21,7 @@ export class FormularioRegistroClienteComponent implements OnInit {
   private readonly pacienteService = inject(PacienteService);
   private readonly notificacionService = inject(NotificacionService);
   private readonly router = inject(Router);
+  private readonly notificacionService = inject(NotificacionService);
 
   registroForm: FormGroup;
 
@@ -97,14 +99,13 @@ export class FormularioRegistroClienteComponent implements OnInit {
       this.authService.registro(datosRegistro).subscribe({
         next: (response) => {
           this.isSubmitting = false;
-          this.successMessage = response.mensaje;
-          this.registroForm.reset();
-          this.notificacionService.exito(response.mensaje);
+          this.notificacionService.exito(response.mensaje || 'Registro exitoso');
           this.router.navigate(['']);
         },
         error: (error) => {
           this.isSubmitting = false;
-          this.errorMessage = error.error?.mensaje || 'Error al registrarse. Intenta de nuevo.';
+          if (error.status === 403) return;
+          this.notificacionService.error(error.error?.mensaje || 'Error al registrar.');
         }
       });
     }

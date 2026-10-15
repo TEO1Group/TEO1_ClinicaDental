@@ -198,6 +198,68 @@
             }
           </div>
         </div>
+
+        <!-- Card de bloqueos -->
+@if (puedeVerBloqueos()) {
+  <div class="card shadow-sm border-0 rounded-4 mt-4">
+    <div class="card-body p-4 p-md-5">
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+          <h3 class="fw-bold text-primario mb-1">Bloqueos</h3>
+          <p class="text-muted mb-0">Periodos en los que el doctor no atiende</p>
+        </div>
+        @if (puedeGestionarBloqueos()) {
+          <button class="btn btn-primario text-white" (click)="abrirModalBloqueo()">
+            <i class="bi bi-plus-lg me-2"></i> Agregar bloqueo
+          </button>
+        }
+      </div>
+
+      @if (bloqueos().length > 0) {
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead class="table-light">
+              <tr>
+                <th scope="col">Inicio</th>
+                <th scope="col">Fin</th>
+                <th scope="col">Motivo</th>
+                @if (puedeGestionarBloqueos()) {
+                  <th scope="col" class="text-end">Acciones</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (bloqueo of bloqueos(); track bloqueo.idBloqueo) {
+                <tr>
+                  <td>{{ formatearFechaHora(bloqueo.inicio) }}</td>
+                  <td>{{ formatearFechaHora(bloqueo.fin) }}</td>
+                  <td class="motivo-celda">{{ bloqueo.motivo }}</td>
+                  @if (puedeGestionarBloqueos()) {
+                    <td class="text-end">
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-danger"
+                        (click)="eliminarBloqueo(bloqueo)"
+                        title="Eliminar bloqueo"
+                      >
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <div class="text-center py-4">
+          <i class="bi bi-calendar-x text-muted" style="font-size: 2.5rem;"></i>
+          <p class="text-muted mt-3 mb-0">No hay bloqueos registrados.</p>
+        </div>
+      }
+    </div>
+  </div>
+}
       }
 
     </div>
@@ -285,6 +347,82 @@
               <span class="spinner-border spinner-border-sm me-1"></span>
             }
             Guardar cambios
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Modal de bloqueo -->
+@if (mostrarModalBloqueo) {
+  <div class="modal-backdrop-custom" (click)="cerrarModalBloqueo()"></div>
+  <div class="modal-custom">
+    <div class="modal-content-custom">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold text-primario mb-0">Nuevo Bloqueo</h4>
+        <button class="btn btn-sm btn-outline-secondary" (click)="cerrarModalBloqueo()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      <form [formGroup]="bloqueoForm" (ngSubmit)="guardarBloqueo()" novalidate>
+        <div class="mb-3">
+          <label for="inicio" class="form-label fw-semibold">Inicio <span class="text-danger">*</span></label>
+          <input
+            type="datetime-local"
+            id="inicio"
+            class="form-control"
+            formControlName="inicio"
+            [ngClass]="{ 'is-invalid': bloqueoForm.get('inicio')?.touched && bloqueoForm.get('inicio')?.invalid }"
+          />
+          <div class="invalid-feedback" *ngIf="bloqueoForm.get('inicio')?.hasError('required')">
+            El inicio es obligatorio.
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="fin" class="form-label fw-semibold">Fin <span class="text-danger">*</span></label>
+          <input
+            type="datetime-local"
+            id="fin"
+            class="form-control"
+            formControlName="fin"
+            [ngClass]="{ 'is-invalid': bloqueoForm.get('fin')?.touched && bloqueoForm.get('fin')?.invalid }"
+          />
+          <div class="invalid-feedback" *ngIf="bloqueoForm.get('fin')?.hasError('required')">
+            El fin es obligatorio.
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="motivoBloqueo" class="form-label fw-semibold">Motivo <span class="text-danger">*</span></label>
+          <textarea
+            id="motivoBloqueo"
+            class="form-control"
+            rows="3"
+            maxlength="200"
+            formControlName="motivo"
+            [ngClass]="{ 'is-invalid': bloqueoForm.get('motivo')?.touched && bloqueoForm.get('motivo')?.invalid }"
+            placeholder="Describe el motivo del bloqueo..."
+          ></textarea>
+          <div class="invalid-feedback" *ngIf="bloqueoForm.get('motivo')?.hasError('required')">
+            El motivo es obligatorio.
+          </div>
+          <div class="invalid-feedback" *ngIf="bloqueoForm.get('motivo')?.hasError('maxlength')">
+            Máximo 200 caracteres.
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <button type="button" class="btn btn-outline-secondary" (click)="cerrarModalBloqueo()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primario text-white" [disabled]="isSubmittingBloqueo">
+            @if (isSubmittingBloqueo) {
+              <span class="spinner-border spinner-border-sm me-1"></span>
+            }
+            Crear bloqueo
           </button>
         </div>
       </form>

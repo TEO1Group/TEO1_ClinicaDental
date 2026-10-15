@@ -14,6 +14,7 @@ export interface CitaResponse {
   apellidoDoctor?: string;
   nombrePaciente?: string;
   apellidoPaciente?: string;
+  motivo: string | null;
 }
 
 export interface CitaRequest {
@@ -26,6 +27,7 @@ export interface CitaRequest {
 
 export interface EstadoCitaRequest {
   estado: EstadoCita;
+  motivo?: string;
 }
 
 export type CambioEstadoCitaRequest = EstadoCitaRequest;
@@ -35,4 +37,10 @@ export interface CitaFiltros {
   fecha?: string;
   idDoctor?: string;
   idCliente?: string;
+}
+
+export interface ReprogramarCitaRequest {
+  fecha: string;   // "yyyy-MM-dd"
+  hora: string;    // "HH:mm"
+  motivo: string;  // max 200
 }
