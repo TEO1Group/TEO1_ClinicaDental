@@ -123,14 +123,18 @@ public class CitaController {
             description = "Solo una cita AGENDADA puede cambiar; ATENDIDA, CANCELADA y NO_ASISTIO son finales. "
                     + "CANCELADA la pueden hacer el CLIENTE (solo su cita), SECRETARIA y ADMIN; el DOCTOR no. "
                     + "ATENDIDA y NO_ASISTIO las pueden hacer el DOCTOR (solo sus citas), SECRETARIA y ADMIN; el CLIENTE no. "
-                    + "Cancelar una cita libera el horario para volver a agendarlo."
+                    + "CANCELADA y NO_ASISTIO exigen motivo (maximo 200 caracteres); en ATENDIDA es opcional. El motivo se "
+                    + "devuelve en el campo motivo de la respuesta. El CLIENTE solo puede cancelar con al menos "
+                    + "app.citas.antelacion-cancelacion-horas (24) horas de anticipacion al inicio de la cita. El DOCTOR solo "
+                    + "puede marcar ATENDIDA o NO_ASISTIO desde la hora de inicio de la cita. SECRETARIA y ADMIN no tienen "
+                    + "limites de tiempo. Cancelar una cita libera el horario para volver a agendarlo."
     )
     @ApiResponse(responseCode = "200", description = "Estado actualizado")
-    @ApiResponse(responseCode = "400", description = "Estado invalido o se pidio AGENDADA", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "400", description = "Estado invalido, se pidio AGENDADA, falta el motivo para CANCELADA o NO_ASISTIO, o el motivo supera 200 caracteres", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "403", description = "Rol sin permiso para ese estado o la cita es de otra persona", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "Cita no encontrada", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    @ApiResponse(responseCode = "409", description = "La cita ya esta en un estado final", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "409", description = "La cita ya esta en un estado final, el CLIENTE cancela con menos de 24 horas de anticipacion o el DOCTOR marca la cita antes de su hora de inicio", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<CitaResponse> cambiarEstado(
             @PathVariable UUID id,
             @Valid @RequestBody EstadoCitaRequest request,

@@ -150,6 +150,12 @@ public class CitaService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Una cita no puede volver a AGENDADA");
         }
 
+        String motivo = request.getMotivo() != null && !request.getMotivo().isBlank() ? request.getMotivo().trim() : null;
+        if (motivo == null && nuevoEstado != EstadoCita.ATENDIDA) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Debes indicar el motivo para marcar la cita como " + nuevoEstado);
+        }
+
         Cita cita = citaRepository.findConRelacionesById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cita no encontrada"));
 
@@ -160,11 +166,16 @@ public class CitaService {
                     "La cita ya esta " + cita.getEstado() + " y no puede cambiar de estado");
         }
 
+        validarTiempoCambioEstado(cita, nuevoEstado, authentication);
+
         cita.setEstado(nuevoEstado);
+        cita.setMotivoEstado(motivo);
         return citaMapper.toResponse(citaRepository.save(cita));
     }
 
     // CANCELADA: CLIENTE (su cita), SECRETARIA y ADMIN. ATENDIDA y NO_ASISTIO: DOCTOR (su cita), SECRETARIA y ADMIN.
+    // Reglas de tiempo en validarTiempoCambioEstado: el CLIENTE cancela solo con la antelacion configurada y el DOCTOR
+    // marca ATENDIDA o NO_ASISTIO solo desde la hora de inicio; SECRETARIA y ADMIN no tienen limite.
     private void validarPermisoCambioEstado(Cita cita, EstadoCita nuevoEstado, Authentication authentication) {
         if (veTodasLasCitas(authentication)) {
             return;
@@ -177,6 +188,22 @@ public class CitaService {
 
         if (!permitido) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para marcar esta cita como " + nuevoEstado);
+        }
+    }
+
+    private void validarTiempoCambioEstado(Cita cita, EstadoCita nuevoEstado, Authentication authentication) {
+        if (veTodasLasCitas(authentication)) {
+            return;
+        }
+
+        if (nuevoEstado == EstadoCita.CANCELADA) {
+            disponibilidadCitaService.validarAntelacion(cita, "cancelar");
+            return;
+        }
+
+        if (LocalDateTime.of(cita.getFecha(), cita.getHora()).isAfter(LocalDateTime.now(clock))) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No puedes marcar la cita como " + nuevoEstado + " antes de su hora de inicio");
         }
     }
 

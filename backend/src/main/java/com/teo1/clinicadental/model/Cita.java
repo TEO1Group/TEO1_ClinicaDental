@@ -58,4 +58,7 @@ public class Cita {
     @Column(name = "recordatorio_enviado", nullable = false)
     @Builder.Default
     private boolean recordatorioEnviado = false;
+
+    @Column(name = "motivo_estado", length = 200)
+    private String motivoEstado;
 }

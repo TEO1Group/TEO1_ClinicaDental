@@ -1,5 +1,6 @@
 package com.teo1.clinicadental.service;
 
+import com.teo1.clinicadental.model.Cita;
 import com.teo1.clinicadental.model.DiaSemana;
 import com.teo1.clinicadental.model.Doctor;
 import com.teo1.clinicadental.model.EstadoCita;
@@ -24,17 +25,20 @@ public class DisponibilidadCitaService {
     private final HorarioRepository horarioRepository;
     private final Clock clock;
     private final long duracionMinutos;
+    private final long antelacionHoras;
 
     public DisponibilidadCitaService(
             CitaRepository citaRepository,
             HorarioRepository horarioRepository,
             Clock clock,
-            @Value("${app.citas.duracion-minutos:30}") long duracionMinutos
+            @Value("${app.citas.duracion-minutos:30}") long duracionMinutos,
+            @Value("${app.citas.antelacion-cancelacion-horas:24}") long antelacionHoras
     ) {
         this.citaRepository = citaRepository;
         this.horarioRepository = horarioRepository;
         this.clock = clock;
         this.duracionMinutos = duracionMinutos;
+        this.antelacionHoras = antelacionHoras;
     }
 
     public void validar(Doctor doctor, LocalDate fecha, LocalTime hora, UUID citaExcluidaId) {
@@ -44,6 +48,14 @@ public class DisponibilidadCitaService {
 
         validarDentroDeHorario(doctor.getId(), fecha, hora);
         validarSinSolape(doctor.getId(), fecha, hora, citaExcluidaId);
+    }
+
+    public void validarAntelacion(Cita cita, String accion) {
+        LocalDateTime inicio = LocalDateTime.of(cita.getFecha(), cita.getHora());
+        if (LocalDateTime.now(clock).plusHours(antelacionHoras).isAfter(inicio)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Solo puedes " + accion + " tu cita con al menos " + antelacionHoras + " horas de anticipacion");
+        }
     }
 
     private void validarDentroDeHorario(UUID doctorId, LocalDate fecha, LocalTime inicio) {
