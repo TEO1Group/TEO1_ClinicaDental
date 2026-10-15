@@ -79,6 +79,9 @@ export class ListadoUsuariosComponent implements OnInit {
       },
       error: (error) => {
         this._cargando.set(false);
+        if (error.status === 403) {
+          return;
+        }
         this._error.set(error.error?.mensaje || 'Error al cargar los usuarios.');
       }
     });
@@ -139,7 +142,7 @@ export class ListadoUsuariosComponent implements OnInit {
         this.cerrarModalEditar();
       },
       error: (error) => {
-        this.isSubmittingEditar = false;
+        if (error.status === 403) return;
         this.notificacionService.error(error.error?.mensaje || 'Error al actualizar el usuario.');
       }
     });
@@ -168,6 +171,7 @@ export class ListadoUsuariosComponent implements OnInit {
         this.notificacionService.exito(`Usuario ${nuevoEstado === 'ACTIVO' ? 'activado' : 'desactivado'} correctamente.`);
       },
       error: (error) => {
+        if (error.status === 403) return;
         this.notificacionService.error(error.error?.mensaje || 'Error al cambiar el estado del usuario.');
       }
     });

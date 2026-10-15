@@ -62,6 +62,7 @@
                     <th scope="col">Doctor</th>
                     <th scope="col">Paciente</th>
                     <th scope="col">Estado</th>
+                    <th scope="col">Motivo</th>
                     <th scope="col" class="text-end">Acciones</th>
                   </tr>
                 </thead>
@@ -73,19 +74,25 @@
                       <td>{{ nombreDoctor(cita) }}</td>
                       <td>{{ nombrePaciente(cita) }}</td>
                       <td><span class="badge" [class]="claseEstado(cita.estado)">{{ etiquetaEstado(cita.estado) }}</span></td>
+                      <td class="motivo-celda">{{ cita.motivo || '—' }}</td>
                       <td class="text-end text-nowrap">
+                        @if (puedeReprogramar(cita)) {
+                          <button type="button" class="btn btn-sm btn-outline-primary me-1" title="Reprogramar cita" (click)="abrirModalReprogramar(cita)">
+                            <i class="bi bi-calendar-event"></i><span class="visually-hidden">Reprogramar cita</span>
+                          </button>
+                        }
                         @if (puedeCancelar(cita)) {
-                          <button type="button" class="btn btn-sm btn-outline-danger me-1" title="Cancelar cita" (click)="cambiarEstado(cita, 'CANCELADA')">
+                          <button type="button" class="btn btn-sm btn-outline-danger me-1" title="Cancelar cita" (click)="abrirModalMotivo(cita, 'CANCELADA')">
                             <i class="bi bi-x-circle"></i><span class="visually-hidden">Cancelar cita</span>
                           </button>
                         }
                         @if (puedeMarcarAtendida(cita)) {
-                          <button type="button" class="btn btn-sm btn-outline-success me-1" title="Marcar como atendida" (click)="cambiarEstado(cita, 'ATENDIDA')">
+                          <button type="button" class="btn btn-sm btn-outline-success me-1" title="Marcar como atendida" (click)="abrirModalMotivo(cita, 'ATENDIDA')">
                             <i class="bi bi-check-circle"></i><span class="visually-hidden">Marcar como atendida</span>
                           </button>
                         }
                         @if (puedeMarcarNoAsistio(cita)) {
-                          <button type="button" class="btn btn-sm btn-outline-warning" title="Marcar como no asistida" (click)="cambiarEstado(cita, 'NO_ASISTIO')">
+                          <button type="button" class="btn btn-sm btn-outline-warning" title="Marcar como no asistida" (click)="abrirModalMotivo(cita, 'NO_ASISTIO')">
                             <i class="bi bi-person-x"></i><span class="visually-hidden">Marcar como no asistida</span>
                           </button>
                         }
@@ -108,3 +115,125 @@
     </div>
   </div>
 </div>
+
+<!-- Modal de motivo -->
+@if (motivoModalAbierto()) {
+  <div class="modal-backdrop-custom" (click)="cerrarModalMotivo()"></div>
+  <div class="modal-custom">
+    <div class="modal-content-custom">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold text-primario mb-0">
+          {{ etiquetaEstado(motivoModalEstado()!) }}
+        </h4>
+        <button class="btn btn-sm btn-outline-secondary" (click)="cerrarModalMotivo()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      @if (motivoModalError()) {
+        <div class="alert alert-danger" role="alert">{{ motivoModalError() }}</div>
+      }
+
+      <div class="mb-3">
+        <label for="motivo" class="form-label fw-semibold">
+          Motivo
+          @if (esMotivoObligatorio(motivoModalEstado()!)) {
+            <span class="text-danger">*</span>
+          }
+        </label>
+        <textarea
+          id="motivo"
+          class="form-control"
+          rows="3"
+          maxlength="200"
+          [value]="motivoModalTexto()"
+          (input)="motivoModalTexto.set($any($event.target).value)"
+          placeholder="Describe el motivo..."
+        ></textarea>
+        <small class="text-muted">{{ motivoModalTexto().length }}/200</small>
+      </div>
+
+      <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-outline-secondary" (click)="cerrarModalMotivo()">
+          Cancelar
+        </button>
+        <button type="button" class="btn btn-primario text-white" (click)="confirmarCambioEstado()">
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- Modal de reprogramar -->
+@if (reprogramarModalAbierto()) {
+  <div class="modal-backdrop-custom" (click)="cerrarModalReprogramar()"></div>
+  <div class="modal-custom">
+    <div class="modal-content-custom">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold text-primario mb-0">Reprogramar cita</h4>
+        <button class="btn btn-sm btn-outline-secondary" (click)="cerrarModalReprogramar()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      @if (reprogramarError()) {
+        <div class="alert alert-danger" role="alert">{{ reprogramarError() }}</div>
+      }
+
+      <div class="mb-3">
+        <label for="reprogramarFecha" class="form-label fw-semibold">
+          Nueva fecha <span class="text-danger">*</span>
+        </label>
+        <input
+          id="reprogramarFecha"
+          type="date"
+          class="form-control"
+          [value]="reprogramarFecha()"
+          (input)="reprogramarFecha.set($any($event.target).value)"
+        />
+      </div>
+
+      <div class="mb-3">
+        <label for="reprogramarHora" class="form-label fw-semibold">
+          Nueva hora <span class="text-danger">*</span>
+        </label>
+        <input
+          id="reprogramarHora"
+          type="time"
+          class="form-control"
+          [value]="reprogramarHora()"
+          (input)="reprogramarHora.set($any($event.target).value)"
+        />
+      </div>
+
+      <div class="mb-3">
+        <label for="reprogramarMotivo" class="form-label fw-semibold">
+          Motivo <span class="text-danger">*</span>
+        </label>
+        <textarea
+          id="reprogramarMotivo"
+          class="form-control"
+          rows="3"
+          maxlength="200"
+          [value]="reprogramarMotivo()"
+          (input)="reprogramarMotivo.set($any($event.target).value)"
+          placeholder="Describe el motivo de la reprogramación..."
+        ></textarea>
+        <small class="text-muted">{{ reprogramarMotivo().length }}/200</small>
+      </div>
+
+      <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-outline-secondary" (click)="cerrarModalReprogramar()">
+          Cancelar
+        </button>
+        <button type="button" class="btn btn-primario text-white" (click)="confirmarReprogramar()" [disabled]="reprogramarEnviando()">
+          @if (reprogramarEnviando()) {
+            <span class="spinner-border spinner-border-sm me-1"></span>
+          }
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+}

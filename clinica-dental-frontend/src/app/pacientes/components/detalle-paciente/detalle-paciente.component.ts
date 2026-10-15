@@ -77,6 +77,7 @@ export class DetallePacienteComponent implements OnInit {
         window.history.back();
       },
       error: (error) => {
+        if (error.status === 403) return;
         this.notificacionService.error(error.error?.mensaje || 'Error al desactivar el paciente.');
       }
     });

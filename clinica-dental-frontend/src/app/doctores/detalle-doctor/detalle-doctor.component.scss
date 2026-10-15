@@ -70,3 +70,10 @@
   overflow-y: auto;
   box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.15);
 }
+
+.motivo-celda {
+  max-width: 300px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

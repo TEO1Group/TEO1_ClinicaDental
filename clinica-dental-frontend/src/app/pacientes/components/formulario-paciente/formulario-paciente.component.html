@@ -20,12 +20,6 @@
             </div>
           }
 
-          @if (mensaje()) {
-            <div class="alert alert-success" role="status">
-              <i class="bi bi-check-circle-fill me-2"></i>{{ mensaje() }}
-            </div>
-          }
-
           @if (cargando()) {
             <div class="text-center py-5">
               <div class="spinner-border text-primario" role="status">
