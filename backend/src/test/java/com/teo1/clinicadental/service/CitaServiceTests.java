@@ -73,8 +73,10 @@ class CitaServiceTests {
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(ZonedDateTime.of(2026, 10, 8, 8, 0, 0, 0, ZONA).toInstant(), ZONA);
+        DisponibilidadCitaService disponibilidadCitaService =
+                new DisponibilidadCitaService(citaRepository, horarioRepository, clock, 30);
         citaService = new CitaService(
-                citaRepository, clienteRepository, doctorRepository, horarioRepository, new CitaMapper(), clock, 30);
+                citaRepository, clienteRepository, doctorRepository, disponibilidadCitaService, new CitaMapper(), clock);
 
         usuarioClienteId = UUID.randomUUID();
         doctor = Doctor.builder()
