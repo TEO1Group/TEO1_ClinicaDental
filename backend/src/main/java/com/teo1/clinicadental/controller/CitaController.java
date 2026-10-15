@@ -47,14 +47,15 @@ public class CitaController {
                     + "ADMIN y SECRETARIA deben indicar idCliente. El doctor y el paciente deben estar activos y el paciente "
                     + "no puede estar en lista negra. La fecha y hora deben ser futuras, la cita completa (duracion configurada "
                     + "en app.citas.duracion-minutos) debe caber en un horario del doctor para ese dia y no puede solaparse "
-                    + "con otra cita no cancelada del mismo doctor; dos citas que solo se tocan en el borde si se permiten."
+                    + "con otra cita no cancelada del mismo doctor; dos citas que solo se tocan en el borde si se permiten. "
+                    + "Tampoco puede cruzarse con un bloqueo del doctor."
     )
     @ApiResponse(responseCode = "201", description = "Cita agendada")
     @ApiResponse(responseCode = "400", description = "Datos invalidos, falta idCliente o la fecha y hora ya pasaron", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "403", description = "Rol sin permiso para agendar o paciente en lista negra", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "Doctor o paciente no encontrado", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    @ApiResponse(responseCode = "409", description = "Doctor o paciente inactivo, cita fuera del horario del doctor o solapada con otra cita", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "409", description = "Doctor o paciente inactivo, cita fuera del horario del doctor, dentro de un bloqueo del doctor o solapada con otra cita", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<CitaResponse> crearCita(
             @Valid @RequestBody CitaRequest request,
             Authentication authentication
