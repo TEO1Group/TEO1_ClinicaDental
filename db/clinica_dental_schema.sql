@@ -3,6 +3,7 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto"; 
 DROP TABLE IF EXISTS pago CASCADE;
 DROP TABLE IF EXISTS valoracion CASCADE;
+DROP TABLE IF EXISTS bloqueo_doctor CASCADE;
 DROP TABLE IF EXISTS cita_reprogramacion CASCADE;
 DROP TABLE IF EXISTS cita_tratamiento CASCADE;
 DROP TABLE IF EXISTS tratamiento_medicamento CASCADE;
@@ -92,6 +93,22 @@ CREATE TABLE tratamiento (
     costo            NUMERIC(10,2) NOT NULL CHECK (costo >= 0)
 );
 
+-- Catalogo inicial de tratamientos (el costo es el precio sugerido; se puede ajustar al registrarlo en la cita)
+INSERT INTO tratamiento (nombre, descripcion, duracion_minutos, costo)
+SELECT * FROM (VALUES
+    ('Consulta y diagnóstico', 'Evaluación general y plan de tratamiento', 30, 150.00),
+    ('Limpieza dental', 'Profilaxis: remoción de placa y sarro', 45, 300.00),
+    ('Aplicación de flúor', 'Aplicación tópica de flúor', 20, 150.00),
+    ('Sellantes de fosas y fisuras', 'Sellado preventivo por pieza', 30, 200.00),
+    ('Radiografía periapical', 'Radiografía de una pieza dental', 15, 100.00),
+    ('Resina (empaste)', 'Restauración con resina por pieza', 45, 400.00),
+    ('Extracción simple', 'Extracción de una pieza dental', 30, 350.00),
+    ('Extracción de muela del juicio', 'Extracción quirúrgica de tercer molar', 60, 1200.00),
+    ('Endodoncia', 'Tratamiento de conducto', 90, 1800.00),
+    ('Blanqueamiento dental', 'Blanqueamiento en consultorio', 60, 1500.00)
+) AS catalogo (nombre, descripcion, duracion_minutos, costo)
+WHERE NOT EXISTS (SELECT 1 FROM tratamiento);
+
 CREATE TABLE medicamento (
     id_medicamento    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     nombre            VARCHAR(100) NOT NULL,
@@ -117,7 +134,9 @@ CREATE TABLE cita (
     estado      VARCHAR(15) NOT NULL DEFAULT 'AGENDADA' CHECK (estado IN
                     ('AGENDADA','ATENDIDA','CANCELADA','NO_ASISTIO')),
     notas       TEXT,
-    recordatorio_enviado BOOLEAN NOT NULL DEFAULT FALSE
+    recordatorio_enviado BOOLEAN NOT NULL DEFAULT FALSE,
+    -- Motivo del ultimo cambio de estado (obligatorio al cancelar o marcar NO_ASISTIO)
+    motivo_estado VARCHAR(200)
 );
 
 -- Evita que un mismo doctor tenga dos citas activas en la misma fecha y hora.
@@ -125,10 +144,15 @@ CREATE TABLE cita (
 CREATE UNIQUE INDEX uq_cita_doctor_slot ON cita (id_doctor, fecha, hora)
     WHERE estado <> 'CANCELADA';
 
+-- Tratamientos realizados en una cita. Una cita puede tener el mismo tratamiento mas de una vez
+-- (por ejemplo, dos extracciones), por eso tiene su propio id.
 CREATE TABLE cita_tratamiento (
-    id_cita         UUID NOT NULL REFERENCES cita(id_cita) ON DELETE CASCADE,
-    id_tratamiento  UUID NOT NULL REFERENCES tratamiento(id_tratamiento),
-    PRIMARY KEY (id_cita, id_tratamiento)
+    id_cita_tratamiento  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_cita              UUID NOT NULL REFERENCES cita(id_cita) ON DELETE CASCADE,
+    id_tratamiento       UUID NOT NULL REFERENCES tratamiento(id_tratamiento),
+    costo                NUMERIC(10,2) NOT NULL CHECK (costo >= 0),
+    observaciones        TEXT,
+    fecha_registro       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE cita_reprogramacion (
@@ -138,8 +162,21 @@ CREATE TABLE cita_reprogramacion (
     hora_anterior      TIME NOT NULL,
     fecha_nueva        DATE NOT NULL,
     hora_nueva         TIME NOT NULL,
-    motivo             VARCHAR(200),
-    fecha_cambio       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    motivo             VARCHAR(200) NOT NULL,
+    fecha_cambio       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    reprogramado_por   UUID REFERENCES usuario(id_usuario) ON DELETE SET NULL
+);
+
+-- Periodos en los que un doctor no atiende: no se puede agendar ni reprogramar dentro de ellos
+CREATE TABLE bloqueo_doctor (
+    id_bloqueo      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_doctor       UUID NOT NULL REFERENCES doctor(id_doctor) ON DELETE CASCADE,
+    inicio          TIMESTAMP NOT NULL,
+    fin             TIMESTAMP NOT NULL,
+    motivo          VARCHAR(200) NOT NULL,
+    creado_por      UUID REFERENCES usuario(id_usuario) ON DELETE SET NULL,
+    fecha_creacion  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CHECK (fin > inicio)
 );
 
 
@@ -168,3 +205,6 @@ CREATE INDEX idx_usuario_rol      ON usuario(id_rol);
 CREATE INDEX idx_horario_doctor   ON horario(id_doctor);
 CREATE INDEX idx_reprog_cita      ON cita_reprogramacion(id_cita);
 CREATE INDEX idx_historial_cliente ON historial_clinico(id_cliente);
+CREATE INDEX idx_cita_tratamiento_cita ON cita_tratamiento(id_cita);
+CREATE INDEX idx_bloqueo_doctor   ON bloqueo_doctor(id_doctor, inicio);
+CREATE UNIQUE INDEX uq_tratamiento_nombre ON tratamiento(nombre);
