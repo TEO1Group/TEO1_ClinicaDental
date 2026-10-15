@@ -72,6 +72,112 @@
               </form>
             }
 
+            <section class="tratamientos-seccion border rounded-3 p-3 mb-4">
+              <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
+                <div>
+                  <h4 class="fw-bold text-primario mb-1">Tratamientos realizados</h4>
+                  <p class="text-muted mb-0">Tratamientos registrados en las citas atendidas</p>
+                </div>
+                <span class="badge text-bg-light align-self-start">Total: Q {{ totalTratamientos() | number:'1.2-2' }}</span>
+              </div>
+
+              @if (puedeRegistrarTratamiento()) {
+                <form [formGroup]="tratamientoForm" (ngSubmit)="registrarTratamiento()" class="bg-light rounded-3 p-3 mb-4" novalidate>
+                  <h5 class="fw-semibold mb-3">Registrar tratamiento</h5>
+                  @if (cargandoFormularioTratamiento()) {
+                    <p class="text-muted mb-0">Cargando citas atendidas y tratamientos...</p>
+                  } @else {
+                    <div class="row g-3">
+                      <div class="col-12 col-md-6">
+                        <label for="idCita" class="form-label fw-semibold">Cita atendida</label>
+                        <select id="idCita" class="form-select" formControlName="idCita">
+                          <option value="">Selecciona una cita</option>
+                          @for (cita of citasAtendidas(); track cita.idCita) {
+                            <option [value]="cita.idCita">{{ cita.fecha }} {{ cita.hora.slice(0, 5) }} - {{ cita.nombreDoctor || cita.idDoctor }} {{ cita.apellidoDoctor || '' }}</option>
+                          }
+                        </select>
+                        @if (tratamientoForm.controls.idCita.invalid && tratamientoForm.controls.idCita.touched) {
+                          <div class="invalid-feedback d-block">Selecciona una cita atendida.</div>
+                        }
+                      </div>
+                      <div class="col-12 col-md-6">
+                        <label for="idTratamiento" class="form-label fw-semibold">Tratamiento</label>
+                        <select id="idTratamiento" class="form-select" formControlName="idTratamiento">
+                          <option value="">Selecciona un tratamiento</option>
+                          @for (tratamiento of catalogoTratamientos(); track tratamiento.idTratamiento) {
+                            <option [value]="tratamiento.idTratamiento">{{ tratamiento.nombre }} - Q {{ tratamiento.costo | number:'1.2-2' }}</option>
+                          }
+                        </select>
+                        @if (tratamientoForm.controls.idTratamiento.invalid && tratamientoForm.controls.idTratamiento.touched) {
+                          <div class="invalid-feedback d-block">Selecciona un tratamiento.</div>
+                        }
+                      </div>
+                      <div class="col-12 col-md-6">
+                        <label for="costo" class="form-label fw-semibold">Costo cobrado</label>
+                        <div class="input-group">
+                          <span class="input-group-text">Q</span>
+                          <input id="costo" type="number" min="0" step="0.01" class="form-control" formControlName="costo" placeholder="Usar costo sugerido" />
+                        </div>
+                        @if (tratamientoForm.controls.costo.invalid && tratamientoForm.controls.costo.touched) {
+                          <div class="invalid-feedback d-block">El costo debe ser un número válido y no negativo.</div>
+                        }
+                      </div>
+                      <div class="col-12 col-md-6">
+                        <label for="observaciones" class="form-label fw-semibold">Observaciones</label>
+                        <input id="observaciones" type="text" class="form-control" formControlName="observaciones" maxlength="1000" />
+                      </div>
+                    </div>
+                    <div class="d-flex justify-content-end mt-3">
+                      <button type="submit" class="btn btn-primario text-white" [disabled]="guardando()">
+                        @if (guardando()) {
+                          <span class="spinner-border spinner-border-sm me-2"></span>
+                        }
+                        <i class="bi bi-plus-lg me-2"></i>Registrar tratamiento
+                      </button>
+                    </div>
+                  }
+                </form>
+              }
+
+              @if (cargandoTratamientos()) {
+                <div class="text-center py-3">
+                  <div class="spinner-border spinner-border-sm text-primario" role="status">
+                    <span class="visually-hidden">Cargando tratamientos...</span>
+                  </div>
+                </div>
+              } @else if (tratamientos().length > 0) {
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th>Fecha</th>
+                        <th>Doctor</th>
+                        <th>Tratamiento</th>
+                        <th class="text-end">Costo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (tratamiento of tratamientos(); track tratamiento.idCitaTratamiento) {
+                        <tr>
+                          <td>{{ tratamiento.fechaCita | date:'dd/MM/yyyy' }}</td>
+                          <td>{{ tratamiento.nombreDoctor }} {{ tratamiento.apellidoDoctor }}</td>
+                          <td>
+                            <div>{{ tratamiento.nombreTratamiento }}</div>
+                            @if (tratamiento.observaciones) {
+                              <small class="text-muted">{{ tratamiento.observaciones }}</small>
+                            }
+                          </td>
+                          <td class="text-end">Q {{ tratamiento.costo | number:'1.2-2' }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              } @else {
+                <p class="text-muted mb-0">No hay tratamientos registrados.</p>
+              }
+            </section>
+
             @if (historial().length > 0) {
               <div class="list-group list-group-flush">
                 @for (registro of historial(); track registro.idHistorial) {

@@ -8,6 +8,7 @@ import {
   CitaResponse,
   EstadoCitaRequest
 } from '../models/cita.model';
+import { CitaTratamientoRequest, CitaTratamientoResponse } from '../../pacientes/models/tratamiento.model';
 
 @Injectable({ providedIn: 'root' })
 export class CitaService extends ApiService {
@@ -63,5 +64,9 @@ export class CitaService extends ApiService {
 
   completar(id: string): Observable<CitaResponse> {
     return this.cambiarEstado(id, { estado: 'ATENDIDA' });
+  }
+
+  registrarTratamiento(idCita: string, request: CitaTratamientoRequest): Observable<CitaTratamientoResponse> {
+    return this.http.post<CitaTratamientoResponse>(`${this.citasUrl}/${idCita}/tratamientos`, request);
   }
 }
