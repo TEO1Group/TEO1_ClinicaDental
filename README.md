@@ -1,6 +1,6 @@
 # TEO1_ClinicaDental
 
-Sistema web para una clinica dental: registro de pacientes, doctores y horarios, agendamiento de citas sin solapamiento y recordatorios de citas.
+Sistema web para una clinica dental: registro de pacientes, doctores y horarios, agendamiento y reprogramación de citas sin solapamiento, bloqueos de doctor, tratamientos por cita con su costo, reporte de citas por doctor y recordatorios de citas.
 
 ## Requisitos
 
@@ -113,10 +113,20 @@ El archivo `.env` contiene secretos y **no se sube a Git** (está en `.gitignore
 | `SMTP_USERNAME` | Usuario SMTP | No |
 | `SMTP_PASSWORD` | Contraseña SMTP | No |
 | `SMTP_FROM` | Remitente de los correos | No (vacío desactiva los correos) |
+| `RECORDATORIO_CRON` | Cuándo se envían los correos de recordatorio, en formato cron de Spring (segundo minuto hora día mes día-semana), en hora de `America/Guatemala`. Para una demo, cada 2 minutos: `0 */2 * * * *` | No (por defecto `0 0 7 * * *`, todos los días a las 07:00) |
 | `BACKEND_IMAGE` | Imagen del backend. Vacía en local (se construye desde `./backend`); en EC2 la escribe `deploy-ec2.sh` | No |
 | `FRONTEND_IMAGE` | Imagen del frontend. Vacía en local (se construye desde `./clinica-dental-frontend`); en EC2 la escribe `deploy-ec2.sh` | No |
 
-Valores fijos en `backend/src/main/resources/application.properties` (no son variables de entorno): zona horaria `America/Guatemala`, duración de cada cita de 30 minutos y envío diario de recordatorios por correo a las 07:00.
+Valores fijos en `backend/src/main/resources/application.properties` (no son variables de entorno):
+
+| Propiedad | Valor | Uso |
+|-----------|-------|-----|
+| `app.zona-horaria` | `America/Guatemala` | Hora "actual" del backend para validar fechas, plazos y el cron del recordatorio |
+| `app.citas.duracion-minutos` | `30` | Duración de cada cita, para el horario, los solapamientos y los bloqueos |
+| `app.citas.antelacion-cancelacion-horas` | `24` | Anticipación mínima con la que el paciente puede cancelar o reprogramar su cita |
+| `app.citas.recordatorio-cron` | `${RECORDATORIO_CRON:0 0 7 * * *}` | Horario del correo de recordatorio; se cambia con la variable `RECORDATORIO_CRON` |
+
+El correo de recordatorio avisa las citas Agendadas que empiezan en las próximas 24 horas, una sola vez por cita. La campana del frontend consulta `GET /citas/proximas`, que por defecto mira 48 horas y acepta de 1 a 72.
 
 ## Primer ingreso y cómo probarlo
 
@@ -140,14 +150,52 @@ Prueba completa en http://localhost:4200 (o en la URL de EC2):
 6. Solapamiento: entra como el segundo paciente y pide el mismo doctor, mañana, a las 09:15. Se rechaza con "El doctor ya tiene una cita agendada en ese horario". A las 09:30 sí se acepta, porque empieza justo cuando termina la anterior.
 7. Fuera de horario: pide las 11:45 (terminaría a las 12:15) o un día sin horario. Se rechaza con "La cita no cabe dentro del horario de atencion del doctor".
 8. Como SECRETARIA (o ADMIN), en **Citas > Nueva Cita** se elige también el paciente.
-9. Cancelar: en **Citas**, el paciente cancela su cita de las 09:30. La hora queda libre y se puede volver a agendar.
-10. Atendida o no asistió: entra como el doctor o la secretaria; en **Citas** el doctor ve solo sus citas y la secretaria ve todas, y ambos pueden marcarlas como Atendida o No asistió. Solo las citas Agendadas cambian de estado; los demás estados son finales.
-11. Campana de recordatorios: como paciente o como doctor, la campana del encabezado muestra las citas Agendadas de las próximas 48 horas y, al iniciar sesión, aparece un aviso con cuántas hay. La campana se actualiza al iniciar sesión o al recargar la página. ADMIN y SECRETARIA no ven la campana ni reciben recordatorios.
-12. Swagger: abre la URL de Swagger UI, ejecuta `POST /auth/login`, copia el valor de `token`, pulsa **Authorize** y pégalo (solo el token, sin la palabra `Bearer`). Después prueba, por ejemplo, `GET /citas/proximas`.
+9. Cancelar con motivo: como SECRETARIA, en **Citas**, pulsa cancelar en la cita de las 09:30 de mañana. El motivo es obligatorio: si lo dejas vacío se rechaza. Con motivo la cita queda Cancelada, el motivo aparece en la columna **Motivo** y la hora queda libre para volver a agendarla.
+10. Atendida o no asistió: entra como el doctor o la secretaria; en **Citas** el doctor ve solo sus citas y la secretaria ve todas, y ambos pueden marcarlas como Atendida o No asistió. No asistió pide motivo obligatorio; en Atendida el motivo es opcional. El doctor solo puede marcarlas desde la hora de inicio de la cita; antes recibe "No puedes marcar la cita como ATENDIDA antes de su hora de inicio". La secretaria y el admin no tienen esa restricción. Solo las citas Agendadas cambian de estado; los demás estados son finales.
+11. Plazo de 24 horas: como ADMIN o SECRETARIA, agrega al doctor un horario de 08:00 a 12:00 para el día que cae dentro de 3 días. Como el primer paciente, agenda una cita dentro de 3 días a las 09:00 y otra dentro de 3 días a las 11:00; cancela la de las 11:00 con un motivo y se acepta, porque falta más de 24 horas. Si faltan menos de 24 horas para su cita de mañana a las 09:00 (por ejemplo, si ya pasaron las 09:00 de hoy), al cancelarla recibe "Solo puedes cancelar tu cita con al menos 24 horas de anticipacion". La secretaria sí puede cancelar esa misma cita.
+12. Reprogramar: como el primer paciente, reprograma su cita de dentro de 3 días de las 09:00 a las 10:00 con un motivo. La cita queda en la nueva hora y la de las 09:00 queda libre. Casos que se rechazan: sin motivo; la misma fecha y hora ("La nueva fecha y hora son iguales a las actuales"); una hora ocupada por otra cita del doctor; una hora fuera del horario; una fecha ya pasada; y, como paciente, una cita a la que le faltan menos de 24 horas ("Solo puedes reprogramar tu cita con al menos 24 horas de anticipacion"). El doctor no ve el botón de reprogramar.
+13. Bloqueo de doctor: como SECRETARIA (o ADMIN), en **Doctores**, abre el doctor y en **Bloqueos** crea uno para dentro de 3 días de 08:00 a 10:00 con un motivo. Se acepta aunque la cita reprogramada empiece a las 10:00, porque los bordes no se cruzan. Como el segundo paciente, intenta agendar ese día a las 08:30 o a las 09:30: se rechaza con "El doctor no atiende en ese horario: <motivo>"; reprogramar una cita a esa franja también se rechaza. Intenta crear otro bloqueo de 09:30 a 10:30 ese mismo día: se rechaza porque el doctor tiene una cita agendada en ese periodo y primero hay que reprogramarla o cancelarla. Al eliminar el bloqueo, la franja vuelve a poder agendarse. El doctor ve sus propios bloqueos pero no puede crearlos ni borrarlos; el paciente no los ve.
+14. Tratamientos en el historial: solo se registran en citas **Atendidas**, y la API no deja crear citas con fecha u hora pasada. Para tener una cita atendida: carga los [datos de demo](#datos-de-demo), que ya traen citas atendidas de ayer y de hoy con tratamientos; o marca una cita Agendada como Atendida siendo SECRETARIA o ADMIN, que no tienen restricción de hora; o espera a que llegue su hora de inicio y márcala como su doctor. Luego, como el doctor de esa cita, entra a **Pacientes**, abre el historial del paciente y en **Registrar tratamiento** elige la cita atendida y un tratamiento del catálogo. Si dejas vacío el costo se usa el precio del catálogo; puedes escribir otro costo y observaciones. La tabla **Tratamientos realizados** muestra cada tratamiento con su costo y el **Total**. Registrar en una cita que no está Atendida devuelve 409, y otro doctor recibe 403. La secretaria y el admin ven los tratamientos y el total, pero no los registran.
+15. Reporte: como ADMIN o SECRETARIA, abre **Reportes**. Por defecto toma del primer al último día del mes actual; pulsa **Generar reporte**. Aparece una fila por doctor activo con sus citas Agendadas, Atendidas, Canceladas, No asistió y el total del periodo, contando ambas fechas extremas. Si la fecha inicial es posterior a la final se rechaza. DOCTOR y CLIENTE no ven la opción.
+16. Campana de recordatorios: como paciente o como doctor, la campana del encabezado muestra las citas Agendadas de las próximas 48 horas y, al iniciar sesión, aparece un aviso con cuántas hay. La campana se actualiza al iniciar sesión, al recargar la página y después de cambiar el estado o reprogramar una cita. ADMIN y SECRETARIA no ven la campana ni reciben recordatorios.
+17. Swagger: abre la URL de Swagger UI, ejecuta `POST /auth/login`, copia el valor de `token`, pulsa **Authorize** y pégalo (solo el token, sin la palabra `Bearer`). Después prueba, por ejemplo, `GET /citas/proximas`, `GET /tratamientos` o `GET /reportes/citas-por-doctor` con `desde` y `hasta` en formato `yyyy-MM-dd`.
+
+## Datos de demo
+
+`db/demo/datos-demo.sql` llena una base con datos de prueba para la demo. Necesita una base que ya tenga `db/clinica_dental_schema.sql` o las migraciones aplicadas, incluido el catálogo inicial de tratamientos (el script busca los tratamientos por nombre). Las fechas se calculan al correrlo, con el día de hoy en `America/Guatemala`, así que conviene cargarlo el mismo día de la demo.
+
+Qué crea (todos los ids empiezan con `de000000-`):
+
+- 2 doctores: Lucía Morales (Odontología general, horario de 08:00 a 18:00) y Andrés Castillo (Ortodoncia, de 09:00 a 17:00), con horario todos los días de la semana.
+- 1 secretaria: Sofía Herrera.
+- 4 pacientes: Ana López, Luis Pérez, María Gómez y Jorge Ruiz (este último en lista negra).
+- Citas de ayer, hoy y mañana en todos los estados: dos citas Atendidas (ayer de Ana López y hoy de María Gómez) con tratamientos registrados, una No asistió con motivo, una Cancelada con motivo y varias Agendadas.
+- Una reprogramación, dos registros de historial clínico y un bloqueo del Dr. Castillo pasado mañana de 08:00 a 13:00.
+
+Los correos de los usuarios terminan en `@clinica-demo.test`; al terminar, el script imprime la lista de correos y roles. La contraseña no está en el repositorio: se pasa al ejecutar con la variable `clave_demo`, se guarda cifrada con BCrypt y es la misma para todos los usuarios de demo. Usa una contraseña que cumpla la regla de la sección anterior. Con la variable opcional `correo_demo` se reemplaza el correo de Ana López para recibir en un buzón real el recordatorio de su cita de mañana.
+
+Con Docker, desde la raíz del repositorio (la contraseña se pide sin mostrarla y no queda en el historial del shell):
+
+```bash
+read -rsp 'Contraseña de demo: ' CLAVE_DEMO; echo
+docker compose exec -T -e CLAVE_DEMO="$CLAVE_DEMO" db sh -lc \
+  'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -v clave_demo="$CLAVE_DEMO"' \
+  < db/demo/datos-demo.sql
+unset CLAVE_DEMO
+```
+
+Para usar `correo_demo`, agrega `-v correo_demo='<tu correo>'` dentro del comando `psql`.
+
+Advertencias:
+
+- Se puede correr varias veces: primero borra los 7 usuarios de demo por su id y, en cascada, sus perfiles, horarios, citas, tratamientos de cita, reprogramaciones, historial y bloqueos. No toca otros datos.
+- Falla si en la base ya existe, con otro id, alguno de sus correos o DPI. Toda la carga va en una transacción: si algo falla no queda nada a medias.
+- Si el catálogo de tratamientos no tiene los nombres esperados, las citas atendidas quedan sin tratamientos.
+- Pensado para bases de desarrollo o de demo. En EC2 agrega usuarios y citas ficticios que aparecen en los listados y en el reporte; córrelo allí solo con autorización y después de aplicar las migraciones.
 
 ## Roles y permisos
 
-Según `SecurityConfig` y `CitaService`:
+Según `SecurityConfig` y los servicios (`CitaService`, `ReprogramacionCitaService`, `BloqueoDoctorService`, `TratamientoService` y `ReporteCitaService`):
 
 | Acción | ADMIN | SECRETARIA | DOCTOR | CLIENTE |
 |--------|-------|------------|--------|---------|
@@ -163,8 +211,16 @@ Según `SecurityConfig` y `CitaService`:
 | Crear, editar y eliminar horarios | Sí | Sí | Solo los suyos | No |
 | Agendar citas | Sí, eligiendo paciente | Sí, eligiendo paciente | No | Sí, solo para sí mismo |
 | Ver citas | Todas | Todas | Solo las suyas | Solo las suyas |
-| Cancelar una cita | Cualquiera | Cualquiera | No | Solo las suyas |
-| Marcar Atendida o No asistió | Cualquiera | Cualquiera | Solo las suyas | No |
+| Cancelar una cita (motivo obligatorio) | Cualquiera, sin plazo | Cualquiera, sin plazo | No | Solo las suyas, con al menos 24 h de anticipación |
+| Marcar Atendida (motivo opcional) o No asistió (motivo obligatorio) | Cualquiera, a cualquier hora | Cualquiera, a cualquier hora | Solo las suyas, desde la hora de inicio | No |
+| Reprogramar una cita (motivo obligatorio) | Cualquiera, sin plazo | Cualquiera, sin plazo | No | Solo las suyas, con al menos 24 h de anticipación |
+| Crear y eliminar bloqueos de un doctor | Sí | Sí | No | No |
+| Ver los bloqueos de un doctor | Todos | Todos | Solo los suyos | No |
+| Ver el catálogo de tratamientos | Sí | Sí | Sí | No |
+| Registrar tratamientos en una cita Atendida | No | No | Solo en sus citas | No |
+| Ver los tratamientos de una cita | Sí | Sí | Solo de sus citas | No |
+| Ver los tratamientos y el total de un paciente (historial) | Sí | Sí | Sí | No |
+| Reporte de citas por doctor | Sí | Sí | No | No |
 | Recordatorios en la campana y aviso al ingresar (`GET /citas/proximas`) | No | No | Sus citas de las próximas 48 h | Sus citas de las próximas 48 h |
 | Correo de recordatorio | No lo recibe | No lo recibe | No lo recibe | Lo recibe el paciente de la cita |
 
@@ -172,9 +228,32 @@ Una cita solo puede cambiar de estado mientras está Agendada. Al agendar tambi�
 
 El token se valida en cada petición; si un usuario se desactiva, su token deja de servir al momento.
 
+## Reglas de negocio de citas (Sprint 5)
+
+Son los valores acordados por el equipo para el Product Owner. Los plazos se calculan con la hora de `America/Guatemala` (`app.zona-horaria`).
+
+- **Plazo para cancelar y reprogramar:** el paciente (CLIENTE) solo puede cancelar o reprogramar su cita si faltan al menos 24 horas para su inicio; con exactamente 24 horas se acepta. El valor sale de `app.citas.antelacion-cancelacion-horas=24`. SECRETARIA y ADMIN quedan exentos. Fuera de plazo la API responde 409.
+- **Motivo:** obligatorio al cancelar (CANCELADA), al marcar No asistió (NO_ASISTIO) y al reprogramar; opcional al marcar Atendida. Máximo 200 caracteres. Se recortan los espacios y, si queda vacío en Atendida, no se guarda. El motivo del último cambio de estado se guarda en la cita (`motivo_estado`) y se devuelve como `motivo` en las citas.
+- **Hora de inicio para el doctor:** el DOCTOR no puede marcar su cita como Atendida ni No asistió antes de la hora de inicio (409). SECRETARIA y ADMIN pueden marcarla a cualquier hora.
+- **Bloqueos de doctor** (`/doctores/{idDoctor}/bloqueos`): periodos con inicio y fin (fecha y hora de Guatemala) y motivo obligatorio de hasta 200 caracteres; el inicio debe ser anterior al fin. Los crean y eliminan ADMIN y SECRETARIA; los listan ADMIN, SECRETARIA y el propio doctor. No se puede crear un bloqueo si el doctor tiene citas Agendadas que se cruzan con el periodo (409): primero hay que reprogramarlas o cancelarlas. Mientras exista el bloqueo no se puede agendar ni reprogramar una cita que se cruce con él (409 con el motivo del bloqueo). Los bordes no cuentan como cruce: una cita que termina justo cuando empieza el bloqueo, o que empieza justo cuando termina, se acepta.
+- **Reprogramar** (`PATCH /citas/{id}/reprogramar`): solo citas Agendadas y con una fecha u hora distinta a la actual. La nueva fecha y hora se revalidan igual que al agendar: debe ser futura, caber en el horario de atención, no caer en un bloqueo y no solaparse con otra cita del doctor. Cada reprogramación queda registrada en `cita_reprogramacion` con la fecha y hora anterior y nueva, el motivo, el momento del cambio y el usuario que la hizo. La cita vuelve a quedar pendiente de recordatorio (`recordatorio_enviado` en falso), así que el paciente recibe el correo otra vez para la nueva hora.
+- **Tratamientos** (`POST /citas/{idCita}/tratamientos`): solo los registra el DOCTOR de la cita y solo si la cita está Atendida (409 en otro estado, 403 para otro usuario). El tratamiento se elige del catálogo (`GET /tratamientos`); si no se envía `costo` se usa el costo del catálogo, y si se envía no puede ser negativo (hasta 8 enteros y 2 decimales). Las observaciones admiten hasta 1000 caracteres. Una cita puede tener el mismo tratamiento más de una vez. El historial del paciente (`GET /pacientes/{idCliente}/tratamientos`) muestra cada tratamiento con la fecha y hora de la cita, el doctor, el costo cobrado y las observaciones, y el total de todos ellos.
+- **Reporte de citas por doctor** (`GET /reportes/citas-por-doctor`): parámetros obligatorios `desde` y `hasta` en formato `yyyy-MM-dd`; el rango incluye ambos extremos y `desde` no puede ser posterior a `hasta` (400). Lo ven ADMIN y SECRETARIA. Cuenta las citas por estado de cada doctor activo, con ceros si no tiene citas en el periodo, ordenados por apellido y nombre.
+
 ## API (Swagger)
 
-Swagger/OpenAPI es la fuente principal y actualizada de documentación de la API. Documenta todas las operaciones de los controllers: autenticación, usuarios, pacientes, doctores y horarios, citas (incluida reprogramación), bloqueos de doctores, tratamientos y reportes. Las reglas, permisos, errores y ejemplos se generan desde las anotaciones y DTO del backend.
+Swagger/OpenAPI es la fuente principal y actualizada de documentación de la API. Las 38 operaciones de los controllers tienen `@Operation`, con sus reglas, permisos, errores y ejemplos generados desde las anotaciones y DTO del backend. La prueba `OpenApiDocumentationIntegrationTests` comprueba que cada operación tenga resumen, descripción, respuestas y seguridad.
+
+| Grupo (`@Tag`) | Endpoints | Rutas |
+|----------------|-----------|-------|
+| Autenticación | 3 | `/auth/registro`, `/auth/login`, `/auth/me` |
+| Usuarios | 5 | `/admin/usuarios`, `/admin/usuarios/{id}`, `/admin/usuarios/{id}/estado`, `/roles` |
+| Clientes | 8 | `/pacientes`, `/pacientes/{id}`, `/pacientes/{id}/lista-negra`, `/pacientes/{id}/historial` |
+| Doctores | 8 | `/doctores`, `/doctores/{id}`, `/doctores/{id}/horarios`, `/doctores/{id}/horarios/{idHorario}` |
+| Citas | 6 | `/citas`, `/citas/proximas`, `/citas/{id}`, `/citas/{id}/estado`, `/citas/{id}/reprogramar` |
+| Bloqueos de doctor | 3 | `/doctores/{idDoctor}/bloqueos`, `/doctores/{idDoctor}/bloqueos/{idBloqueo}` |
+| Tratamientos | 4 | `/tratamientos`, `/citas/{idCita}/tratamientos`, `/pacientes/{idCliente}/tratamientos` |
+| Reportes | 1 | `/reportes/citas-por-doctor` |
 
 - Local: http://localhost:8080/swagger-ui.html (directo al backend) o http://localhost:4200/api/swagger-ui.html (a través de nginx en Docker).
 - EC2: http://18.226.37.148:4200/api/swagger-ui/index.html y el JSON en http://18.226.37.148:4200/api/v3/api-docs.
@@ -196,6 +275,8 @@ cd ..
 ```
 
 Si el volumen `postgres_data` se creó con un esquema anterior, aplica antes las migraciones de `db/migrations/`. La mayoría de las pruebas de integración se revierten al terminar; `CitasConcurrencyIntegrationTests` guarda datos reales y los borra al final, así que usa una base de desarrollo, nunca la de producción.
+
+Las reglas del Sprint 5 tienen casos de éxito y de rechazo en `TratamientosIntegrationTests`, `TratamientoServiceTests`, `ReprogramarCitaIntegrationTests`, `ReprogramacionCitaServiceTests`, `BloqueosDoctorIntegrationTests`, `BloqueoDoctorServiceTests`, `ReporteCitasIntegrationTests`, `ReporteCitaServiceTests`, `SeguridadSprint5IntegrationTests`, `CitaServiceTests` (motivo y plazo de 24 horas) y `DisponibilidadCitaServiceTests`. El CI las ejecuta todas con `./mvnw -B verify`.
 
 Frontend, desde la raíz del repositorio (son los mismos comandos del CI):
 
@@ -228,9 +309,9 @@ Configura estos **repository secrets** en **Settings > Secrets and variables > A
 | `CI_DB_PASSWORD` | Contraseña aleatoria, no vacía y exclusiva del PostgreSQL temporal de CI. La misma referencia se usa en el servicio, `PGPASSWORD` y Maven. |
 | `CI_JWT_SECRET` | Clave aleatoria en base64 que decodifique a al menos 32 bytes para HS256. Generarla y guardarla localmente por un canal privado. |
 
-No reutilices secretos de EC2/producción ni los copies a archivos versionados, PR o logs. Este cambio no crea esos secretos en GitHub. Si falta `CI_DB_PASSWORD`, PostgreSQL rechazará el arranque del servicio antes de ejecutar los pasos; si falta `CI_JWT_SECRET`, el paso de validación fallará antes de Maven. Un valor JWT con formato o longitud incorrectos hará fallar el backend. Los PR desde forks no reciben estos secretos de repositorio y no podrán completar este CI; no se usa `pull_request_target` para ejecutar su código con secretos.
+No reutilices secretos de EC2/producción ni los copies a archivos versionados, PR o logs. Estos secretos no se crean solos: los configura a mano quien administra el repositorio. Si falta `CI_DB_PASSWORD`, PostgreSQL rechazará el arranque del servicio antes de ejecutar los pasos; si falta `CI_JWT_SECRET`, el paso de validación fallará antes de Maven. Un valor JWT con formato o longitud incorrectos hará fallar el backend. Los PR desde forks no reciben estos secretos de repositorio y no podrán completar este CI; no se usa `pull_request_target` para ejecutar su código con secretos.
 
-El encadenamiento `workflow_run` solo estará activo cuando `cd.yml` exista en la rama predeterminada (`main`), según [GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run). El PR hacia `develop` permite probar CI, pero no demuestra el flujo CI → CD. Después de integrar el cambio en `main`, falta verificar con autorización un CI fallido (sin build/despliegue), uno exitoso para el mismo SHA y un reintento antiguo rechazado. La aplicación, los controles de salud y el acceso SSH/GHCR todavía deben verificarse en EC2; este cambio no ejecuta despliegues ni migraciones.
+El encadenamiento `workflow_run` solo estará activo cuando `cd.yml` exista en la rama predeterminada (`main`), según [GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run). Mientras `develop` no se integre en `main`, `main` conserva el `cd.yml` anterior, que se disparaba directamente con cada push a `main`; un PR hacia `develop` prueba el CI, pero no el flujo CI → CD. Después de integrar en `main` conviene verificar con autorización un CI fallido (sin build ni despliegue), uno exitoso para el mismo SHA y un reintento antiguo rechazado. El CD no aplica migraciones: deben aplicarse antes de integrar en `main` (ver la sección siguiente).
 
 Despliegue actual:
 
@@ -243,6 +324,13 @@ Despliegue actual:
 Las migraciones se aplican manualmente y por separado del despliegue de aplicaciones. El workflow de CD no modifica el esquema de PostgreSQL ni elimina el volumen `postgres_data`.
 
 > **No ejecutes `db/clinica_dental_schema.sql` sobre EC2 ni sobre una base con datos.** Ese archivo contiene instrucciones `DROP TABLE` y es solo para inicializar una base vacía.
+
+Las migraciones se aplican en este orden, cada una una sola vez por base aunque ambas se pueden repetir sin error:
+
+1. `db/migrations/2026-10-sprint4-cita.sql`: estados de la cita, `recordatorio_enviado` y el índice parcial `uq_cita_doctor_slot`.
+2. `db/migrations/2026-10-sprint5.sql`: `motivo_estado` en `cita`, la tabla `bloqueo_doctor`, la nueva forma de `cita_tratamiento` (id propio, costo, observaciones y fecha), motivo obligatorio y `reprogramado_por` en `cita_reprogramacion`, el índice único `uq_tratamiento_nombre` y el catálogo inicial de tratamientos si la tabla está vacía. Va después de la del Sprint 4.
+
+El backend usa `ddl-auto=validate`: si se despliega la versión del Sprint 5 sobre una base sin su migración, el backend no arranca. Los pasos siguientes describen la migración del Sprint 4; la del Sprint 5 usa el mismo respaldo y luego sigue [Migración del Sprint 5](#migración-del-sprint-5).
 
 Realiza los pasos siguientes desde `~/TEO1_ClinicaDental` en el servidor, con acceso autorizado a la base. No actives `set -x` ni incluyas contraseñas en los comandos.
 
@@ -314,6 +402,62 @@ Realiza los pasos siguientes desde `~/TEO1_ClinicaDental` en el servidor, con ac
 
 Si falla la migración, no despliegues el backend nuevo. La transacción evita cambios parciales de esta migración, pero no revierte acciones ejecutadas fuera de ella ni protege contra fallos de disco o intervención externa. Si se necesita restaurar, detén el cambio y coordina una recuperación autorizada: restaura primero el respaldo en una base separada y valida los datos antes de decidir si reemplazar la base activa. Restaurar encima de la base activa puede borrar escrituras posteriores, y el respaldo puede contener información personal; no lo copies a Git ni lo compartas sin autorización.
 
+### Migración del Sprint 5
+
+Se aplica después de la del Sprint 4 y antes de integrar `develop` en `main`. Haz primero el respaldo y su validación (pasos 2 y 3 de arriba).
+
+1. **Inspecciona antes de cambiar.** Abre `psql` como en el paso 1 y ejecuta estas consultas. La migración crea un índice único sobre `tratamiento.nombre`, así que la primera debe devolver cero filas; si devuelve resultados, detén el procedimiento y resuelve los nombres repetidos con el responsable de los datos:
+
+   ```sql
+   SELECT nombre, count(*)
+   FROM tratamiento
+   GROUP BY nombre
+   HAVING count(*) > 1;
+
+   SELECT column_name FROM information_schema.columns
+   WHERE table_name = 'cita' AND column_name = 'recordatorio_enviado';
+
+   SELECT conname FROM pg_constraint
+   WHERE conrelid = 'cita_tratamiento'::regclass AND contype = 'p';
+
+   SELECT count(*) FROM tratamiento;
+   SELECT count(*) FROM cita;
+   ```
+
+   La segunda debe devolver una fila (Sprint 4 aplicado) y la tercera `cita_tratamiento_pkey`. Si `tratamiento` ya tiene filas, la migración no carga el catálogo inicial. Anota el total de citas para compararlo después.
+
+2. **Aplica la migración con errores fatales**, igual que en el paso 4:
+
+   ```bash
+   docker compose exec -T db sh -lc \
+     'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1' \
+     < db/migrations/2026-10-sprint5.sql
+   ```
+
+3. **Verifica el resultado antes de desplegar:**
+
+   ```bash
+   docker compose exec -T db sh -lc \
+     'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1' <<'SQL'
+   \d+ bloqueo_doctor
+   \d+ cita_tratamiento
+   SELECT table_name, column_name, is_nullable
+   FROM information_schema.columns
+   WHERE (table_name = 'cita' AND column_name = 'motivo_estado')
+      OR (table_name = 'cita_reprogramacion' AND column_name IN ('motivo', 'reprogramado_por'))
+      OR (table_name = 'cita_tratamiento' AND column_name IN ('id_cita_tratamiento', 'costo', 'observaciones', 'fecha_registro'))
+   ORDER BY table_name, column_name;
+   SELECT indexname FROM pg_indexes
+   WHERE indexname IN ('uq_tratamiento_nombre', 'idx_bloqueo_doctor', 'idx_cita_tratamiento_cita');
+   SELECT count(*) FROM tratamiento;
+   SELECT count(*) FROM cita;
+   SQL
+   ```
+
+   Deben aparecer las 7 columnas, los 3 índices y al menos 10 tratamientos si la tabla estaba vacía; el total de citas debe ser igual al anotado. El backend del Sprint 4 no usa las tablas ni columnas que cambian, así que el sistema desplegado sigue funcionando entre la migración y el despliegue.
+
+Si el checkout de EC2 todavía no tiene `db/migrations/2026-10-sprint5.sql`, obtenlo como se explica en la sección siguiente, cambiando el nombre del archivo.
+
 ### Obtener el archivo de migración desde el commit aprobado
 
 El checkout de `main` en EC2 puede no contener todavía la migración que está en `develop`. No cambies de rama ni hagas checkout del release para obtenerla. Después de aprobar el SHA de `develop` y el SHA-256 del archivo, puedes extraer esa versión exacta sin mover el checkout desplegado:
@@ -330,6 +474,16 @@ sha256sum "$migration_file"
 ```
 
 Compara el SHA-256 con el valor comunicado en la revisión aprobada antes de continuar. Ejecuta el archivo extraído únicamente después de completar el preflight, respaldo y autorización descritos arriba, usando `< "$migration_file"` en lugar de `< db/migrations/2026-10-sprint4-cita.sql` en el paso 4. `git fetch` solo actualiza referencias/objetos de Git; no despliega ni cambia el checkout activo.
+
+Para la migración del Sprint 5, con la misma variable `migration_commit`:
+
+```bash
+migration_file="../2026-10-sprint5-${migration_commit}.sql"
+git show "${migration_commit}:db/migrations/2026-10-sprint5.sql" > "$migration_file"
+sha256sum "$migration_file"
+```
+
+y en el paso 2 de [Migración del Sprint 5](#migración-del-sprint-5) usa `< "$migration_file"` en lugar de `< db/migrations/2026-10-sprint5.sql`.
 
 ### Recuperación de backend y frontend
 
@@ -362,7 +516,7 @@ La recreación usa las imágenes anteriores que dejó en caché el paso de `pull
 | Herson Aguilar | Frontend | [HersonAJ](https://github.com/HersonAJ) |
 | Yohana Perez   | Frontend | [yoha-lab-202030086](https://github.com/yoha-lab-202030086) |
 
-Ultima revision: 2026-10-08
+Ultima revision: 2026-10-15
 
 ## Diagramas
 
