@@ -55,6 +55,12 @@ export class SidebarComponent {
       icono: 'bi-calendar-check',
       ruta: '/citas',
       roles: ['ADMIN', 'DOCTOR', 'SECRETARIA', 'CLIENTE']
+    },
+    {
+      label: 'Reportes',
+      icono: 'bi-bar-chart-line',
+      ruta: '/reportes',
+      roles: ['ADMIN', 'SECRETARIA']
     }
   ];
 
