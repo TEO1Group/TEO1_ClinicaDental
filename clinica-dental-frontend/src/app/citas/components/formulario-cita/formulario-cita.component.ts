@@ -12,6 +12,20 @@ import { PacienteService } from '../../../pacientes/service/paciente.service';
 import { CitaRequest } from '../../models/cita.model';
 import { CitaService } from '../../service/cita.service';
 
+function obtenerFechaMinimaGuatemala(): string {
+  const partes = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Guatemala',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date());
+  const ano = partes.find(parte => parte.type === 'year')?.value;
+  const mes = partes.find(parte => parte.type === 'month')?.value;
+  const dia = partes.find(parte => parte.type === 'day')?.value;
+
+  return `${ano}-${mes}-${dia}`;
+}
+
 @Component({
   selector: 'app-formulario-cita',
   standalone: true,
@@ -37,7 +51,7 @@ export class FormularioCitaComponent implements OnInit {
   readonly cargandoHorarios = signal(false);
   readonly isSubmitting = signal(false);
   readonly error = signal('');
-  readonly fechaMinima = new Date().toISOString().slice(0, 10);
+  readonly fechaMinima = obtenerFechaMinimaGuatemala();
 
   readonly formulario = this.formBuilder.nonNullable.group({
     idDoctor: ['', [Validators.required]],

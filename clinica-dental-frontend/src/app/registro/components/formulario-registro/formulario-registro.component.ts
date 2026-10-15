@@ -4,6 +4,7 @@ import { CommonModule, NgClass } from '@angular/common';
 import { Router } from '@angular/router';
 import { PacienteRegistroRequest } from '../../models/paciente-registro.model';
 import { AuthService } from '../../../core/services/auth.service';
+import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 import { PacienteService } from '../../../pacientes/service/paciente.service';
 
 @Component({
@@ -17,6 +18,7 @@ export class FormularioRegistroClienteComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly pacienteService = inject(PacienteService);
+  private readonly notificacionService = inject(NotificacionService);
   private readonly router = inject(Router);
 
   registroForm: FormGroup;
@@ -97,9 +99,8 @@ export class FormularioRegistroClienteComponent implements OnInit {
           this.isSubmitting = false;
           this.successMessage = response.mensaje;
           this.registroForm.reset();
-          setTimeout(() => {
-            this.router.navigate(['']);
-          }, 2000);
+          this.notificacionService.exito(response.mensaje);
+          this.router.navigate(['']);
         },
         error: (error) => {
           this.isSubmitting = false;
