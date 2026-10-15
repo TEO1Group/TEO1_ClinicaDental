@@ -1,14 +1,17 @@
 package com.teo1.clinicadental.service;
 
+import com.teo1.clinicadental.model.BloqueoDoctor;
 import com.teo1.clinicadental.model.Cita;
 import com.teo1.clinicadental.model.DiaSemana;
 import com.teo1.clinicadental.model.Doctor;
 import com.teo1.clinicadental.model.EstadoCita;
 import com.teo1.clinicadental.model.Horario;
+import com.teo1.clinicadental.repository.BloqueoDoctorRepository;
 import com.teo1.clinicadental.repository.CitaRepository;
 import com.teo1.clinicadental.repository.HorarioRepository;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -41,13 +44,17 @@ class DisponibilidadCitaServiceTests {
     @Mock
     private HorarioRepository horarioRepository;
 
+    @Mock
+    private BloqueoDoctorRepository bloqueoDoctorRepository;
+
     private DisponibilidadCitaService disponibilidadCitaService;
     private Doctor doctor;
 
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(ZonedDateTime.of(2026, 10, 8, 8, 0, 0, 0, ZONA).toInstant(), ZONA);
-        disponibilidadCitaService = new DisponibilidadCitaService(citaRepository, horarioRepository, clock, 30, 24);
+        disponibilidadCitaService = new DisponibilidadCitaService(
+                citaRepository, horarioRepository, bloqueoDoctorRepository, clock, 30, 24);
         doctor = Doctor.builder()
                 .id(UUID.randomUUID())
                 .especialidad("Odontologia general")
@@ -115,6 +122,70 @@ class DisponibilidadCitaServiceTests {
         assertEstado(HttpStatus.BAD_REQUEST,
                 () -> disponibilidadCitaService.validar(doctor, LocalDate.of(2026, 10, 8), LocalTime.of(8, 0), null));
         verifyNoInteractions(horarioRepository, citaRepository);
+    }
+
+    @Test
+    void citaDentroDeUnBloqueoDevuelveConflictoConElMotivo() {
+        prepararHorario();
+        prepararBloqueo(LocalTime.of(10, 0), LocalTime.of(11, 0));
+
+        for (LocalTime hora : List.of(LocalTime.of(10, 0), LocalTime.of(9, 45), LocalTime.of(10, 45))) {
+            ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                    () -> disponibilidadCitaService.validar(doctor, FECHA, hora, null));
+            assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+            assertEquals("El doctor no atiende en ese horario: Congreso de ortodoncia", exception.getReason());
+        }
+        verifyNoInteractions(citaRepository);
+    }
+
+    @Test
+    void citaQueTerminaJustoCuandoEmpiezaElBloqueoSeAcepta() {
+        prepararCitas(List.of());
+        prepararBloqueo(LocalTime.of(10, 0), LocalTime.of(11, 0));
+
+        assertDoesNotThrow(() -> disponibilidadCitaService.validar(doctor, FECHA, LocalTime.of(9, 30), null));
+    }
+
+    @Test
+    void citaQueEmpiezaJustoCuandoTerminaElBloqueoSeAcepta() {
+        prepararCitas(List.of());
+        prepararBloqueo(LocalTime.of(10, 0), LocalTime.of(11, 0));
+
+        assertDoesNotThrow(() -> disponibilidadCitaService.validar(doctor, FECHA, LocalTime.of(11, 0), null));
+    }
+
+    @Test
+    void citaFueraDelBloqueoSeAcepta() {
+        prepararCitas(List.of());
+        prepararBloqueo(LocalTime.of(10, 0), LocalTime.of(11, 0));
+
+        assertDoesNotThrow(() -> disponibilidadCitaService.validar(doctor, FECHA, LocalTime.of(8, 0), null));
+    }
+
+    @Test
+    void bloqueoDeVariosDiasCubreLaCita() {
+        prepararHorario();
+        when(bloqueoDoctorRepository.findByDoctorIdAndInicioLessThanAndFinGreaterThanOrderByInicioAsc(
+                doctor.getId(), FECHA.plusDays(1).atStartOfDay(), FECHA.atStartOfDay()))
+                .thenReturn(List.of(bloqueo(FECHA.minusDays(2).atStartOfDay(), FECHA.plusDays(2).atStartOfDay())));
+
+        assertEstado(HttpStatus.CONFLICT, () -> disponibilidadCitaService.validar(doctor, FECHA, LocalTime.of(9, 0), null));
+    }
+
+    private void prepararBloqueo(LocalTime inicio, LocalTime fin) {
+        when(bloqueoDoctorRepository.findByDoctorIdAndInicioLessThanAndFinGreaterThanOrderByInicioAsc(
+                doctor.getId(), FECHA.plusDays(1).atStartOfDay(), FECHA.atStartOfDay()))
+                .thenReturn(List.of(bloqueo(FECHA.atTime(inicio), FECHA.atTime(fin))));
+    }
+
+    private BloqueoDoctor bloqueo(LocalDateTime inicio, LocalDateTime fin) {
+        return BloqueoDoctor.builder()
+                .id(UUID.randomUUID())
+                .doctor(doctor)
+                .inicio(inicio)
+                .fin(fin)
+                .motivo("Congreso de ortodoncia")
+                .build();
     }
 
     private void prepararHorario() {

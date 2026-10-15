@@ -11,6 +11,7 @@ import com.teo1.clinicadental.model.EstadoCita;
 import com.teo1.clinicadental.model.EstadoUsuario;
 import com.teo1.clinicadental.model.Horario;
 import com.teo1.clinicadental.model.Usuario;
+import com.teo1.clinicadental.repository.BloqueoDoctorRepository;
 import com.teo1.clinicadental.repository.CitaRepository;
 import com.teo1.clinicadental.repository.ClienteRepository;
 import com.teo1.clinicadental.repository.DoctorRepository;
@@ -67,6 +68,9 @@ class CitaServiceTests {
     @Mock
     private HorarioRepository horarioRepository;
 
+    @Mock
+    private BloqueoDoctorRepository bloqueoDoctorRepository;
+
     private CitaService citaService;
     private Doctor doctor;
     private Cliente cliente;
@@ -76,7 +80,8 @@ class CitaServiceTests {
     void setUp() {
         Clock clock = Clock.fixed(ZonedDateTime.of(2026, 10, 8, 8, 0, 0, 0, ZONA).toInstant(), ZONA);
         DisponibilidadCitaService disponibilidadCitaService =
-                new DisponibilidadCitaService(citaRepository, horarioRepository, clock, 30, 24);
+                new DisponibilidadCitaService(
+                citaRepository, horarioRepository, bloqueoDoctorRepository, clock, 30, 24);
         citaService = new CitaService(
                 citaRepository, clienteRepository, doctorRepository, disponibilidadCitaService, new CitaMapper(), clock);
 
