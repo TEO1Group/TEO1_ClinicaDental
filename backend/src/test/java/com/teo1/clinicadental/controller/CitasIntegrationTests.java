@@ -193,7 +193,9 @@ class CitasIntegrationTests {
         cambiarEstado(idCita, "ATENDIDA", tokenCliente).andExpect(status().isForbidden());
         cambiarEstado(idCita, "NO_ASISTIO", tokenCliente).andExpect(status().isForbidden());
 
-        cambiarEstado(idCita, "ATENDIDA", tokenDoctor)
+        cambiarEstado(idCita, "ATENDIDA", tokenDoctor).andExpect(status().isConflict());
+
+        cambiarEstado(idCita, "ATENDIDA", tokenAdmin)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("ATENDIDA"));
 
@@ -216,6 +218,34 @@ class CitasIntegrationTests {
         cambiarEstado(cancelada, "CANCELADA", tokenSecretaria)
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("CANCELADA"));
+    }
+
+    @Test
+    void cambioDeEstadoConMotivoSeGuardaYSeDevuelve() throws Exception {
+        String idCita = idCita(agendar(tokenCliente, fecha, "09:00", null).andExpect(status().isCreated()));
+
+        cambiarEstado(idCita, "CANCELADA", tokenCliente, "  Tengo un viaje de trabajo  ")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("CANCELADA"))
+                .andExpect(jsonPath("$.motivo").value("Tengo un viaje de trabajo"));
+
+        mockMvc.perform(conToken(get("/citas/" + idCita), tokenSecretaria))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.motivo").value("Tengo un viaje de trabajo"));
+    }
+
+    @Test
+    void cambioDeEstadoSinMotivoDevuelve400() throws Exception {
+        String idCita = idCita(agendar(tokenCliente, fecha, "09:00", null).andExpect(status().isCreated()));
+
+        cambiarEstado(idCita, "CANCELADA", tokenCliente, null)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.mensaje").value("Debes indicar el motivo para marcar la cita como CANCELADA"));
+        cambiarEstado(idCita, "NO_ASISTIO", tokenSecretaria, "   ").andExpect(status().isBadRequest());
+
+        mockMvc.perform(conToken(get("/citas/" + idCita), tokenCliente))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("AGENDADA"));
     }
 
     @Test
@@ -286,8 +316,14 @@ class CitasIntegrationTests {
     }
 
     private ResultActions cambiarEstado(String idCita, String estado, String token) throws Exception {
-        return mockMvc.perform(conToken(patch("/citas/" + idCita + "/estado"), token)
-                .content("{\"estado\":\"" + estado + "\"}"));
+        return cambiarEstado(idCita, estado, token, "Motivo de prueba");
+    }
+
+    private ResultActions cambiarEstado(String idCita, String estado, String token, String motivo) throws Exception {
+        String body = motivo == null
+                ? String.format("{\"estado\":\"%s\"}", estado)
+                : String.format("{\"estado\":\"%s\",\"motivo\":\"%s\"}", estado, motivo);
+        return mockMvc.perform(conToken(patch("/citas/" + idCita + "/estado"), token).content(body));
     }
 
     private String idCita(ResultActions resultado) throws Exception {

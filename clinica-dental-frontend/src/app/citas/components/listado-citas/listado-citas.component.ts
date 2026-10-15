@@ -22,6 +22,8 @@ export class ListadoCitasComponent implements OnInit {
   private readonly notificacionService = inject(NotificacionService);
 
   readonly rol = this.authService.rol;
+  readonly usuarioActual = this.authService.usuarioActual;
+
   readonly filtroForm = this.formBuilder.nonNullable.group({
     estado: [''],
     fecha: ['']
@@ -47,6 +49,22 @@ export class ListadoCitasComponent implements OnInit {
     );
   });
 
+  // Modal de motivo
+  readonly motivoModalAbierto = signal(false);
+  readonly motivoModalTexto = signal('');
+  readonly motivoModalEstado = signal<EstadoCita | null>(null);
+  readonly motivoModalCita = signal<CitaResponse | null>(null);
+  readonly motivoModalError = signal('');
+
+  // Modal de reprogramar
+  readonly reprogramarModalAbierto = signal(false);
+  readonly reprogramarFecha = signal('');
+  readonly reprogramarHora = signal('');
+  readonly reprogramarMotivo = signal('');
+  readonly reprogramarCita = signal<CitaResponse | null>(null);
+  readonly reprogramarError = signal('');
+  readonly reprogramarEnviando = signal(false);
+
   ngOnInit(): void {
     this.cargarCitas();
   }
@@ -62,9 +80,15 @@ export class ListadoCitasComponent implements OnInit {
       },
       error: (error) => {
         this._cargando.set(false);
+        if (error.status === 403) return;
         this._error.set(error.error?.mensaje || 'Error al cargar las citas.');
       }
     });
+  }
+
+  puedeCrear(): boolean {
+    const rol = this.rol();
+    return rol === 'CLIENTE' || rol === 'SECRETARIA' || rol === 'ADMIN';
   }
 
   puedeCancelar(cita: CitaResponse): boolean {
@@ -79,28 +103,136 @@ export class ListadoCitasComponent implements OnInit {
     return cita.estado === 'AGENDADA' && ['DOCTOR', 'SECRETARIA', 'ADMIN'].includes(this.rol() || '');
   }
 
-  cambiarEstado(cita: CitaResponse, estado: EstadoCita): void {
-    const acciones: Record<EstadoCita, string> = {
-      AGENDADA: 'reagendar',
-      ATENDIDA: 'marcar como atendida',
-      CANCELADA: 'cancelar',
-      NO_ASISTIO: 'marcar como no asistida'
-    };
+  puedeReprogramar(cita: CitaResponse): boolean {
+    if (cita.estado !== 'AGENDADA') return false;
 
-    if (!confirm(`¿Estás seguro de ${acciones[estado]} esta cita?`)) {
+    const rol = this.rol();
+    const usuario = this.usuarioActual();
+
+    if (rol === 'ADMIN' || rol === 'SECRETARIA') return true;
+    if (rol === 'CLIENTE') return usuario?.idPerfil === cita.idCliente;
+
+    return false;
+  }
+
+  // Modal de motivo
+  abrirModalMotivo(cita: CitaResponse, estado: EstadoCita): void {
+    this.motivoModalCita.set(cita);
+    this.motivoModalEstado.set(estado);
+    this.motivoModalTexto.set('');
+    this.motivoModalError.set('');
+    this.motivoModalAbierto.set(true);
+  }
+
+  cerrarModalMotivo(): void {
+    this.motivoModalAbierto.set(false);
+    this.motivoModalCita.set(null);
+    this.motivoModalEstado.set(null);
+    this.motivoModalTexto.set('');
+    this.motivoModalError.set('');
+  }
+
+  esMotivoObligatorio(estado: EstadoCita): boolean {
+    return estado === 'CANCELADA' || estado === 'NO_ASISTIO';
+  }
+
+  confirmarCambioEstado(): void {
+    const cita = this.motivoModalCita();
+    const estado = this.motivoModalEstado();
+    const motivo = this.motivoModalTexto().trim();
+
+    if (!cita || !estado) return;
+
+    if (this.esMotivoObligatorio(estado) && !motivo) {
+      this.motivoModalError.set('El motivo es obligatorio para este estado.');
       return;
     }
 
-    const request: EstadoCitaRequest = { estado };
+    const request: EstadoCitaRequest = {
+      estado,
+      motivo: motivo || undefined
+    };
+
     this.citaService.cambiarEstado(cita.idCita, request).subscribe({
       next: () => {
         this.notificacionService.exito('Estado de la cita actualizado correctamente.');
+        this.cerrarModalMotivo();
         this.cargarCitas();
+        this.recargarCampanaSiAplica();
       },
       error: (error) => {
+        if (error.status === 403) return;
         this.notificacionService.error(error.error?.mensaje || 'Error al cambiar el estado de la cita.');
       }
     });
+  }
+
+  // Modal de reprogramar
+  abrirModalReprogramar(cita: CitaResponse): void {
+    this.reprogramarCita.set(cita);
+    this.reprogramarFecha.set(cita.fecha);
+    this.reprogramarHora.set(cita.hora.slice(0, 5));
+    this.reprogramarMotivo.set('');
+    this.reprogramarError.set('');
+    this.reprogramarModalAbierto.set(true);
+  }
+
+  cerrarModalReprogramar(): void {
+    this.reprogramarModalAbierto.set(false);
+    this.reprogramarCita.set(null);
+    this.reprogramarFecha.set('');
+    this.reprogramarHora.set('');
+    this.reprogramarMotivo.set('');
+    this.reprogramarError.set('');
+  }
+
+  confirmarReprogramar(): void {
+    const cita = this.reprogramarCita();
+    const fecha = this.reprogramarFecha().trim();
+    const hora = this.reprogramarHora().trim();
+    const motivo = this.reprogramarMotivo().trim();
+
+    if (!cita) return;
+
+    if (!fecha || !hora) {
+      this.reprogramarError.set('La fecha y hora son obligatorias.');
+      return;
+    }
+
+    if (!motivo) {
+      this.reprogramarError.set('El motivo es obligatorio.');
+      return;
+    }
+
+    if (motivo.length > 200) {
+      this.reprogramarError.set('El motivo no puede superar 200 caracteres.');
+      return;
+    }
+
+    this.reprogramarEnviando.set(true);
+    this.reprogramarError.set('');
+
+    this.citaService.reprogramar(cita.idCita, { fecha, hora, motivo }).subscribe({
+      next: () => {
+        this.reprogramarEnviando.set(false);
+        this.notificacionService.exito('Cita reprogramada correctamente.');
+        this.cerrarModalReprogramar();
+        this.cargarCitas();
+        this.recargarCampanaSiAplica();
+      },
+      error: (error) => {
+        this.reprogramarEnviando.set(false);
+        if (error.status === 403) return;
+        this.reprogramarError.set(error.error?.mensaje || 'Error al reprogramar la cita.');
+      }
+    });
+  }
+
+  private recargarCampanaSiAplica(): void {
+    const rol = this.rol();
+    if (rol === 'CLIENTE' || rol === 'DOCTOR') {
+      this.citaService.recargarProximas();
+    }
   }
 
   nombreDoctor(cita: CitaResponse): string {
@@ -108,10 +240,7 @@ export class ListadoCitasComponent implements OnInit {
   }
 
   nombrePaciente(cita: CitaResponse): string {
-    return [
-      cita.nombrePaciente ?? cita.nombreCliente,
-      cita.apellidoPaciente ?? cita.apellidoCliente
-    ].filter(Boolean).join(' ') || cita.idCliente;
+    return [cita.nombreCliente, cita.apellidoCliente].filter(Boolean).join(' ') || cita.idCliente;
   }
 
   etiquetaEstado(estado: EstadoCita): string {
@@ -130,10 +259,5 @@ export class ListadoCitasComponent implements OnInit {
       CANCELADA: 'bg-danger',
       NO_ASISTIO: 'bg-warning text-dark'
     }[estado];
-  }
-
-  puedeCrear(): boolean {
-    const rol = this.rol();
-    return rol === 'CLIENTE' || rol === 'SECRETARIA' || rol === 'ADMIN';
   }
 }

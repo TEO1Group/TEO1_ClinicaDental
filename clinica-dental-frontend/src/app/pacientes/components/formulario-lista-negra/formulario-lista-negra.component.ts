@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 import { ListaNegraRequest } from '../../models/paciente.model';
 import { PacienteService } from '../../service/paciente.service';
 
@@ -16,6 +17,7 @@ export class FormularioListaNegraComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly pacienteService = inject(PacienteService);
+  private readonly notificacionService = inject(NotificacionService);
   private readonly formBuilder = inject(FormBuilder);
 
   readonly listaNegraForm = this.formBuilder.nonNullable.group({
@@ -99,7 +101,8 @@ export class FormularioListaNegraComponent implements OnInit {
       next: () => {
         this._guardando.set(false);
         this._mensaje.set('Lista negra actualizada correctamente.');
-        setTimeout(() => this.router.navigate(['/pacientes', this.pacienteId]), 800);
+        this.notificacionService.exito('Lista negra actualizada correctamente.');
+        this.router.navigate(['/pacientes', this.pacienteId]);
       },
       error: (error) => {
         this._guardando.set(false);

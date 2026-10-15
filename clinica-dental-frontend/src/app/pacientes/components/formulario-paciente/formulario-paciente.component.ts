@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 import { ClienteUpdateRequest } from '../../models/paciente.model';
 import { PacienteService } from '../../service/paciente.service';
 
@@ -16,6 +17,7 @@ export class FormularioPacienteComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly pacienteService = inject(PacienteService);
+  private readonly notificacionService = inject(NotificacionService);
   private readonly formBuilder = inject(FormBuilder);
 
   readonly editarForm = this.formBuilder.nonNullable.group({
@@ -28,13 +30,11 @@ export class FormularioPacienteComponent implements OnInit {
   private readonly _cargando = signal(false);
   private readonly _guardando = signal(false);
   private readonly _error = signal('');
-  private readonly _mensaje = signal('');
 
   readonly nombrePaciente = this._nombrePaciente.asReadonly();
   readonly cargando = this._cargando.asReadonly();
   readonly guardando = this._guardando.asReadonly();
   readonly error = this._error.asReadonly();
-  readonly mensaje = this._mensaje.asReadonly();
 
   pacienteId = '';
 
@@ -64,6 +64,7 @@ export class FormularioPacienteComponent implements OnInit {
       },
       error: (error) => {
         this._cargando.set(false);
+        if (error.status === 403) return;
         this._error.set(error.error?.mensaje || 'Error al cargar el paciente.');
       }
     });
@@ -71,7 +72,6 @@ export class FormularioPacienteComponent implements OnInit {
 
   guardarCambios(): void {
     this._error.set('');
-    this._mensaje.set('');
 
     if (this.editarForm.invalid) {
       this.editarForm.markAllAsTouched();
@@ -90,12 +90,13 @@ export class FormularioPacienteComponent implements OnInit {
     this.pacienteService.actualizarPaciente(this.pacienteId, request).subscribe({
       next: () => {
         this._guardando.set(false);
-        this._mensaje.set('Paciente actualizado correctamente.');
-        setTimeout(() => this.router.navigate(['/pacientes', this.pacienteId]), 800);
+        this.notificacionService.exito('Paciente actualizado correctamente.');
+        this.router.navigate(['/pacientes', this.pacienteId]);
       },
       error: (error) => {
         this._guardando.set(false);
-        this._error.set(error.error?.mensaje || 'Error al actualizar el paciente.');
+        if (error.status === 403) return;
+        this.notificacionService.error(error.error?.mensaje || 'Error al actualizar el paciente.');
       }
     });
   }

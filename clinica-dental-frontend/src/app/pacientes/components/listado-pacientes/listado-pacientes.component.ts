@@ -90,6 +90,7 @@ export class ListadoPacientesComponent implements OnInit {
         this.cargarPacientes();
       },
       error: (error) => {
+        if (error.status === 403) return;
         this.notificacionService.error(error.error?.mensaje || 'Error al desactivar el paciente.');
       }
     });

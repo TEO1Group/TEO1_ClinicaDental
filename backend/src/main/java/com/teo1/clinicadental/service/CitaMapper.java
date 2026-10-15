@@ -19,7 +19,8 @@ public class CitaMapper {
                 cita.getCliente().getUsuario().getNombre(),
                 cita.getCliente().getUsuario().getApellido(),
                 cita.getDoctor().getUsuario().getNombre(),
-                cita.getDoctor().getUsuario().getApellido()
+                cita.getDoctor().getUsuario().getApellido(),
+                cita.getMotivoEstado()
         );
     }
 }

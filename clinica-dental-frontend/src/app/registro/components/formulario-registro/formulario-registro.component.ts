@@ -4,6 +4,7 @@ import { CommonModule, NgClass } from '@angular/common';
 import { Router } from '@angular/router';
 import { PacienteRegistroRequest } from '../../models/paciente-registro.model';
 import { AuthService } from '../../../core/services/auth.service';
+import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 import { PacienteService } from '../../../pacientes/service/paciente.service';
 
 @Component({
@@ -17,6 +18,7 @@ export class FormularioRegistroClienteComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly pacienteService = inject(PacienteService);
+  private readonly notificacionService = inject(NotificacionService);
   private readonly router = inject(Router);
 
   registroForm: FormGroup;
@@ -95,15 +97,13 @@ export class FormularioRegistroClienteComponent implements OnInit {
       this.authService.registro(datosRegistro).subscribe({
         next: (response) => {
           this.isSubmitting = false;
-          this.successMessage = response.mensaje;
-          this.registroForm.reset();
-          setTimeout(() => {
-            this.router.navigate(['']);
-          }, 2000);
+          this.notificacionService.exito(response.mensaje || 'Registro exitoso');
+          this.router.navigate(['']);
         },
         error: (error) => {
           this.isSubmitting = false;
-          this.errorMessage = error.error?.mensaje || 'Error al registrarse. Intenta de nuevo.';
+          if (error.status === 403) return;
+          this.notificacionService.error(error.error?.mensaje || 'Error al registrar.');
         }
       });
     }

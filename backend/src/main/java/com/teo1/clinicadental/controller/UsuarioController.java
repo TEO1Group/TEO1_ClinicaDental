@@ -47,19 +47,20 @@ public class UsuarioController {
     }
 
     @PostMapping("/admin/usuarios")
-    @Operation(summary = "Crear personal", description = "Requiere rol ADMIN. Crea cuentas de DOCTOR, SECRETARIA o ADMIN; la especialidad se requiere para DOCTOR.")
+    @Operation(summary = "Crear personal", description = "Requiere rol ADMIN. Crea cuentas ACTIVAS de DOCTOR, SECRETARIA o ADMIN. Email único; especialidad obligatoria para DOCTOR. Para SECRETARIA, turno opcional MANANA, TARDE o NOCHE y área RECEPCION por defecto. CLIENTE se registra en /auth/registro.")
     @ApiResponse(responseCode = "201", description = "Personal creado")
     @ApiResponse(responseCode = "400", description = "Datos inválidos", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Falta autenticación válida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "403", description = "Se requiere el rol ADMIN", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "409", description = "Conflicto con una restricción de datos", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "500", description = "El rol solicitado no está configurado", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<RegistroResponse> crearPersonal(@Valid @RequestBody CrearPersonalRequest request) {
         RegistroResponse response = adminUsuarioService.crearPersonal(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PutMapping("/admin/usuarios/{id}")
-    @Operation(summary = "Actualizar un usuario", description = "Requiere rol ADMIN. Actualiza solo los campos enviados.")
+    @Operation(summary = "Actualizar un usuario", description = "Requiere rol ADMIN. Actualiza nombre, apellido y email si no son vacíos; teléfono si se envía. El email nuevo debe ser único. No cambia rol ni contraseña.")
     @ApiResponse(responseCode = "200", description = "Usuario actualizado")
     @ApiResponse(responseCode = "400", description = "Datos inválidos o identificador no válido", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Falta autenticación válida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
