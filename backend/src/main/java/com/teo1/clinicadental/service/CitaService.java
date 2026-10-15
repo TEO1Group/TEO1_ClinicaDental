@@ -28,7 +28,6 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class CitaService {
 
-    private static final String INDICE_CITA_DOCTOR_SLOT = "uq_cita_doctor_slot";
     private static final int MAXIMO_HORAS_PROXIMAS = 72;
 
     private final CitaRepository citaRepository;
@@ -87,7 +86,7 @@ public class CitaService {
         try {
             return citaMapper.toResponse(citaRepository.saveAndFlush(cita));
         } catch (DataIntegrityViolationException exception) {
-            if (violaIndiceDeSlot(exception)) {
+            if (DisponibilidadCitaService.violaIndiceDeSlot(exception)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, DisponibilidadCitaService.MENSAJE_SOLAPE);
             }
             throw exception;
@@ -285,11 +284,6 @@ public class CitaService {
         }
 
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para agendar citas");
-    }
-
-    private boolean violaIndiceDeSlot(DataIntegrityViolationException exception) {
-        String detalle = exception.getMostSpecificCause().getMessage();
-        return detalle != null && detalle.contains(INDICE_CITA_DOCTOR_SLOT);
     }
 
     private boolean tieneRol(Authentication authentication, Rol rol) {

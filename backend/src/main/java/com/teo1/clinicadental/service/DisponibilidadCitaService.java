@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -21,6 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class DisponibilidadCitaService {
 
     static final String MENSAJE_SOLAPE = "El doctor ya tiene una cita agendada en ese horario";
+    private static final String INDICE_CITA_DOCTOR_SLOT = "uq_cita_doctor_slot";
 
     private final CitaRepository citaRepository;
     private final HorarioRepository horarioRepository;
@@ -53,6 +55,11 @@ public class DisponibilidadCitaService {
         validarDentroDeHorario(doctor.getId(), fecha, hora);
         validarSinBloqueo(doctor.getId(), fecha, hora);
         validarSinSolape(doctor.getId(), fecha, hora, citaExcluidaId);
+    }
+
+    static boolean violaIndiceDeSlot(DataIntegrityViolationException exception) {
+        String detalle = exception.getMostSpecificCause().getMessage();
+        return detalle != null && detalle.contains(INDICE_CITA_DOCTOR_SLOT);
     }
 
     public void validarAntelacion(Cita cita, String accion) {
