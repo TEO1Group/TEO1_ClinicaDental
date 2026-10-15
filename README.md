@@ -174,7 +174,7 @@ El token se valida en cada petición; si un usuario se desactiva, su token deja 
 
 ## API (Swagger)
 
-Swagger/OpenAPI es la fuente principal y actualizada de documentación de la API. Documenta todas las operaciones de los controllers: autenticación, usuarios, pacientes, doctores y horarios, y citas (agendar, listar, obtener, cambiar estado y próximas).
+Swagger/OpenAPI es la fuente principal y actualizada de documentación de la API. Documenta todas las operaciones de los controllers: autenticación, usuarios, pacientes, doctores y horarios, citas (incluida reprogramación), bloqueos de doctores, tratamientos y reportes. Las reglas, permisos, errores y ejemplos se generan desde las anotaciones y DTO del backend.
 
 - Local: http://localhost:8080/swagger-ui.html (directo al backend) o http://localhost:4200/api/swagger-ui.html (a través de nginx en Docker).
 - EC2: http://18.226.37.148:4200/api/swagger-ui/index.html y el JSON en http://18.226.37.148:4200/api/v3/api-docs.
@@ -210,12 +210,27 @@ cd ..
 ## CI/CD y despliegue en EC2
 
 - `ci.yml` corre en cada push y pull request hacia `main` o `develop` que modifique `backend/**`, `db/**`, `clinica-dental-frontend/**`, `scripts/deploy-ec2.sh`, `docker-compose.yml`, `README.md`, `ci.yml` o `cd.yml`. Levanta PostgreSQL 16, carga `db/clinica_dental_schema.sql`, ejecuta `./mvnw -B verify` sin SMTP, compila el frontend en producción, ejecuta sus pruebas y construye las dos imágenes Docker.
-- `cd.yml` corre solo en push a `main` que modifique `backend/**`, `clinica-dental-frontend/**`, `db/**`, `scripts/deploy-ec2.sh`, `docker-compose.yml` o `cd.yml`. **El despliegue solo sale de `main`**: lo que está en `develop` no llega a EC2 hasta fusionarlo en `main`. El CD no espera al CI. Construye y publica las imágenes en GHCR con el SHA del commit, se conecta por SSH a EC2 (secrets `EC2_HOST`, `EC2_USERNAME`, `EC2_SSH_KEY`), deja el checkout en ese SHA y ejecuta `scripts/deploy-ec2.sh`.
+- `cd.yml` espera `workflow_run: completed` del workflow `CI`. Solo acepta conclusión `success`, evento original `push`, rama `main` y repositorio de origen igual a este repositorio. Un CI fallido, cancelado, omitido, de un PR o de `develop` no habilita el despliegue. Construye y publica las imágenes en GHCR y ejecuta `scripts/deploy-ec2.sh` por SSH (secrets `EC2_HOST`, `EC2_USERNAME`, `EC2_SSH_KEY`), siempre usando `workflow_run.head_sha` para checkout, etiquetas y despliegue. También puede ejecutarse tras cambios de README o CI que activen CI en `main`.
+
+Las ejecuciones de CD comparten un grupo de concurrencia y no interrumpen un despliegue activo. Antes de construir y otra vez en EC2 se compara el SHA validado con la punta de `main`; una ejecución antigua falla antes de desplegar. El script verifica además que el checkout corresponda a ese SHA.
 
 `deploy-ec2.sh` valida las variables y el `.env`, inicia sesión en GHCR, escribe `BACKEND_IMAGE`, `FRONTEND_IMAGE` y `CORS_ALLOWED_ORIGINS` en `.env`, descarga las imágenes y espera a que la base esté sana.
 Después recrea solo backend y frontend y espera hasta 180 segundos a que respondan `/v3/api-docs`, el frontend, Swagger UI y OpenAPI a través de nginx; si alguno no responde, el despliegue falla.
 
 El CD no aplica migraciones de base de datos: se hacen a mano, antes de desplegar, siguiendo [Migraciones manuales de esquema](#migraciones-manuales-de-esquema).
+
+### Secrets exclusivos de CI y activación del flujo
+
+Configura estos **repository secrets** en **Settings > Secrets and variables > Actions > New repository secret**, antes de ejecutar el CI de esta rama:
+
+| Secret | Requisito |
+|--------|-----------|
+| `CI_DB_PASSWORD` | Contraseña aleatoria, no vacía y exclusiva del PostgreSQL temporal de CI. La misma referencia se usa en el servicio, `PGPASSWORD` y Maven. |
+| `CI_JWT_SECRET` | Clave aleatoria en base64 que decodifique a al menos 32 bytes para HS256. Generarla y guardarla localmente por un canal privado. |
+
+No reutilices secretos de EC2/producción ni los copies a archivos versionados, PR o logs. Este cambio no crea esos secretos en GitHub. Si falta `CI_DB_PASSWORD`, PostgreSQL rechazará el arranque del servicio antes de ejecutar los pasos; si falta `CI_JWT_SECRET`, el paso de validación fallará antes de Maven. Un valor JWT con formato o longitud incorrectos hará fallar el backend. Los PR desde forks no reciben estos secretos de repositorio y no podrán completar este CI; no se usa `pull_request_target` para ejecutar su código con secretos.
+
+El encadenamiento `workflow_run` solo estará activo cuando `cd.yml` exista en la rama predeterminada (`main`), según [GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run). El PR hacia `develop` permite probar CI, pero no demuestra el flujo CI → CD. Después de integrar el cambio en `main`, falta verificar con autorización un CI fallido (sin build/despliegue), uno exitoso para el mismo SHA y un reintento antiguo rechazado. La aplicación, los controles de salud y el acceso SSH/GHCR todavía deben verificarse en EC2; este cambio no ejecuta despliegues ni migraciones.
 
 Despliegue actual:
 

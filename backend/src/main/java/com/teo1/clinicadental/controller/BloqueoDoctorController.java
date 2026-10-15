@@ -81,7 +81,7 @@ public class BloqueoDoctorController {
             summary = "Eliminar un bloqueo",
             description = "Requiere rol ADMIN o SECRETARIA. Al eliminarlo el periodo vuelve a quedar disponible para agendar."
     )
-    @ApiResponse(responseCode = "204", description = "Bloqueo eliminado")
+    @ApiResponse(responseCode = "204", description = "Bloqueo eliminado", content = @Content)
     @ApiResponse(responseCode = "400", description = "Identificador no valido", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "403", description = "Se requiere el rol ADMIN o SECRETARIA", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))

@@ -56,7 +56,7 @@ public class DoctorController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Actualizar un doctor", description = "Requiere rol ADMIN. La especialidad es obligatoria; los demás campos del perfil son opcionales.")
+    @Operation(summary = "Actualizar un doctor", description = "Requiere rol ADMIN. Especialidad obligatoria. Nombre y apellido vacíos se ignoran; teléfono solo cambia si se envía. Número de colegiado y clínica se reemplazan, incluso si se omiten.")
     @ApiResponse(responseCode = "200", description = "Doctor actualizado")
     @ApiResponse(responseCode = "400", description = "Datos inválidos o identificador no válido", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Falta autenticación válida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -72,7 +72,7 @@ public class DoctorController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Desactivar un doctor", description = "Requiere rol ADMIN. Desactiva la cuenta sin eliminar el registro.")
-    @ApiResponse(responseCode = "204", description = "Doctor desactivado")
+    @ApiResponse(responseCode = "204", description = "Doctor desactivado", content = @Content)
     @ApiResponse(responseCode = "400", description = "Identificador no válido", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Falta autenticación válida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "403", description = "Se requiere el rol ADMIN", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -93,7 +93,7 @@ public class DoctorController {
     }
 
     @PostMapping("/{id}/horarios")
-    @Operation(summary = "Agregar un horario a un doctor", description = "Requiere rol ADMIN, SECRETARIA o el DOCTOR propietario. Los horarios que se cruzan generan conflicto.")
+    @Operation(summary = "Agregar un horario a un doctor", description = "Requiere rol ADMIN, SECRETARIA o el DOCTOR propietario. Fin debe ser posterior a inicio. No se permiten solapamientos el mismo día; horarios adyacentes sí se permiten.")
     @ApiResponse(responseCode = "201", description = "Horario creado")
     @ApiResponse(responseCode = "400", description = "Datos inválidos", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Falta autenticación válida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -110,7 +110,7 @@ public class DoctorController {
     }
 
     @PutMapping("/{id}/horarios/{idHorario}")
-    @Operation(summary = "Actualizar un horario", description = "Requiere rol ADMIN, SECRETARIA o el DOCTOR propietario. Los horarios que se cruzan generan conflicto.")
+    @Operation(summary = "Actualizar un horario", description = "Requiere rol ADMIN, SECRETARIA o el DOCTOR propietario. Fin debe ser posterior a inicio. No se permiten solapamientos el mismo día; horarios adyacentes sí se permiten.")
     @ApiResponse(responseCode = "200", description = "Horario actualizado")
     @ApiResponse(responseCode = "400", description = "Datos inválidos o identificador no válido", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Falta autenticación válida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -128,7 +128,7 @@ public class DoctorController {
 
     @DeleteMapping("/{id}/horarios/{idHorario}")
     @Operation(summary = "Eliminar un horario", description = "Requiere rol ADMIN, SECRETARIA o el DOCTOR propietario.")
-    @ApiResponse(responseCode = "204", description = "Horario eliminado")
+    @ApiResponse(responseCode = "204", description = "Horario eliminado", content = @Content)
     @ApiResponse(responseCode = "400", description = "Identificador no válido", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Falta autenticación válida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "403", description = "Rol sin permiso para esta operación", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
