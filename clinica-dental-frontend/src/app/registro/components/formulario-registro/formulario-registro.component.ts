@@ -6,7 +6,6 @@ import { PacienteRegistroRequest } from '../../models/paciente-registro.model';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 import { PacienteService } from '../../../pacientes/service/paciente.service';
-import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 
 @Component({
   selector: 'app-formulario-registro-cliente',
@@ -21,7 +20,6 @@ export class FormularioRegistroClienteComponent implements OnInit {
   private readonly pacienteService = inject(PacienteService);
   private readonly notificacionService = inject(NotificacionService);
   private readonly router = inject(Router);
-  private readonly notificacionService = inject(NotificacionService);
 
   registroForm: FormGroup;
 
