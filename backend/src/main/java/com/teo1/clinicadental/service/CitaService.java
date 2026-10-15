@@ -5,7 +5,6 @@ import com.teo1.clinicadental.dto.CitaResponse;
 import com.teo1.clinicadental.dto.EstadoCitaRequest;
 import com.teo1.clinicadental.model.Cita;
 import com.teo1.clinicadental.model.Cliente;
-import com.teo1.clinicadental.model.DiaSemana;
 import com.teo1.clinicadental.model.Doctor;
 import com.teo1.clinicadental.model.EstadoCita;
 import com.teo1.clinicadental.model.EstadoUsuario;
@@ -13,14 +12,12 @@ import com.teo1.clinicadental.model.Rol;
 import com.teo1.clinicadental.repository.CitaRepository;
 import com.teo1.clinicadental.repository.ClienteRepository;
 import com.teo1.clinicadental.repository.DoctorRepository;
-import com.teo1.clinicadental.repository.HorarioRepository;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
@@ -31,34 +28,30 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class CitaService {
 
-    private static final String MENSAJE_SOLAPE = "El doctor ya tiene una cita agendada en ese horario";
     private static final String INDICE_CITA_DOCTOR_SLOT = "uq_cita_doctor_slot";
     private static final int MAXIMO_HORAS_PROXIMAS = 72;
 
     private final CitaRepository citaRepository;
     private final ClienteRepository clienteRepository;
     private final DoctorRepository doctorRepository;
-    private final HorarioRepository horarioRepository;
+    private final DisponibilidadCitaService disponibilidadCitaService;
     private final CitaMapper citaMapper;
     private final Clock clock;
-    private final long duracionMinutos;
 
     public CitaService(
             CitaRepository citaRepository,
             ClienteRepository clienteRepository,
             DoctorRepository doctorRepository,
-            HorarioRepository horarioRepository,
+            DisponibilidadCitaService disponibilidadCitaService,
             CitaMapper citaMapper,
-            Clock clock,
-            @Value("${app.citas.duracion-minutos:30}") long duracionMinutos
+            Clock clock
     ) {
         this.citaRepository = citaRepository;
         this.clienteRepository = clienteRepository;
         this.doctorRepository = doctorRepository;
-        this.horarioRepository = horarioRepository;
+        this.disponibilidadCitaService = disponibilidadCitaService;
         this.citaMapper = citaMapper;
         this.clock = clock;
-        this.duracionMinutos = duracionMinutos;
     }
 
     @Transactional
@@ -79,12 +72,7 @@ public class CitaService {
         LocalDate fecha = request.getFecha();
         LocalTime inicio = request.getHora();
 
-        if (!LocalDateTime.of(fecha, inicio).isAfter(LocalDateTime.now(clock))) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha y hora de la cita ya pasaron");
-        }
-
-        validarDentroDeHorario(doctor.getId(), fecha, inicio);
-        validarSinSolape(doctor.getId(), fecha, inicio);
+        disponibilidadCitaService.validar(doctor, fecha, inicio, null);
 
         Cita cita = Cita.builder()
                 .cliente(cliente)
@@ -100,7 +88,7 @@ public class CitaService {
             return citaMapper.toResponse(citaRepository.saveAndFlush(cita));
         } catch (DataIntegrityViolationException exception) {
             if (violaIndiceDeSlot(exception)) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, MENSAJE_SOLAPE);
+                throw new ResponseStatusException(HttpStatus.CONFLICT, DisponibilidadCitaService.MENSAJE_SOLAPE);
             }
             throw exception;
         }
@@ -270,32 +258,6 @@ public class CitaService {
         }
 
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para agendar citas");
-    }
-
-    private void validarDentroDeHorario(UUID doctorId, LocalDate fecha, LocalTime inicio) {
-        LocalTime fin = inicio.plusMinutes(duracionMinutos);
-        boolean cruzaMedianoche = !fin.isAfter(inicio);
-
-        boolean dentroDeHorario = !cruzaMedianoche
-                && horarioRepository.findByDoctorIdAndDiaSemana(doctorId, DiaSemana.desde(fecha.getDayOfWeek())).stream()
-                .anyMatch(horario -> !inicio.isBefore(horario.getHoraInicio())
-                        && !fin.isAfter(horario.getHoraFin()));
-
-        if (!dentroDeHorario) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "La cita no cabe dentro del horario de atencion del doctor");
-        }
-    }
-
-    private void validarSinSolape(UUID doctorId, LocalDate fecha, LocalTime inicio) {
-        LocalTime fin = inicio.plusMinutes(duracionMinutos);
-
-        boolean seSolapa = citaRepository.findByDoctorIdAndFechaAndEstadoNot(doctorId, fecha, EstadoCita.CANCELADA).stream()
-                .anyMatch(otra -> inicio.isBefore(otra.getHora().plusMinutes(duracionMinutos))
-                        && otra.getHora().isBefore(fin));
-
-        if (seSolapa) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, MENSAJE_SOLAPE);
-        }
     }
 
     private boolean violaIndiceDeSlot(DataIntegrityViolationException exception) {
