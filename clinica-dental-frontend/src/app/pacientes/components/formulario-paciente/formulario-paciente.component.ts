@@ -2,9 +2,9 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 import { ClienteUpdateRequest } from '../../models/paciente.model';
 import { PacienteService } from '../../service/paciente.service';
-import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 
 @Component({
   selector: 'app-formulario-paciente',

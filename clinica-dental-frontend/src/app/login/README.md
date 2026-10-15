@@ -1,15 +1,16 @@
 # Login frontend
 
-La pantalla se muestra en `/` y conserva el enlace hacia `/registro`.
+La pantalla de login se muestra en `/` y conserva el enlace hacia `/registro`.
 
-## Contrato preparado
+## Funcionamiento
 
-Cuando el backend exponga el endpoint, `AuthService.login()` enviará:
+El formulario valida un correo electrónico y una contraseña antes de llamar a `AuthService.login()`.
+El servicio envía la solicitud al endpoint `/auth/login` mediante el prefijo `/api` del frontend.
 
 ```json
 POST /auth/login
 {
-  "usuario": "1234567890123",
+  "email": "paciente@ejemplo.com",
   "password": "ClaveSegura1!"
 }
 ```
@@ -22,4 +23,6 @@ La respuesta esperada es:
 }
 ```
 
-El token se guardará en `localStorage` con la clave `jwt`, que ya utiliza el interceptor existente para enviar `Authorization: Bearer <token>`.
+El token se guarda en `localStorage` con la clave `token`. El interceptor existente lo lee y envía como `Authorization: Bearer <token>` en las peticiones protegidas.
+
+Después de iniciar sesión correctamente, la aplicación carga `/auth/me` y redirige al dashboard.

@@ -3,6 +3,7 @@ export interface HistorialClinicoRequest {
 }
 
 export interface HistorialClinicoResponse {
+  idCliente?: string;
   idHistorial: string;
   fecha: string;
   descripcion: string;

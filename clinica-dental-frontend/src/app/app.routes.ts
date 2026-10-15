@@ -13,6 +13,7 @@ import { FormularioListaNegraComponent } from './pacientes/components/formulario
 import { HistorialPacienteComponent } from './pacientes/components/historial-paciente/historial-paciente.component';
 import { ListadoCitasComponent } from './citas/components/listado-citas/listado-citas.component';
 import { FormularioCitaComponent } from './citas/components/formulario-cita/formulario-cita.component';
+import { ReporteCitasComponent } from './reportes/components/reporte-citas/reporte-citas.component';
 //guards
 import { rolGuard } from './core/guards/rol.guard';
 
@@ -32,5 +33,6 @@ export const routes: Routes = [
   { path: 'pacientes/:id', component: DetallePacienteComponent, canActivate: [rolGuard(['ADMIN', 'DOCTOR', 'SECRETARIA'])]},
   { path: 'citas', component: ListadoCitasComponent, canActivate: [rolGuard(['ADMIN', 'DOCTOR', 'SECRETARIA', 'CLIENTE'])]},
   { path: 'citas/nueva', component: FormularioCitaComponent, canActivate: [rolGuard(['CLIENTE', 'SECRETARIA', 'ADMIN'])]},
+  { path: 'reportes', component: ReporteCitasComponent, canActivate: [rolGuard(['ADMIN', 'SECRETARIA'])]},
   { path: '**', redirectTo: '' }
 ];

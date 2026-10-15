@@ -4,8 +4,8 @@ import { CommonModule, NgClass } from '@angular/common';
 import { Router } from '@angular/router';
 import { PacienteRegistroRequest } from '../../models/paciente-registro.model';
 import { AuthService } from '../../../core/services/auth.service';
-import { PacienteService } from '../../../pacientes/service/paciente.service';
 import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
+import { PacienteService } from '../../../pacientes/service/paciente.service';
 
 @Component({
   selector: 'app-formulario-registro-cliente',
@@ -18,8 +18,8 @@ export class FormularioRegistroClienteComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly pacienteService = inject(PacienteService);
-  private readonly router = inject(Router);
   private readonly notificacionService = inject(NotificacionService);
+  private readonly router = inject(Router);
 
   registroForm: FormGroup;
 
