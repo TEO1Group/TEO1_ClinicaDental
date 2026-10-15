@@ -37,6 +37,7 @@ services:
       SMTP_USERNAME: ${SMTP_USERNAME:-}
       SMTP_PASSWORD: ${SMTP_PASSWORD:-}
       SMTP_FROM: ${SMTP_FROM:-}
+      RECORDATORIO_CRON: ${RECORDATORIO_CRON:-0 0 7 * * *}
     ports:
       - "8080:8080"
     depends_on:
