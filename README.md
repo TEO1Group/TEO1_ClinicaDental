@@ -174,7 +174,7 @@ El token se valida en cada petición; si un usuario se desactiva, su token deja 
 
 ## API (Swagger)
 
-Swagger/OpenAPI es la fuente principal y actualizada de documentación de la API. Documenta todas las operaciones de los controllers: autenticación, usuarios, pacientes, doctores y horarios, y citas (agendar, listar, obtener, cambiar estado y próximas).
+Swagger/OpenAPI es la fuente principal y actualizada de documentación de la API. Documenta todas las operaciones de los controllers: autenticación, usuarios, pacientes, doctores y horarios, citas (incluida reprogramación), bloqueos de doctores, tratamientos y reportes. Las reglas, permisos, errores y ejemplos se generan desde las anotaciones y DTO del backend.
 
 - Local: http://localhost:8080/swagger-ui.html (directo al backend) o http://localhost:4200/api/swagger-ui.html (a través de nginx en Docker).
 - EC2: http://18.226.37.148:4200/api/swagger-ui/index.html y el JSON en http://18.226.37.148:4200/api/v3/api-docs.

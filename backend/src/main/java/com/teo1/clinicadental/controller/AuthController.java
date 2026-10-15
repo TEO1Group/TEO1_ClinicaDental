@@ -34,10 +34,11 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/registro")
-    @Operation(summary = "Registrar una cuenta de cliente", description = "Pública. Registra una cuenta de cliente; devuelve 201.")
+    @Operation(summary = "Registrar una cuenta de cliente", description = "Pública. Crea un usuario ACTIVO con rol CLIENTE y su perfil de paciente. Email y DPI deben ser únicos. La contraseña requiere al menos 8 caracteres, mayúscula, minúscula, número y símbolo.")
     @ApiResponse(responseCode = "201", description = "Cuenta registrada")
     @ApiResponse(responseCode = "400", description = "Datos inválidos", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    @ApiResponse(responseCode = "409", description = "Conflicto con una restricción de datos", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "409", description = "Email o DPI ya registrados, o conflicto de integridad", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "500", description = "El rol CLIENTE no está configurado", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<RegistroResponse> registrar(
             @Valid @RequestBody RegistroRequest request
     ) {
@@ -46,7 +47,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    @Operation(summary = "Iniciar sesión", description = "Pública. Devuelve un JWT cuando las credenciales son válidas.")
+    @Operation(summary = "Iniciar sesión", description = "Pública. Devuelve un JWT solo si el email y la contraseña corresponden a una cuenta ACTIVA. Copiar el token a Authorize sin anteponer Bearer.")
     @ApiResponse(responseCode = "200", description = "Credenciales aceptadas; devuelve el token JWT")
     @ApiResponse(responseCode = "400", description = "Datos inválidos", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Credenciales no válidas", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))

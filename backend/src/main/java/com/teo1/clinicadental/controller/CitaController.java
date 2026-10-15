@@ -157,8 +157,8 @@ public class CitaController {
                     + "app.citas.antelacion-cancelacion-horas (24) horas de anticipacion al inicio ORIGINAL de la cita; "
                     + "SECRETARIA y ADMIN no tienen limite. La nueva fecha y hora deben ser futuras, distintas de las actuales, "
                     + "caber en un horario del doctor, no cruzarse con un bloqueo del doctor y no solaparse con otra cita "
-                    + "(sin contar la propia). La hora anterior queda libre y el recordatorio por correo se vuelve a enviar "
-                    + "para la nueva fecha."
+                    + "(sin contar la propia). La hora anterior queda libre y el recordatorio queda pendiente de nuevo "
+                    + "para la nueva fecha, sujeto a la configuración SMTP y la tarea de recordatorios."
     )
     @ApiResponse(responseCode = "200", description = "Cita reprogramada")
     @ApiResponse(responseCode = "400", description = "Falta fecha, hora o motivo, el motivo supera 200 caracteres, la nueva fecha y hora son iguales a las actuales o ya pasaron", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
