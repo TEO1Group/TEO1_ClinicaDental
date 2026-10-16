@@ -1,0 +1,281 @@
+.text-primario {
+  color: var(--color-primario);
+}
+
+// Resumen general (arriba)
+.resumen-general {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.resumen-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #ffffff;
+  padding: 0.5rem 1rem;
+  border-radius: 50rem;
+  box-shadow: 0 2px 8px rgba(44, 123, 229, 0.08);
+  font-size: 0.85rem;
+
+  i {
+    color: var(--color-primario);
+    font-size: 1rem;
+  }
+
+  .resumen-valor {
+    font-weight: 700;
+    color: var(--color-primario);
+    font-size: 1rem;
+  }
+
+  .resumen-label {
+    color: #687786;
+    font-weight: 500;
+  }
+}
+
+// Lista de citas
+.citas-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.cita-card {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  box-shadow: 0 4px 16px rgba(44, 123, 229, 0.08);
+  overflow: hidden;
+  transition: transform 0.25s ease-in-out, box-shadow 0.25s ease-in-out;
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(44, 123, 229, 0.15);
+  }
+}
+
+// Header de la card
+.cita-header {
+  background: linear-gradient(160deg, var(--color-primario) 0%, #1c5fc4 100%);
+  padding: 1rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.cita-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.cita-icono {
+  width: 44px;
+  height: 44px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  i {
+    font-size: 1.25rem;
+    color: #ffffff;
+  }
+}
+
+.cita-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cita-fecha {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.2;
+
+  .cita-hora {
+    font-weight: 500;
+    opacity: 0.85;
+  }
+}
+
+.cita-doctor {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.2;
+  margin-top: 0.15rem;
+}
+
+.cita-badge {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  padding: 0.35rem 0.75rem;
+  border-radius: 50rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+// Body de la card
+.cita-body {
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tratamiento-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  background-color: #f7f9fa;
+  border-radius: 0.65rem;
+  transition: background-color 0.15s ease-in-out;
+
+  &:hover {
+    background-color: #eef4fb;
+  }
+}
+
+.tratamiento-icono {
+  width: 36px;
+  height: 36px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(44, 123, 229, 0.1);
+
+  i {
+    color: var(--color-primario);
+    font-size: 1rem;
+  }
+}
+
+.tratamiento-contenido {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.tratamiento-titulo {
+  font-weight: 600;
+  color: var(--color-texto);
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.tratamiento-observaciones {
+  font-size: 0.8rem;
+  color: #687786;
+  margin-top: 0.25rem;
+  line-height: 1.35;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+
+  i {
+    margin-top: 0.15rem;
+    flex-shrink: 0;
+    color: #7890a5;
+  }
+}
+
+.tratamiento-costo {
+  font-weight: 700;
+  color: var(--color-primario);
+  font-size: 1rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+// Footer de la card
+.cita-footer {
+  background-color: #f7f9fa;
+  border-top: 1px solid #e9ecef;
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.subtotal-info {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  color: #687786;
+  font-weight: 500;
+
+  i {
+    color: var(--color-primario);
+  }
+}
+
+.subtotal-monto {
+  font-weight: 700;
+  color: var(--color-primario);
+  font-size: 1.2rem;
+}
+
+// Estado vacío
+.empty-state {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(44, 123, 229, 0.08);
+}
+
+.empty-icon-wrap {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(160deg, #eef8f7 0%, #e8f0fb 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+
+  i {
+    font-size: 2.5rem;
+    color: var(--color-primario);
+    opacity: 0.7;
+  }
+}
+
+// Responsive
+@media (max-width: 576px) {
+  .cita-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cita-badge {
+    align-self: flex-start;
+  }
+
+  .tratamiento-item {
+    flex-wrap: wrap;
+  }
+
+  .tratamiento-costo {
+    margin-left: 3rem;
+  }
+
+  .resumen-general {
+    width: 100%;
+  }
+}

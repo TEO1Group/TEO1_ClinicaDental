@@ -112,13 +112,24 @@
 
       @if (rol() === 'CLIENTE') {
         <div class="row g-3">
-          <div class="col-md-6 offset-md-3">
+          <div class="col-md-6">
             <a routerLink="/doctores" class="card-acceso text-decoration-none">
               <div class="card shadow-sm border-0 rounded-4 h-100">
                 <div class="card-body p-4 text-center">
                   <i class="bi bi-person-badge acceso-icono text-primario"></i>
                   <h5 class="fw-bold mt-3 mb-1">Doctores</h5>
                   <p class="text-muted mb-0">Consulta los doctores disponibles</p>
+                </div>
+              </div>
+            </a>
+          </div>
+          <div class="col-md-6">
+            <a routerLink="/mis-tratamientos" class="card-acceso text-decoration-none">
+              <div class="card shadow-sm border-0 rounded-4 h-100">
+                <div class="card-body p-4 text-center">
+                  <i class="bi bi-clipboard2-pulse acceso-icono text-primario"></i>
+                  <h5 class="fw-bold mt-3 mb-1">Mis Tratamientos</h5>
+                  <p class="text-muted mb-0">Revisa tu historial de tratamientos</p>
                 </div>
               </div>
             </a>
