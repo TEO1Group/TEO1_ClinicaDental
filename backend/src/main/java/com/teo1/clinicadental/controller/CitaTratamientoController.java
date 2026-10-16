@@ -86,4 +86,20 @@ public class CitaTratamientoController {
     public ResponseEntity<TratamientosPacienteResponse> listarPorPaciente(@PathVariable UUID idCliente) {
         return ResponseEntity.ok(tratamientoService.listarPorPaciente(idCliente));
     }
+
+    @GetMapping("/mis-tratamientos")
+    @Operation(
+            summary = "Listar mis tratamientos",
+            description = "Requiere rol CLIENTE; ADMIN, DOCTOR y SECRETARIA no. Solo lectura. El paciente se obtiene del "
+                    + "usuario autenticado, por eso no recibe ningun identificador. Devuelve los tratamientos registrados "
+                    + "en las citas del paciente, de la cita mas reciente a la mas antigua, y el total de los costos "
+                    + "cobrados (0 si no tiene ninguno)."
+    )
+    @ApiResponse(responseCode = "200", description = "Tratamientos del paciente autenticado y total")
+    @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "Se requiere el rol CLIENTE", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "404", description = "El usuario no tiene un perfil de paciente", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<TratamientosPacienteResponse> listarMisTratamientos(Authentication authentication) {
+        return ResponseEntity.ok(tratamientoService.listarMisTratamientos(authentication));
+    }
 }

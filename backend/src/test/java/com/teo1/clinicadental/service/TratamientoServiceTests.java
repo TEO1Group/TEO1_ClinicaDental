@@ -301,6 +301,70 @@ class TratamientoServiceTests {
         verifyNoInteractions(citaTratamientoRepository);
     }
 
+    @Test
+    void elClienteVeSusTratamientosYElTotal() {
+        Cita primera = prepararCitaSinBuscar(LocalDate.of(2026, 10, 1));
+        Cita segunda = prepararCitaSinBuscar(LocalDate.of(2026, 10, 5));
+        when(clienteRepository.findByUsuarioId(cliente.getUsuario().getId())).thenReturn(Optional.of(cliente));
+        when(citaTratamientoRepository.findByCitaClienteIdOrderByCitaFechaDescCitaHoraDescFechaRegistroAsc(cliente.getId()))
+                .thenReturn(List.of(registro(segunda, "350.00"), registro(primera, "150.50")));
+
+        TratamientosPacienteResponse respuesta = tratamientoService.listarMisTratamientos(autenticacionCliente());
+
+        assertEquals(new BigDecimal("500.50"), respuesta.getTotal());
+        assertEquals(2, respuesta.getTratamientos().size());
+        assertEquals(segunda.getId(), respuesta.getTratamientos().get(0).getIdCita());
+        assertEquals(primera.getId(), respuesta.getTratamientos().get(1).getIdCita());
+        assertEquals("Limpieza dental", respuesta.getTratamientos().get(0).getNombreTratamiento());
+        assertEquals("Carlos", respuesta.getTratamientos().get(0).getNombreDoctor());
+    }
+
+    @Test
+    void elClienteSinTratamientosTieneTotalCero() {
+        when(clienteRepository.findByUsuarioId(cliente.getUsuario().getId())).thenReturn(Optional.of(cliente));
+        when(citaTratamientoRepository.findByCitaClienteIdOrderByCitaFechaDescCitaHoraDescFechaRegistroAsc(cliente.getId()))
+                .thenReturn(List.of());
+
+        TratamientosPacienteResponse respuesta = tratamientoService.listarMisTratamientos(autenticacionCliente());
+
+        assertEquals(0, BigDecimal.ZERO.compareTo(respuesta.getTotal()));
+        assertTrue(respuesta.getTratamientos().isEmpty());
+    }
+
+    @Test
+    void usuarioSinPerfilDePacienteDevuelveNoEncontrado() {
+        UUID usuarioId = UUID.randomUUID();
+        when(clienteRepository.findByUsuarioId(usuarioId)).thenReturn(Optional.empty());
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> tratamientoService.listarMisTratamientos(autenticacion(usuarioId, "CLIENTE")));
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+        assertEquals("El usuario no tiene un perfil de paciente", exception.getReason());
+        verifyNoInteractions(citaTratamientoRepository);
+    }
+
+    @Test
+    void elClienteSoloConsultaLosTratamientosDeSuPerfil() {
+        Cliente otroCliente = Cliente.builder()
+                .id(UUID.randomUUID())
+                .usuario(Usuario.builder().id(UUID.randomUUID()).nombre("Luis").apellido("Gomez").build())
+                .dpi("1234567890102")
+                .build();
+        when(clienteRepository.findByUsuarioId(cliente.getUsuario().getId())).thenReturn(Optional.of(cliente));
+        when(citaTratamientoRepository.findByCitaClienteIdOrderByCitaFechaDescCitaHoraDescFechaRegistroAsc(cliente.getId()))
+                .thenReturn(List.of(registro(prepararCitaSinBuscar(LocalDate.of(2026, 10, 1)), "150.00")));
+
+        TratamientosPacienteResponse respuesta = tratamientoService.listarMisTratamientos(autenticacionCliente());
+
+        assertEquals(new BigDecimal("150.00"), respuesta.getTotal());
+        assertEquals(1, respuesta.getTratamientos().size());
+        verify(citaTratamientoRepository).findByCitaClienteIdOrderByCitaFechaDescCitaHoraDescFechaRegistroAsc(cliente.getId());
+        verify(citaTratamientoRepository, never())
+                .findByCitaClienteIdOrderByCitaFechaDescCitaHoraDescFechaRegistroAsc(otroCliente.getId());
+        verify(clienteRepository, never()).existsById(any());
+    }
+
     private Cita prepararCita(EstadoCita estado) {
         Cita cita = prepararCitaSinBuscar(LocalDate.of(2026, 10, 8));
         cita.setEstado(estado);
@@ -351,6 +415,10 @@ class TratamientoServiceTests {
 
     private Authentication autenticacionDoctor() {
         return autenticacion(doctor.getUsuario().getId(), "DOCTOR");
+    }
+
+    private Authentication autenticacionCliente() {
+        return autenticacion(cliente.getUsuario().getId(), "CLIENTE");
     }
 
     private Authentication autenticacion(UUID usuarioId, String rol) {
