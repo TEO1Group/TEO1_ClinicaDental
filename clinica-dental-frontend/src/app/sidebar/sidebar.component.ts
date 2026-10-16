@@ -57,6 +57,12 @@ export class SidebarComponent {
       roles: ['ADMIN', 'DOCTOR', 'SECRETARIA', 'CLIENTE']
     },
     {
+      label: 'Mis Tratamientos',
+      icono: 'bi-clipboard2-pulse',
+      ruta: '/mis-tratamientos',
+      roles: ['CLIENTE']
+    },
+    {
       label: 'Reportes',
       icono: 'bi-bar-chart-line',
       ruta: '/reportes',

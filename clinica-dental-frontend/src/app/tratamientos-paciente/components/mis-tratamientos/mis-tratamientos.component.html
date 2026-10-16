@@ -1,0 +1,112 @@
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-12 col-xl-10">
+
+      <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <div>
+          <h2 class="fw-bold text-primario mb-1">Mis Tratamientos</h2>
+          <p class="text-muted mb-0">Historial de tratamientos realizados en tus citas</p>
+        </div>
+        @if (data() && citasAgrupadas().length > 0) {
+          <div class="resumen-general">
+            <div class="resumen-item">
+              <i class="bi bi-clipboard2-pulse"></i>
+              <span class="resumen-valor">{{ data()!.tratamientos.length }}</span>
+              <span class="resumen-label">tratamiento(s)</span>
+            </div>
+            <div class="resumen-item">
+              <i class="bi bi-calendar-check"></i>
+              <span class="resumen-valor">{{ citasAgrupadas().length }}</span>
+              <span class="resumen-label">cita(s)</span>
+            </div>
+          </div>
+        }
+      </div>
+
+      @if (error()) {
+        <div class="alert alert-danger" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error() }}
+        </div>
+      }
+
+      @if (cargando()) {
+        <div class="text-center py-5">
+          <div class="spinner-border text-primario" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+          <p class="text-muted mt-3 mb-0">Cargando tratamientos...</p>
+        </div>
+      }
+
+      @if (!cargando() && citasAgrupadas().length > 0) {
+        <div class="citas-lista">
+          @for (cita of citasAgrupadas(); track cita.idCita) {
+            <div class="cita-card">
+              <div class="cita-header">
+                <div class="cita-header-left">
+                  <div class="cita-icono">
+                    <i class="bi bi-calendar-event"></i>
+                  </div>
+                  <div class="cita-info">
+                    <div class="cita-fecha">
+                      {{ formatearFecha(cita.fechaCita) }}
+                      <span class="cita-hora">· {{ formatearHora(cita.horaCita) }}</span>
+                    </div>
+                    <div class="cita-doctor">{{ nombreDoctor(cita) }}</div>
+                  </div>
+                </div>
+                <div class="cita-badge">
+                  {{ cita.tratamientos.length }}
+                  {{ cita.tratamientos.length === 1 ? 'tratamiento' : 'tratamientos' }}
+                </div>
+              </div>
+
+              <div class="cita-body">
+                @for (tratamiento of cita.tratamientos; track tratamiento.idCitaTratamiento) {
+                  <div class="tratamiento-item">
+                    <div class="tratamiento-icono">
+                      <i class="bi bi-clipboard2-check"></i>
+                    </div>
+                    <div class="tratamiento-contenido">
+                      <div class="tratamiento-titulo">{{ tratamiento.nombreTratamiento }}</div>
+                      @if (tratamiento.observaciones) {
+                        <div class="tratamiento-observaciones">
+                          <i class="bi bi-chat-left-text"></i>
+                          {{ tratamiento.observaciones }}
+                        </div>
+                      }
+                    </div>
+                    <div class="tratamiento-costo">
+                      Q{{ tratamiento.costo | number:'1.2-2' }}
+                    </div>
+                  </div>
+                }
+              </div>
+
+              <div class="cita-footer">
+                <div class="subtotal-info">
+                  <i class="bi bi-receipt"></i>
+                  <span>Subtotal de la cita</span>
+                </div>
+                <div class="subtotal-monto">
+                  Q{{ cita.subtotal | number:'1.2-2' }}
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      @if (!cargando() && citasAgrupadas().length === 0 && !error()) {
+        <div class="empty-state">
+          <div class="empty-icon-wrap">
+            <i class="bi bi-clipboard2-pulse"></i>
+          </div>
+          <h4 class="fw-bold mt-3 mb-2">Aún no tienes tratamientos</h4>
+          <p class="text-muted mb-0">Cuando asistas a una cita y el doctor registre un tratamiento, aparecerá aquí.</p>
+        </div>
+      }
+
+    </div>
+  </div>
+</div>
