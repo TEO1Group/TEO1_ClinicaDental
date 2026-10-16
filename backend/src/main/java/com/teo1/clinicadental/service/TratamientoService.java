@@ -6,6 +6,7 @@ import com.teo1.clinicadental.dto.TratamientoResponse;
 import com.teo1.clinicadental.dto.TratamientosPacienteResponse;
 import com.teo1.clinicadental.model.Cita;
 import com.teo1.clinicadental.model.CitaTratamiento;
+import com.teo1.clinicadental.model.Cliente;
 import com.teo1.clinicadental.model.EstadoCita;
 import com.teo1.clinicadental.model.Rol;
 import com.teo1.clinicadental.model.Tratamiento;
@@ -102,6 +103,19 @@ public class TratamientoService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Paciente no encontrado");
         }
 
+        return tratamientosDelPaciente(clienteId);
+    }
+
+    @Transactional(readOnly = true)
+    public TratamientosPacienteResponse listarMisTratamientos(Authentication authentication) {
+        Cliente cliente = clienteRepository.findByUsuarioId(UUID.fromString(authentication.getName()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "El usuario no tiene un perfil de paciente"));
+
+        return tratamientosDelPaciente(cliente.getId());
+    }
+
+    private TratamientosPacienteResponse tratamientosDelPaciente(UUID clienteId) {
         List<CitaTratamientoResponse> tratamientos = citaTratamientoRepository
                 .findByCitaClienteIdOrderByCitaFechaDescCitaHoraDescFechaRegistroAsc(clienteId).stream()
                 .map(this::toResponse)
