@@ -1,6 +1,7 @@
 package com.teo1.clinicadental.service;
 
 import com.teo1.clinicadental.dto.CitasPorDoctorResponse;
+import com.teo1.clinicadental.dto.ReporteHorasDemandadasResponse;
 import com.teo1.clinicadental.dto.ReporteCitasPorDoctorResponse;
 import com.teo1.clinicadental.model.Doctor;
 import com.teo1.clinicadental.model.EstadoCita;
@@ -29,12 +30,7 @@ public class ReporteCitaService {
 
     @Transactional(readOnly = true)
     public ReporteCitasPorDoctorResponse citasPorDoctor(LocalDate desde, LocalDate hasta) {
-        if (desde == null || hasta == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debes indicar las fechas desde y hasta");
-        }
-        if (desde.isAfter(hasta)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha desde no puede ser posterior a hasta");
-        }
+        validarPeriodo(desde, hasta);
 
         Map<UUID, Map<EstadoCita, Long>> conteos = new HashMap<>();
         for (ReporteCitaRepository.ConteoCitas conteo : reporteCitaRepository.contarPorDoctorYEstado(desde, hasta)) {
@@ -50,6 +46,24 @@ public class ReporteCitaService {
                 .toList();
 
         return new ReporteCitasPorDoctorResponse(desde, hasta, doctores);
+    }
+
+    @Transactional(readOnly = true)
+    public ReporteHorasDemandadasResponse horasDemandadas(LocalDate desde, LocalDate hasta) {
+        validarPeriodo(desde, hasta);
+        return new ReporteHorasDemandadasResponse(desde, hasta,
+                reporteCitaRepository.contarPorHora(desde, hasta).stream()
+                        .map(conteo -> new ReporteHorasDemandadasResponse.HoraDemandada(conteo.getHora(), conteo.getCantidad()))
+                        .toList());
+    }
+
+    private void validarPeriodo(LocalDate desde, LocalDate hasta) {
+        if (desde == null || hasta == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Debes indicar las fechas desde y hasta");
+        }
+        if (desde.isAfter(hasta)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La fecha desde no puede ser posterior a hasta");
+        }
     }
 
     private CitasPorDoctorResponse toResponse(Doctor doctor, Map<EstadoCita, Long> porEstado) {

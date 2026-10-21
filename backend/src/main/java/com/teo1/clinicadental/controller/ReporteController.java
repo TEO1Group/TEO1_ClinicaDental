@@ -1,6 +1,7 @@
 package com.teo1.clinicadental.controller;
 
 import com.teo1.clinicadental.dto.ErrorResponse;
+import com.teo1.clinicadental.dto.ReporteHorasDemandadasResponse;
 import com.teo1.clinicadental.dto.ReporteCitasPorDoctorResponse;
 import com.teo1.clinicadental.service.ReporteCitaService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -48,4 +49,21 @@ public class ReporteController {
     ) {
         return ResponseEntity.ok(reporteCitaService.citasPorDoctor(desde, hasta));
     }
+    @GetMapping("/horas-demandadas")
+    @Operation(summary = "Reporte de horas mas demandadas",
+            description = "Solo ADMIN y SECRETARIA. Cuenta citas de todos los estados y doctores por hora de inicio "
+                    + "(09:00 y 09:30 se agrupan en la hora 9). Fechas desde y hasta inclusivas. "
+                    + "Orden ascendente de hora; no incluye horas sin citas y devuelve una lista vacia si no hay datos.")
+    @ApiResponse(responseCode = "200", description = "Cantidad de citas por hora")
+    @ApiResponse(responseCode = "400", description = "Fechas ausentes, invalidas o rango invertido", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "Solo ADMIN y SECRETARIA", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<ReporteHorasDemandadasResponse> horasDemandadas(
+            @Parameter(description = "Primer dia incluido", example = "2026-10-01", required = true)
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @Parameter(description = "Ultimo dia incluido", example = "2026-10-31", required = true)
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        return ResponseEntity.ok(reporteCitaService.horasDemandadas(desde, hasta));
+    }
+
 }

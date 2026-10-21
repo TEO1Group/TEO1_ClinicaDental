@@ -176,6 +176,55 @@ class ReporteCitasIntegrationTests {
         reporte(tokenCliente, desde.toString(), hasta.toString()).andExpect(status().isForbidden());
     }
 
+    @Test
+    void horasAgrupaMinutosEstadosYDoctoresEnUnaHora() throws Exception {
+        crearCita(doctorConCitas, desde, "09:30", EstadoCita.CANCELADA);
+        for (String token : new String[] {tokenAdmin, tokenSecretaria}) {
+            horas(token, desde.toString(), hasta.toString())
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.desde").value(desde.toString()))
+                    .andExpect(jsonPath("$.hasta").value(hasta.toString()))
+                    .andExpect(jsonPath("$.horas.length()").value(3))
+                    .andExpect(jsonPath("$.horas[0].hora").value(9))
+                    .andExpect(jsonPath("$.horas[0].cantidad").value(6))
+                    .andExpect(jsonPath("$.horas[1].hora").value(10))
+                    .andExpect(jsonPath("$.horas[1].cantidad").value(2))
+                    .andExpect(jsonPath("$.horas[2].hora").value(11))
+                    .andExpect(jsonPath("$.horas[2].cantidad").value(1));
+        }
+    }
+
+    @Test
+    void horasRespetaAmbosLimitesYDevuelveVacioSinDatos() throws Exception {
+        horas(tokenAdmin, desde.toString(), desde.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.horas.length()").value(1))
+                .andExpect(jsonPath("$.horas[0].cantidad").value(1));
+        horas(tokenAdmin, hasta.toString(), hasta.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.horas[0].cantidad").value(1));
+        horas(tokenAdmin, hasta.plusYears(10).toString(), hasta.plusYears(10).toString())
+                .andExpect(status().isOk()).andExpect(jsonPath("$.horas").isEmpty());
+    }
+
+    @Test
+    void horasValidaFechasYPermisos() throws Exception {
+        mockMvc.perform(conToken(get("/reportes/horas-demandadas").param("desde", desde.toString()), tokenAdmin))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(conToken(get("/reportes/horas-demandadas").param("hasta", hasta.toString()), tokenAdmin))
+                .andExpect(status().isBadRequest());
+        horas(tokenAdmin, "invalid", hasta.toString()).andExpect(status().isBadRequest());
+        horas(tokenAdmin, hasta.toString(), desde.toString()).andExpect(status().isBadRequest());
+        horas(tokenDoctor, desde.toString(), hasta.toString()).andExpect(status().isForbidden());
+        horas(tokenCliente, desde.toString(), hasta.toString()).andExpect(status().isForbidden());
+        mockMvc.perform(get("/reportes/horas-demandadas").param("desde", desde.toString()).param("hasta", hasta.toString()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private ResultActions horas(String token, String inicio, String fin) throws Exception {
+        return mockMvc.perform(conToken(get("/reportes/horas-demandadas").param("desde", inicio).param("hasta", fin), token));
+    }
+
     private ResultActions reporte(String token, String desdeTexto, String hastaTexto) throws Exception {
         return mockMvc.perform(conToken(get(RUTA).param("desde", desdeTexto).param("hasta", hastaTexto), token));
     }
