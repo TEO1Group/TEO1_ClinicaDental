@@ -6,6 +6,7 @@ import com.teo1.clinicadental.service.ReporteCitaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -37,7 +38,11 @@ public class ReporteController {
                     + "apellido y nombre. Las citas de doctores inactivos no aparecen."
     )
     @ApiResponse(responseCode = "200", description = "Reporte generado")
-    @ApiResponse(responseCode = "400", description = "Falta desde o hasta, alguna fecha no tiene formato yyyy-MM-dd o desde es posterior a hasta", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "400", description = "Falta desde o hasta, alguna fecha no tiene formato yyyy-MM-dd o desde es posterior a hasta", content = @Content(
+            mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class),
+            examples = @ExampleObject(name = "fechasAusentes", summary = "Fechas requeridas", value = """
+                    {"status":400,"error":"Bad Request","mensaje":"Debes indicar las fechas desde y hasta","path":"/reportes/citas-por-doctor"}
+                    """)))
     @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "403", description = "Se requiere el rol ADMIN o SECRETARIA", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<ReporteCitasPorDoctorResponse> citasPorDoctor(

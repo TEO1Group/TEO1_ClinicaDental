@@ -62,7 +62,7 @@ public class BloqueoDoctorController {
     @Operation(
             summary = "Listar los bloqueos de un doctor",
             description = "Requiere rol ADMIN, SECRETARIA o DOCTOR. El DOCTOR solo puede ver sus propios bloqueos; "
-                    + "el CLIENTE no puede verlos. Ordenados por inicio ascendente."
+                    + "el CLIENTE no puede verlos. Devuelve todos los periodos, incluso los ya finalizados, ordenados por inicio ascendente."
     )
     @ApiResponse(responseCode = "200", description = "Lista de bloqueos")
     @ApiResponse(responseCode = "400", description = "Identificador no valido", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
