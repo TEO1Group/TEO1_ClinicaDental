@@ -4,6 +4,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 DROP TABLE IF EXISTS pago CASCADE;
 DROP TABLE IF EXISTS valoracion CASCADE;
 DROP TABLE IF EXISTS abono_plan CASCADE;
+DROP TABLE IF EXISTS levantamiento_inasistencia CASCADE;
 DROP TABLE IF EXISTS bloqueo_doctor CASCADE;
 DROP TABLE IF EXISTS cita_reprogramacion CASCADE;
 DROP TABLE IF EXISTS cita_tratamiento CASCADE;
@@ -197,6 +198,17 @@ CREATE TABLE bloqueo_doctor (
     CHECK (fin > inicio)
 );
 
+-- Levantamientos de la restriccion por inasistencias (HU-25). Las inasistencias se cuentan
+-- desde el ultimo levantamiento del paciente, asi el conteo vuelve a cero sin tocar las citas.
+CREATE TABLE levantamiento_inasistencia (
+    id_levantamiento  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_cliente        UUID NOT NULL REFERENCES cliente(id_cliente) ON DELETE CASCADE,
+    motivo            VARCHAR(200) NOT NULL,
+    inasistencias     INTEGER NOT NULL CHECK (inasistencias >= 0),
+    levantado_por     UUID REFERENCES usuario(id_usuario) ON DELETE SET NULL,
+    fecha             TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Pagos parciales de un plan; el saldo es costo_total menos la suma de abonos
 CREATE TABLE abono_plan (
     id_abono        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -238,6 +250,7 @@ CREATE INDEX idx_cita_plan        ON cita(id_plan);
 CREATE INDEX idx_plan_cliente     ON plan_tratamiento(id_cliente);
 CREATE INDEX idx_plan_doctor      ON plan_tratamiento(id_doctor);
 CREATE INDEX idx_abono_plan       ON abono_plan(id_plan);
+CREATE INDEX idx_levantamiento_cliente ON levantamiento_inasistencia(id_cliente, fecha);
 
 -- Proposed additions: names, durations and prices require team approval before merge.
 INSERT INTO tratamiento (nombre, descripcion, duracion_minutos, costo)

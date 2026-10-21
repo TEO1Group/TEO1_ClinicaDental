@@ -34,6 +34,7 @@ public class CitaService {
     private final ClienteRepository clienteRepository;
     private final DoctorRepository doctorRepository;
     private final DisponibilidadCitaService disponibilidadCitaService;
+    private final InasistenciaService inasistenciaService;
     private final CitaMapper citaMapper;
     private final Clock clock;
 
@@ -42,6 +43,7 @@ public class CitaService {
             ClienteRepository clienteRepository,
             DoctorRepository doctorRepository,
             DisponibilidadCitaService disponibilidadCitaService,
+            InasistenciaService inasistenciaService,
             CitaMapper citaMapper,
             Clock clock
     ) {
@@ -49,6 +51,7 @@ public class CitaService {
         this.clienteRepository = clienteRepository;
         this.doctorRepository = doctorRepository;
         this.disponibilidadCitaService = disponibilidadCitaService;
+        this.inasistenciaService = inasistenciaService;
         this.citaMapper = citaMapper;
         this.clock = clock;
     }
@@ -67,6 +70,7 @@ public class CitaService {
         if (cliente.isEnListaNegra()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "El paciente esta en lista negra y no puede agendar citas");
         }
+        inasistenciaService.validarPuedeAgendar(cliente);
 
         LocalDate fecha = request.getFecha();
         LocalTime inicio = request.getHora();
