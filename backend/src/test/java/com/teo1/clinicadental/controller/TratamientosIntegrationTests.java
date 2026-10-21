@@ -36,6 +36,8 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -202,6 +204,91 @@ class TratamientosIntegrationTests {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$[*].nombre", hasItem(tratamiento.getNombre())));
         }
+    }
+
+    @Test
+    void adminCreaEditaYRechazaNombresDuplicados() throws Exception {
+        String nombre = "Catalogo " + UUID.randomUUID();
+        mockMvc.perform(conToken(post("/tratamientos"), tokenAdmin).content(catalogo("  " + nombre + "  ", "100.00", true).replace(",\"activo\":true", "")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.nombre").value(nombre))
+                .andExpect(jsonPath("$.activo").value(true));
+        mockMvc.perform(conToken(post("/tratamientos"), tokenAdmin).content(catalogo(nombre, "100.00", true)))
+                .andExpect(status().isConflict());
+        mockMvc.perform(conToken(put("/tratamientos/" + tratamiento.getId()), tokenAdmin)
+                .content(catalogo(nombre, "100.00", true))).andExpect(status().isConflict());
+        mockMvc.perform(conToken(put("/tratamientos/" + tratamiento.getId()), tokenAdmin)
+                .content(catalogo(tratamiento.getNombre(), "0.00", true)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.costo").value(0.0));
+        mockMvc.perform(conToken(put("/tratamientos/" + UUID.randomUUID()), tokenAdmin)
+                .content(catalogo(nombre, "100.00", true))).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void desactivarOcultaImpideNuevosRegistrosYConservaCostoCobrado() throws Exception {
+        String registro = String.format("{\"idTratamiento\":\"%s\"}", tratamiento.getId());
+        registrar(citaAtendida, tokenDoctor, registro).andExpect(status().isCreated());
+        mockMvc.perform(conToken(put("/tratamientos/" + tratamiento.getId()), tokenAdmin)
+                .content(catalogo(tratamiento.getNombre(), "999.00", false)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.activo").value(false));
+        for (String token : new String[] {tokenAdmin, tokenDoctor, tokenSecretaria}) {
+            mockMvc.perform(conToken(get("/tratamientos"), token))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[*].nombre", not(hasItem(tratamiento.getNombre()))));
+        }
+        mockMvc.perform(conToken(get("/tratamientos").param("incluirInactivos", "true"), tokenAdmin))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[*].nombre", hasItem(tratamiento.getNombre())));
+        registrar(citaAtendida, tokenDoctor, registro).andExpect(status().isConflict());
+        mockMvc.perform(conToken(get("/citas/" + citaAtendida.getId() + "/tratamientos"), tokenDoctor))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].costo").value(300.0));
+        mockMvc.perform(conToken(get("/pacientes/" + cliente.getId() + "/tratamientos"), tokenAdmin))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.total").value(300.0));
+        mockMvc.perform(conToken(put("/tratamientos/" + tratamiento.getId()), tokenAdmin)
+                .content(catalogo(tratamiento.getNombre(), "999.00", true)))
+                .andExpect(status().isOk());
+        registrar(citaAtendida, tokenDoctor, registro)
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.costo").value(999.0));
+    }
+
+    @Test
+    void catalogoValidaCuerpoYAutenticacion() throws Exception {
+        String valido = catalogo("Valido " + UUID.randomUUID(), "10.00", true);
+        for (String invalido : new String[] {
+                catalogo(" ", "10.00", true), catalogo("Valido", "-1.00", true),
+                valido.replace("30", "0"), valido.replace("true", "null"),
+                valido.replace("10.00", "0.001"), valido.replace("10.00", "100000000.00"),
+                "{}", valido.replace("Valido", "x".repeat(101))}) {
+            mockMvc.perform(conToken(post("/tratamientos"), tokenAdmin).content(invalido))
+                    .andExpect(status().isBadRequest());
+            mockMvc.perform(conToken(put("/tratamientos/" + tratamiento.getId()), tokenAdmin).content(invalido))
+                    .andExpect(status().isBadRequest());
+        }
+        mockMvc.perform(post("/tratamientos").contentType(MediaType.APPLICATION_JSON).content(valido))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/tratamientos")).andExpect(status().isUnauthorized());
+        mockMvc.perform(put("/tratamientos/" + tratamiento.getId()).contentType(MediaType.APPLICATION_JSON).content(valido))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(conToken(get("/tratamientos").param("incluirInactivos", "invalid"), tokenAdmin))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void soloAdminModificaCatalogoOConsultaInactivos() throws Exception {
+        String tokenCliente = token(cliente.getUsuario());
+        for (String token : new String[] {tokenDoctor, tokenSecretaria, tokenCliente}) {
+            mockMvc.perform(conToken(post("/tratamientos"), token).content(catalogo("Nuevo", "10.00", true)))
+                    .andExpect(status().isForbidden());
+            mockMvc.perform(conToken(put("/tratamientos/" + tratamiento.getId()), token)
+                    .content(catalogo("Nuevo", "10.00", true))).andExpect(status().isForbidden());
+            mockMvc.perform(conToken(get("/tratamientos").param("incluirInactivos", "true"), token))
+                    .andExpect(status().isForbidden());
+        }
+        mockMvc.perform(conToken(get("/tratamientos"), tokenCliente)).andExpect(status().isForbidden());
+    }
+
+    private String catalogo(String nombre, String costo, boolean activo) {
+        return String.format("{\"nombre\":\"%s\",\"descripcion\":\"Prueba\",\"duracionMinutos\":30,\"costo\":%s,\"activo\":%s}",
+                nombre, costo, activo);
     }
 
     private Cita crearCita(LocalDate fecha, EstadoCita estado) {

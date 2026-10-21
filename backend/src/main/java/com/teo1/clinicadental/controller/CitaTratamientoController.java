@@ -36,7 +36,7 @@ public class CitaTratamientoController {
     @Operation(
             summary = "Registrar un tratamiento en una cita",
             description = "Requiere rol DOCTOR y solo el doctor de esa cita puede registrar; otro doctor, ADMIN, SECRETARIA "
-                    + "y CLIENTE no. La cita debe estar ATENDIDA. Si no se envia costo se usa el del catalogo; si se envia "
+                    + "y CLIENTE no. La cita debe estar ATENDIDA y el tratamiento del catalogo debe estar activo. Si no se envia costo se usa el del catalogo; si se envia "
                     + "no puede ser negativo. Se puede registrar el mismo tratamiento mas de una vez en la misma cita."
     )
     @ApiResponse(responseCode = "201", description = "Tratamiento registrado")
@@ -44,7 +44,7 @@ public class CitaTratamientoController {
     @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "403", description = "El usuario no es el doctor de la cita", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "Cita o tratamiento no encontrado", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    @ApiResponse(responseCode = "409", description = "La cita no esta ATENDIDA", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "409", description = "La cita no esta ATENDIDA o el tratamiento esta inactivo", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<CitaTratamientoResponse> registrar(
             @PathVariable UUID idCita,
             @Valid @RequestBody CitaTratamientoRequest request,

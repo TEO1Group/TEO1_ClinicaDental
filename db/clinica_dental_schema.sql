@@ -90,7 +90,8 @@ CREATE TABLE tratamiento (
     nombre           VARCHAR(100) NOT NULL,
     descripcion      TEXT,
     duracion_minutos INTEGER NOT NULL CHECK (duracion_minutos > 0),
-    costo            NUMERIC(10,2) NOT NULL CHECK (costo >= 0)
+    costo            NUMERIC(10,2) NOT NULL CHECK (costo >= 0),
+    activo           BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 -- Catalogo inicial de tratamientos (el costo es el precio sugerido; se puede ajustar al registrarlo en la cita)
@@ -208,3 +209,18 @@ CREATE INDEX idx_historial_cliente ON historial_clinico(id_cliente);
 CREATE INDEX idx_cita_tratamiento_cita ON cita_tratamiento(id_cita);
 CREATE INDEX idx_bloqueo_doctor   ON bloqueo_doctor(id_doctor, inicio);
 CREATE UNIQUE INDEX uq_tratamiento_nombre ON tratamiento(nombre);
+
+-- Proposed additions: names, durations and prices require team approval before merge.
+INSERT INTO tratamiento (nombre, descripcion, duracion_minutos, costo)
+VALUES
+    ('Corona de zirconio', 'Restauración fija por pieza', 60, 2500.00),
+    ('Corona metal porcelana', 'Corona fija por pieza', 60, 2000.00),
+    ('Puente dental', 'Reposición fija de una pieza ausente', 90, 3500.00),
+    ('Prótesis parcial removible', 'Reposición removible de piezas', 60, 2800.00),
+    ('Prótesis total', 'Prótesis completa por arcada', 90, 4500.00),
+    ('Incrustación dental', 'Restauración indirecta por pieza', 60, 1600.00),
+    ('Carilla de resina', 'Restauración estética anterior por pieza', 45, 900.00),
+    ('Carilla de porcelana', 'Restauración estética cerámica por pieza', 60, 2500.00),
+    ('Raspado y alisado radicular', 'Tratamiento periodontal por cuadrante', 60, 800.00),
+    ('Control de ortodoncia', 'Revisión y ajuste periódico', 30, 300.00)
+ON CONFLICT (nombre) DO NOTHING;
