@@ -2,6 +2,8 @@ package com.teo1.clinicadental.controller;
 
 import com.teo1.clinicadental.dto.ErrorResponse;
 import com.teo1.clinicadental.dto.ReporteHorasDemandadasResponse;
+import com.teo1.clinicadental.dto.ReporteInasistenciasResponse;
+import com.teo1.clinicadental.dto.ReporteIngresosTratamientoResponse;
 import com.teo1.clinicadental.dto.ReporteCitasPorDoctorResponse;
 import com.teo1.clinicadental.service.ReporteCitaService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -69,6 +71,40 @@ public class ReporteController {
             @Parameter(description = "Ultimo dia incluido", example = "2026-10-31", required = true)
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
         return ResponseEntity.ok(reporteCitaService.horasDemandadas(desde, hasta));
+    }
+
+    @GetMapping("/inasistencias")
+    @Operation(summary = "Reporte de inasistencias y cancelaciones",
+            description = "Solo ADMIN y SECRETARIA. Cuenta las citas NO_ASISTIO y CANCELADA cuya fecha esta entre desde y hasta, "
+                    + "ambos incluidos, por doctor y por paciente, con los totales del periodo. Solo aparecen doctores y "
+                    + "pacientes con alguna, ordenados de mayor a menor total y luego por apellido y nombre.")
+    @ApiResponse(responseCode = "200", description = "Inasistencias y cancelaciones del periodo")
+    @ApiResponse(responseCode = "400", description = "Fechas ausentes, invalidas o rango invertido", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "Solo ADMIN y SECRETARIA", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<ReporteInasistenciasResponse> inasistencias(
+            @Parameter(description = "Primer dia incluido", example = "2026-10-01", required = true)
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @Parameter(description = "Ultimo dia incluido", example = "2026-10-31", required = true)
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        return ResponseEntity.ok(reporteCitaService.inasistencias(desde, hasta));
+    }
+
+    @GetMapping("/ingresos-por-tratamiento")
+    @Operation(summary = "Reporte de ingresos por tratamiento",
+            description = "Solo ADMIN y SECRETARIA. Por cada tratamiento registrado en citas cuya fecha esta entre desde y "
+                    + "hasta, ambos incluidos, devuelve cuantas veces se realizo y la suma del costo cobrado (el costo guardado "
+                    + "en la cita, no el del catalogo). Ordenado de mayor a menor ingreso; omite tratamientos sin registros.")
+    @ApiResponse(responseCode = "200", description = "Ingresos por tratamiento del periodo")
+    @ApiResponse(responseCode = "400", description = "Fechas ausentes, invalidas o rango invertido", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "Solo ADMIN y SECRETARIA", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<ReporteIngresosTratamientoResponse> ingresosPorTratamiento(
+            @Parameter(description = "Primer dia incluido", example = "2026-10-01", required = true)
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
+            @Parameter(description = "Ultimo dia incluido", example = "2026-10-31", required = true)
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
+        return ResponseEntity.ok(reporteCitaService.ingresosPorTratamiento(desde, hasta));
     }
 
 }
