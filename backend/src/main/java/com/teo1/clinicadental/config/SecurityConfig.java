@@ -85,6 +85,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/citas/**").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/citas/*/estado").authenticated()
                         .requestMatchers(HttpMethod.PATCH, "/citas/*/reprogramar").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/tratamientos").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/tratamientos/*").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.GET, "/tratamientos").hasAnyRole("ADMIN", "DOCTOR", "SECRETARIA")
                         .requestMatchers(HttpMethod.GET, "/mis-tratamientos").hasRole("CLIENTE")
                         .requestMatchers("/reportes/**").hasAnyRole("ADMIN", "SECRETARIA")

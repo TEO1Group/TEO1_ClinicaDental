@@ -25,4 +25,7 @@ public class TratamientoResponse {
 
     @Schema(description = "Costo sugerido en quetzales", example = "300.00")
     private BigDecimal costo;
+
+    @Schema(description = "Disponible para nuevos registros; desactivarlo conserva el historial", example = "true")
+    private boolean activo;
 }

@@ -8,4 +8,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface TratamientoRepository extends JpaRepository<Tratamiento, UUID> {
 
     List<Tratamiento> findAllByOrderByNombreAsc();
+
+    List<Tratamiento> findByActivoTrueOrderByNombreAsc();
+
+    boolean existsByNombre(String nombre);
+
+    boolean existsByNombreAndIdNot(String nombre, UUID id);
 }
