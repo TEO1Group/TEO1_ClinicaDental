@@ -7,13 +7,82 @@
 .btn-primario {
   background-color: var(--color-primario);
   border-color: var(--color-primario);
+  transition: all 0.2s ease-in-out;
 
   &:hover {
     background-color: color.adjust(#2C7BE5, $lightness: -7%);
     border-color: color.adjust(#2C7BE5, $lightness: -7%);
   }
+
+  &:disabled {
+    background-color: #a0c4f7;
+    border-color: #a0c4f7;
+  }
 }
 
 .card {
   background-color: #ffffff;
+}
+
+// Inasistencias
+.inasistencias-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.inasistencia-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.inasistencia-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #7890a5;
+  font-weight: 600;
+}
+
+.inasistencia-valor {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--color-primario);
+  line-height: 1.2;
+}
+
+.levantamiento-info {
+  padding: 1rem;
+  background-color: #f7f9fa;
+  border-left: 3px solid var(--color-primario);
+  border-radius: 0.5rem;
+}
+
+// Modal
+.modal-backdrop-custom {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1040;
+}
+
+.modal-custom {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+  padding: 1rem;
+}
+
+.modal-content-custom {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  padding: 2rem;
+  flex: 0 1 500px;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.15);
 }

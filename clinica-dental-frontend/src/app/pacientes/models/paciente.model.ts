@@ -23,3 +23,23 @@ export interface ListaNegraRequest {
   enListaNegra: boolean;
   motivo?: string | null;
 }
+
+export interface LevantamientoInasistenciaResponse {
+  idLevantamiento: string;
+  motivo: string;
+  inasistencias: number;
+  idLevantadoPor: string | null;
+  fecha: string;
+}
+
+export interface InasistenciasPacienteResponse {
+  idCliente: string;
+  inasistencias: number;
+  limite: number;
+  bloqueado: boolean;
+  ultimoLevantamiento: LevantamientoInasistenciaResponse | null;
+}
+
+export interface LevantamientoInasistenciaRequest {
+  motivo: string;
+}

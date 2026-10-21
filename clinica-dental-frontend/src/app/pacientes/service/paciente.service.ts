@@ -11,6 +11,7 @@ import {
   HistorialClinicoResponse
 } from '../models/historial-clinico.model';
 import { PacienteRegistroRequest } from '../../registro/models/paciente-registro.model';
+import { InasistenciasPacienteResponse, LevantamientoInasistenciaRequest } from '../models/paciente.model';
 
 @Injectable({ providedIn: 'root' })
 export class PacienteService extends ApiService {
@@ -61,6 +62,22 @@ export class PacienteService extends ApiService {
   ): Observable<HistorialClinicoResponse> {
     return this.http.post<HistorialClinicoResponse>(
       `${this.pacientesUrl}/${id}/historial`,
+      request
+    );
+  }
+
+  obtenerInasistencias(id: string): Observable<InasistenciasPacienteResponse> {
+    return this.http.get<InasistenciasPacienteResponse>(
+      `${this.pacientesUrl}/${id}/inasistencias`
+    );
+  }
+
+  levantarRestriccion(
+    id: string,
+    request: LevantamientoInasistenciaRequest
+  ): Observable<InasistenciasPacienteResponse> {
+    return this.http.post<InasistenciasPacienteResponse>(
+      `${this.pacientesUrl}/${id}/inasistencias/levantamientos`,
       request
     );
   }
