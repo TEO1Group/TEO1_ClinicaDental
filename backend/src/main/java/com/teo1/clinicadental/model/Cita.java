@@ -61,4 +61,9 @@ public class Cita {
 
     @Column(name = "motivo_estado", length = 200)
     private String motivoEstado;
+
+    // Plan al que pertenece la cita como sesion; null si es una cita suelta
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_plan")
+    private PlanTratamiento plan;
 }

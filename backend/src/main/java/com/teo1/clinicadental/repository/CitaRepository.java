@@ -43,6 +43,9 @@ public interface CitaRepository extends JpaRepository<Cita, UUID> {
     List<Cita> findByEstadoAndRecordatorioEnviadoFalseAndFechaBetweenOrderByFechaAscHoraAsc(
             EstadoCita estado, LocalDate desde, LocalDate hasta);
 
+    @EntityGraph(attributePaths = {"cliente", "cliente.usuario", "doctor", "doctor.usuario"})
+    List<Cita> findByPlanIdOrderByFechaAscHoraAsc(UUID planId);
+
     long countByClienteIdAndEstado(UUID clienteId, EstadoCita estado);
 
     // Citas del paciente en ese estado cuya fecha y hora son posteriores al momento indicado
