@@ -17,6 +17,15 @@ public interface ReporteCitaRepository extends Repository<Cita, UUID> {
             + "group by cita.doctor.id, cita.estado")
     List<ConteoCitas> contarPorDoctorYEstado(@Param("desde") LocalDate desde, @Param("hasta") LocalDate hasta);
 
+    @Query("select hour(cita.hora) as hora, count(cita) as cantidad from Cita cita "
+            + "where cita.fecha between :desde and :hasta group by hour(cita.hora) order by hour(cita.hora)")
+    List<ConteoHora> contarPorHora(@Param("desde") LocalDate desde, @Param("hasta") LocalDate hasta);
+
+    interface ConteoHora {
+        int getHora();
+        long getCantidad();
+    }
+
     interface ConteoCitas {
 
         UUID getIdDoctor();
