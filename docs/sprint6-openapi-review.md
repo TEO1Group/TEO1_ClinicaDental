@@ -1,45 +1,55 @@
 # Revisión OpenAPI del Sprint 6
 
-Revisión del 20 de octubre de 2026 sobre `develop` en
-`3dc7518291af16d0a2b4375e86166d77a7b29219`. Seguimiento: #214.
+Revisión complementaria del 22 de octubre de 2026 sobre `develop` en
+`b24b7858a5c9f778f3ee16917c9329d0132e6d7a`. Seguimiento: #214.
 Swagger generado por los controllers sigue siendo la fuente de contratos;
-este documento registra cobertura y bloqueos, sin mantener otro catálogo de rutas.
+este documento registra cobertura, evidencias y pendientes sin duplicar el catálogo de rutas.
 
-## Cobertura comprobada
+## Estado de las dependencias
 
-- Los controllers existentes documentan operaciones, JWT, respuestas y schemas.
-  La prueba general compara en ambos sentidos las operaciones MVC reales y OpenAPI:
-  detecta tanto operaciones sin documentación como operaciones documentadas sin implementación.
-- El reporte actual conserva sus permisos ADMIN/SECRETARIA, las fechas inclusivas,
-  estados y doctores activos. Se añade un ejemplo HTTP 400 específico de la operación,
-  sin fijar errores ni códigos en el schema compartido `ErrorResponse`.
-- El listado administrativo de bloqueos devuelve también periodos finalizados. Se
-  aclara este comportamiento para no confundirlo con el futuro filtro de vigentes:
-  ADMIN/SECRETARIA ven todos los doctores, DOCTOR solo los suyos, CLIENTE recibe 403.
-- La prueba específica comprueba los schemas de respuesta del reporte y de bloqueos,
-  y el ejemplo de error. No repite las reglas de negocio ya cubiertas por integración.
-- Los tests existentes comprueban ejemplos DTO, los estados permitidos del PATCH,
-  el esquema Bearer JWT y la carga de Swagger UI.
-
-## Pendientes del equipo
-
-| Área | Estado al revisar develop | Condición para completar #214 |
+| Área | Implementación disponible | Resultado de la auditoría |
 |---|---|---|
-| Inasistencias | #196 sin implementación | Revisar reglas, schemas, errores y permisos tras integrarla |
-| Planes | #199 y #200 sin tablas ni clases integradas | Auditar los contratos reales cuando se integren |
-| Abonos y saldo | #201 bloqueado por #199/#200 | No crear entidades paralelas; esperar tablas, entidades, relación cita-plan y contrato del servicio de planes |
-| Reportes adicionales | #205/#206 pendientes; #207 preparado en PR #225 | Revisar OpenAPI generado después de integrar cada implementación |
-| Bloqueos vigentes | #220 sin implementación | Auditar su contrato público autenticado cuando exista; no confundir con el listado administrativo actual |
-| Catálogo administrable | #223 preparado en PR #226 | Auditar en develop tras integrar; incluye sus propias anotaciones y pruebas |
+| Inasistencias y levantamientos | #196, PR #229 integrado | Roles y 400/401/403/404/409 contrastados con SecurityConfig y servicio; se aclaran el corte temporal, la independencia de lista negra y el error al agendar |
+| Esquema y planes/sesiones | #199/#200, PR #228/#231 integrados | Contratos reales auditados; se completan 400 por filtros inválidos y 404 por perfil DOCTOR ausente; avance, saldo y límites de sesiones documentados |
+| Abonos y Mis planes | #201 implementado en PR #237, CI exitoso, pendiente de revisión e integración | Reutiliza entidades y cálculos existentes; JWT, montos, saldo, bloqueo transaccional y permisos verificados en sus pruebas; comprobación conjunta de OpenAPI con este PR en copia temporal |
+| Cuatro reportes | #205/#206/#207, PR #232/#225 integrados | Fechas inclusivas, estados, agrupaciones y schemas contrastados; ingresos usa costo cobrado y fecha de cita, sin sumar abonos de planes |
+| Catálogo administrable | #223, PR #226 integrado | ADMIN modifica e incluye inactivos; filtro activo por defecto, errores, conservación de costos y rechazo de nuevos registros inactivos auditados |
+| Bloqueos administrativos | Implementación previa integrada | ADMIN/SECRETARIA gestionan; DOCTOR solo lee los suyos; CLIENTE rechazado; listado incluye periodos finalizados |
+| Bloqueos vigentes | #220 aún sin controller en la base revisada | Pendiente externo; no se publica ni se simula esa operación |
 
-#201 requiere además acordar los nombres y tipos de los campos del plan y abono,
-la consulta del saldo y avance y el acceso transaccional a un plan para serializar
-abonos concurrentes. No se ha inventado este contrato ni implementado un sustituto.
+#201 ya no está bloqueado por #199/#200: ambas dependencias están integradas.
+El PR #237 aporta abonos y lectura de planes propios sin entidades ni migraciones duplicadas.
+La disponibilidad en `develop` depende de que el equipo revise e integre ese PR.
 
-## Comprobación posterior al release
+## Comprobaciones locales y de CI
 
-#214 permanece abierto. Cuando el equipo autorice y publique el release, consultar
-el OpenAPI público de EC2 configurado con el prefijo `/api/`, contrastarlo con los
-controllers del commit desplegado, comprobar Swagger UI y autorizaciones por rol,
-y verificar que el CD corresponde a ese commit. No hay dirección IP asumida.
-Esta revisión no ejecuta despliegues, migraciones ni acciones sobre EC2.
+- Java 21 y PostgreSQL 16 aislado en memoria, sin usar bases reales ni credenciales de producción.
+- La prueba general compara en ambos sentidos MVC y OpenAPI y comprueba JWT, respuestas,
+  ausencia de cuerpo en 204 y schema compartido correcto para los errores documentados.
+- Se verifican los tipos exactos de respuesta de inasistencias/levantamientos, planes/sesiones,
+  los cuatro reportes, catálogo y bloqueos; se conservan los ejemplos específicos de error.
+- Fechas requeridas, ejemplos DTO, límites de sesiones/motivo y estados reales quedan comprobados.
+- La prueba de abonos verifica que no se documenten parcialmente operaciones inexistentes si
+  #237 no está integrado. Cuando está presente, comprueba schemas, monto obligatorio positivo
+  y ausencia de identificador de paciente en la operación Mis planes. Se ejecuta ese camino
+  sobre una copia temporal que combina ambos parches, sin hacer merge ni modificar las ramas.
+- Swagger UI y `/v3/api-docs` se comprueban mediante MockMvc. Una prueba con encabezados
+  forwarded verifica el servidor, redirección de UI y URL del documento bajo `/api/`, conforme
+  al nginx y `server.forward-headers-strategy=framework` actuales. Es una comprobación local,
+  no una verificación del proxy real de EC2.
+- Las pruebas de negocio, permisos y concurrencia permanecen en sus suites de integración;
+  la auditoría de documentación no las duplica ni modifica reglas de negocio.
+- Los resultados y enlaces de CI de cada commit quedan registrados en sus PRs.
+
+## Pendientes para completar #214
+
+1. Integrar #237 tras revisión y volver a ejecutar la suite en `develop`.
+2. Auditar #220 si el equipo implementa bloqueos vigentes antes del release.
+3. Esperar el release #213 a cargo de Luis: respaldo y migraciones autorizadas antes del
+   backend nuevo, dado que `ddl-auto=validate` no crea ni actualiza el esquema.
+4. Con un despliegue autorizado y comprobable, consultar el documento OpenAPI y Swagger UI
+   de EC2 con el prefijo `/api/`; contrastar operaciones y permisos con el commit desplegado
+   y verificar que el CD corresponde a ese SHA. No hay dirección IP asumida.
+
+#214 permanece abierto hasta completar estos criterios. Esta revisión no ejecuta despliegues,
+migraciones ni acciones sobre EC2 y no certifica que esta versión esté en `main` o en producción.

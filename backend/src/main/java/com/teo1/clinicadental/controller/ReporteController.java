@@ -77,7 +77,7 @@ public class ReporteController {
     @Operation(summary = "Reporte de inasistencias y cancelaciones",
             description = "Solo ADMIN y SECRETARIA. Cuenta las citas NO_ASISTIO y CANCELADA cuya fecha esta entre desde y hasta, "
                     + "ambos incluidos, por doctor y por paciente, con los totales del periodo. Solo aparecen doctores y "
-                    + "pacientes con alguna, ordenados de mayor a menor total y luego por apellido y nombre.")
+                    + "pacientes con alguna, activos o inactivos, ordenados de mayor a menor total y luego por apellido y nombre. Sin datos devuelve totales en cero y listas vacias.")
     @ApiResponse(responseCode = "200", description = "Inasistencias y cancelaciones del periodo")
     @ApiResponse(responseCode = "400", description = "Fechas ausentes, invalidas o rango invertido", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -94,7 +94,7 @@ public class ReporteController {
     @Operation(summary = "Reporte de ingresos por tratamiento",
             description = "Solo ADMIN y SECRETARIA. Por cada tratamiento registrado en citas cuya fecha esta entre desde y "
                     + "hasta, ambos incluidos, devuelve cuantas veces se realizo y la suma del costo cobrado (el costo guardado "
-                    + "en la cita, no el del catalogo). Ordenado de mayor a menor ingreso; omite tratamientos sin registros.")
+                    + "en la cita, no el del catalogo). Ordenado de mayor a menor ingreso; omite tratamientos sin registros. No incluye abonos de planes y el filtro usa la fecha de la cita, no la fecha de registro del tratamiento. Sin datos devuelve totales en cero y lista vacia.")
     @ApiResponse(responseCode = "200", description = "Ingresos por tratamiento del periodo")
     @ApiResponse(responseCode = "400", description = "Fechas ausentes, invalidas o rango invertido", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))

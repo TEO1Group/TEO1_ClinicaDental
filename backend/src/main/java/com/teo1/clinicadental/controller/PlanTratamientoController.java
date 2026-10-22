@@ -54,14 +54,16 @@ public class PlanTratamientoController {
     }
 
     @GetMapping
-    @Operation(summary = "Listar planes de tratamiento", description = "Requiere rol ADMIN, SECRETARIA o DOCTOR. Un DOCTOR solo ve sus planes. Cada plan incluye avance y saldo, sin las citas. Ordenados del mas reciente al mas antiguo.")
+    @Operation(summary = "Listar planes de tratamiento", description = "Requiere rol ADMIN, SECRETARIA o DOCTOR. Un DOCTOR solo ve sus planes. Filtros opcionales idCliente, idDoctor y estado. Cada plan incluye avance y saldo, sin las citas. Un plan ACTIVO se presenta como COMPLETADO cuando todas las sesiones estan atendidas; las canceladas y NO_ASISTIO no avanzan el plan. Ordenados del mas reciente al mas antiguo.")
     @ApiResponse(responseCode = "200", description = "Lista de planes")
+    @ApiResponse(responseCode = "400", description = "Filtro UUID o estado invalido", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "404", description = "El usuario DOCTOR no tiene un perfil de doctor", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "403", description = "Rol sin permiso para esta operacion", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<List<PlanTratamientoResponse>> listarPlanes(
-            @Parameter(description = "Identificador del paciente")
+            @Parameter(description = "Identificador del paciente", example = "8a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d")
             @RequestParam(required = false) UUID idCliente,
-            @Parameter(description = "Identificador del doctor")
+            @Parameter(description = "Identificador del doctor", example = "1d2e3f4a-5b6c-4d7e-8f9a-0b1c2d3e4f5a")
             @RequestParam(required = false) UUID idDoctor,
             @Parameter(description = "Estado del plan", example = "ACTIVO")
             @RequestParam(required = false) EstadoPlan estado,
