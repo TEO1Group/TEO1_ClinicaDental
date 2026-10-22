@@ -371,6 +371,8 @@ Realiza los pasos siguientes desde `~/TEO1_ClinicaDental` en el servidor, con ac
 
    Conserva el archivo fuera del repositorio y verifica que esté incluido en el mecanismo de respaldo aprobado para EC2. Un archivo legible no demuestra por sí solo que pueda restaurarse con éxito; la restauración debe ensayarse en una base aislada.
 
+   `scripts/respaldar-db.sh` hace este paso y el anterior en un solo comando, y `scripts/restaurar-db.sh` ensaya la restauración en una base aparte comparando las filas de cada tabla. Ver [Respaldo y restauración de la base](docs/respaldo-y-restauracion.md).
+
 4. **Aplica la migración con errores fatales.** Solo después del respaldo y las verificaciones previas:
 
    ```bash
