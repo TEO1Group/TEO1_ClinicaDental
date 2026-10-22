@@ -21,6 +21,12 @@ export class SidebarComponent {
   private readonly authService = inject(AuthService);
 
   @Input() visible = false;
+    },
+    {
+      label: 'Planes de tratamiento',
+      icono: 'bi-clipboard2-pulse',
+      ruta: '/planes',
+      roles: ['ADMIN', 'DOCTOR', 'SECRETARIA']
   @Output() cerrar = new EventEmitter<void>();
 
   readonly rol = this.authService.rol;

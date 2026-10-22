@@ -1,0 +1,30 @@
+.text-primario {
+  color: var(--color-primario);
+}
+
+.btn-primario {
+  background-color: var(--color-primario);
+  border-color: var(--color-primario);
+}
+
+.table th {
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+.table td {
+  color: var(--color-texto);
+}
+
+.avance-cell {
+  min-width: 170px;
+}
+
+.progress {
+  height: 0.55rem;
+}
+
+.empty-icon {
+  display: inline-block;
+  font-size: 3rem;
+}
