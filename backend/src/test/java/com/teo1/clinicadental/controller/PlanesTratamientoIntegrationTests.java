@@ -21,6 +21,14 @@ import com.teo1.clinicadental.repository.RolRepository;
 import com.teo1.clinicadental.repository.TratamientoRepository;
 import com.teo1.clinicadental.repository.UsuarioRepository;
 import com.teo1.clinicadental.security.JwtService;
+import jakarta.persistence.EntityManager;
+import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.UUID;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,13 +40,9 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.time.Clock;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.UUID;
-
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -86,6 +90,9 @@ class PlanesTratamientoIntegrationTests {
 
     @Autowired
     private Clock clock;
+
+    @Autowired
+    private EntityManager entityManager;
 
     private String tokenAdmin;
     private String tokenSecretaria;
@@ -308,6 +315,144 @@ class PlanesTratamientoIntegrationTests {
         obtenerPlan(tokenSecretaria, UUID.randomUUID().toString()).andExpect(status().isNotFound());
         agendarSesion(tokenSecretaria, UUID.randomUUID().toString(), "09:00").andExpect(status().isNotFound());
         agendarSesion(tokenDoctor, idPlan, "09:00").andExpect(status().isForbidden());
+    }
+
+    @Test
+    void adminYSecretariaRegistranAbonosConFechaYUsuarioDelServidor() throws Exception {
+        String id = idPlan(crearPlan(tokenSecretaria, doctor.getId(), 2, "100.00"));
+        abonos(tokenAdmin, id).andExpect(status().isOk())
+                .andExpect(jsonPath("$.costoTotal").value(100.0))
+                .andExpect(jsonPath("$.totalAbonado").value(0))
+                .andExpect(jsonPath("$.saldo").value(100.0))
+                .andExpect(jsonPath("$.abonos").isEmpty());
+
+        mockMvc.perform(conToken(post("/planes/" + id + "/abonos"), tokenAdmin)
+                        .content("{\"monto\":0.01,\"fecha\":\"1999-01-01T00:00:00\",\"registradoPor\":\"" + doctor.getUsuario().getId() + "\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.idAbono").exists())
+                .andExpect(jsonPath("$.idPlan").value(id))
+                .andExpect(jsonPath("$.monto").value(0.01))
+                .andExpect(jsonPath("$.idRegistradoPor").value(jwtService.extractSubject(tokenAdmin)))
+                .andExpect(jsonPath("$.fecha").value(org.hamcrest.Matchers.startsWith(LocalDate.now(clock).toString())));
+        abonar(tokenSecretaria, id, "99.99").andExpect(status().isCreated())
+                .andExpect(jsonPath("$.idRegistradoPor").value(jwtService.extractSubject(tokenSecretaria)));
+        abonos(tokenSecretaria, id).andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalAbonado").value(100.0))
+                .andExpect(jsonPath("$.saldo").value(0))
+                .andExpect(jsonPath("$.abonos", hasSize(2)));
+        obtenerPlan(tokenAdmin, id).andExpect(jsonPath("$.saldo").value(0));
+        abonar(tokenAdmin, id, "0.01").andExpect(status().isConflict());
+    }
+
+    @Test
+    void abonosInvalidosOExcesivosNoSeRegistran() throws Exception {
+        String id = idPlan(crearPlan(tokenSecretaria, doctor.getId(), 2, "10.00"));
+        for (String monto : new String[] {"null", "0", "-1", "0.001", "100000000.00", "\"invalido\""}) {
+            abonar(tokenAdmin, id, monto).andExpect(status().isBadRequest());
+        }
+        mockMvc.perform(conToken(post("/planes/" + id + "/abonos"), tokenAdmin).content("{}"))
+                .andExpect(status().isBadRequest());
+        abonar(tokenAdmin, id, "10.01").andExpect(status().isConflict());
+        abonos(tokenAdmin, id).andExpect(jsonPath("$.abonos").isEmpty())
+                .andExpect(jsonPath("$.saldo").value(10.0));
+        String gratuito = idPlan(crearPlan(tokenAdmin, doctor.getId(), 1, "0.00"));
+        abonar(tokenAdmin, gratuito, "0.01").andExpect(status().isConflict());
+        String maximo = idPlan(crearPlan(tokenAdmin, doctor.getId(), 1, "99999999.99"));
+        abonar(tokenAdmin, maximo, "99999999.99").andExpect(status().isCreated());
+        abonos(tokenAdmin, maximo).andExpect(jsonPath("$.saldo").value(0));
+        abonar(tokenAdmin, UUID.randomUUID().toString(), "1.00").andExpect(status().isNotFound());
+        abonos(tokenAdmin, UUID.randomUUID().toString()).andExpect(status().isNotFound());
+        abonar(tokenAdmin, "invalido", "1.00").andExpect(status().isBadRequest());
+        abonos(tokenAdmin, "invalido").andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void abonosRespetanRolesYLaPropiedadDelDoctor() throws Exception {
+        String id = idPlan(crearPlan(tokenSecretaria, doctor.getId(), 2, "100.00"));
+        for (String token : new String[] {tokenDoctor, tokenOtroDoctor, tokenCliente}) {
+            abonar(token, id, "10.00").andExpect(status().isForbidden());
+        }
+        abonos(tokenDoctor, id).andExpect(status().isOk());
+        abonos(tokenOtroDoctor, id).andExpect(status().isForbidden());
+        abonos(tokenCliente, id).andExpect(status().isForbidden());
+        mockMvc.perform(get("/planes/" + id + "/abonos")).andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/planes/" + id + "/abonos").contentType(MediaType.APPLICATION_JSON).content("{\"monto\":1}"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void misPlanesUsaSoloElJwtYReutilizaAvanceYSaldo() throws Exception {
+        String propio = idPlan(crearPlan(tokenAdmin, doctor.getId(), 4, "1000.00"));
+        String otroPropio = idPlan(crearPlan(tokenAdmin, doctor.getId(), 2, "250.00"));
+        Cliente otroCliente = clienteRepository.save(Cliente.builder().usuario(crearUsuario(Rol.CLIENTE)).dpi(dpiAleatorio()).build());
+        String ajeno = idPlan(crearPlan(tokenAdmin, doctor.getId(), 2, "2000.00"));
+        planRepository.findById(UUID.fromString(ajeno)).orElseThrow().setCliente(otroCliente);
+        citaRepository.save(Cita.builder().cliente(cliente).doctor(doctor)
+                .plan(planRepository.getReferenceById(UUID.fromString(propio)))
+                .fecha(fecha).hora(LocalTime.of(9, 0)).estado(EstadoCita.ATENDIDA).build());
+        abonar(tokenSecretaria, propio, "100.50").andExpect(status().isCreated());
+        mockMvc.perform(conToken(get("/mis-planes").param("idCliente", otroCliente.getId().toString()), tokenCliente))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$[*].idPlan", hasItems(propio, otroPropio)))
+                .andExpect(jsonPath("$[?(@.idPlan == '" + propio + "')].porcentajeAvance", contains(25)))
+                .andExpect(jsonPath("$[?(@.idPlan == '" + propio + "')].totalAbonado", contains(100.50)))
+                .andExpect(jsonPath("$[?(@.idPlan == '" + propio + "')].saldo", contains(899.50)))
+                .andExpect(jsonPath("$[0].citas").doesNotExist());
+        mockMvc.perform(conToken(get("/mis-planes"), token(otroCliente.getUsuario())))
+                .andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].idPlan").value(ajeno));
+    }
+
+    @Test
+    void misPlanesEsSoloParaClientesConPerfilYDeSoloLectura() throws Exception {
+        mockMvc.perform(conToken(get("/mis-planes"), tokenCliente))
+                .andExpect(status().isOk()).andExpect(jsonPath("$").isEmpty());
+        for (String token : new String[] {tokenAdmin, tokenSecretaria, tokenDoctor}) {
+            mockMvc.perform(conToken(get("/mis-planes"), token)).andExpect(status().isForbidden());
+        }
+        mockMvc.perform(get("/mis-planes")).andExpect(status().isUnauthorized());
+        mockMvc.perform(conToken(get("/mis-planes"), "invalido")).andExpect(status().isUnauthorized());
+        mockMvc.perform(conToken(get("/mis-planes"), token(crearUsuario(Rol.CLIENTE))))
+                .andExpect(status().isNotFound());
+        crearPlan(tokenCliente, doctor.getId(), 1, "100").andExpect(status().isForbidden());
+        mockMvc.perform(conToken(post("/mis-planes"), tokenCliente)).andExpect(status().isMethodNotAllowed());
+    }
+
+    @Test
+    void misPlanesYAbonosNoConsultanRelacionesPorCadaFila() throws Exception {
+        String id = null;
+        for (int i = 0; i < 8; i++) {
+            id = idPlan(crearPlan(tokenAdmin, doctor.getId(), 2, "100.00"));
+        }
+        for (int i = 0; i < 8; i++) {
+            abonar(i % 2 == 0 ? tokenAdmin : tokenSecretaria, id, "1.00").andExpect(status().isCreated());
+        }
+        entityManager.flush();
+        entityManager.clear();
+        var statistics = entityManager.getEntityManagerFactory().unwrap(SessionFactory.class).getStatistics();
+        boolean enabled = statistics.isStatisticsEnabled();
+        statistics.setStatisticsEnabled(true);
+        try {
+            statistics.clear();
+            mockMvc.perform(conToken(get("/mis-planes"), tokenCliente))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(8)));
+            assertThat(statistics.getPrepareStatementCount()).isLessThanOrEqualTo(7);
+            entityManager.clear();
+            statistics.clear();
+            abonos(tokenSecretaria, id).andExpect(status().isOk()).andExpect(jsonPath("$.abonos", hasSize(8)));
+            assertThat(statistics.getPrepareStatementCount()).isLessThanOrEqualTo(7);
+        } finally {
+            statistics.setStatisticsEnabled(enabled);
+        }
+    }
+
+    private ResultActions abonar(String token, String id, String monto) throws Exception {
+        return mockMvc.perform(conToken(post("/planes/" + id + "/abonos"), token).content("{\"monto\":" + monto + "}"));
+    }
+
+    private ResultActions abonos(String token, String id) throws Exception {
+        return mockMvc.perform(conToken(get("/planes/" + id + "/abonos"), token));
     }
 
     private ResultActions crearPlan(String token, UUID idDoctor, int sesiones, String costo) throws Exception {

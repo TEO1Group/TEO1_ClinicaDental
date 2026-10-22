@@ -1,5 +1,8 @@
 package com.teo1.clinicadental.controller;
 
+import com.teo1.clinicadental.dto.AbonoPlanRequest;
+import com.teo1.clinicadental.dto.AbonoPlanResponse;
+import com.teo1.clinicadental.dto.AbonosPlanResponse;
 import com.teo1.clinicadental.dto.CitaResponse;
 import com.teo1.clinicadental.dto.ErrorResponse;
 import com.teo1.clinicadental.dto.PlanTratamientoRequest;
@@ -96,4 +99,28 @@ public class PlanTratamientoController {
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(planTratamientoService.agendarSesion(id, request, authentication));
     }
+    @PostMapping("/{id}/abonos")
+    @Operation(summary = "Registrar un abono al plan", description = "Solo ADMIN y SECRETARIA. Monto obligatorio, positivo, de hasta 8 enteros y 2 decimales; puede ser igual al saldo pero no superarlo. Impide sobrepagos incluso ante abonos simultaneos. Fecha en hora de Guatemala y registradoPor se obtienen del servidor/JWT; no se reciben del cliente. No depende del estado del plan ni modifica su avance.")
+    @ApiResponse(responseCode = "201", description = "Abono registrado")
+    @ApiResponse(responseCode = "400", description = "Monto ausente, no positivo, fuera de precision, cuerpo o identificador invalido", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "Solo ADMIN y SECRETARIA", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "404", description = "Plan no encontrado", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "409", description = "El monto supera el saldo, incluso si otro abono acaba de reducirlo", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<AbonoPlanResponse> registrarAbono(@PathVariable UUID id,
+            @Valid @RequestBody AbonoPlanRequest request, Authentication authentication) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(planTratamientoService.registrarAbono(id, request, authentication));
+    }
+
+    @GetMapping("/{id}/abonos")
+    @Operation(summary = "Consultar abonos y saldo del plan", description = "ADMIN y SECRETARIA consultan cualquier plan; DOCTOR solo los suyos. CLIENTE no accede a esta ruta. Devuelve costo total, total abonado, saldo y lista de abonos por fecha/identificador (vacia si no hay). La lista y el saldo corresponden a una misma instantanea, incluso con abonos concurrentes.")
+    @ApiResponse(responseCode = "200", description = "Abonos y saldo del plan")
+    @ApiResponse(responseCode = "400", description = "Identificador invalido", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "Rol sin permiso o plan de otro doctor", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "404", description = "Plan no encontrado", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<AbonosPlanResponse> listarAbonos(@PathVariable UUID id, Authentication authentication) {
+        return ResponseEntity.ok(planTratamientoService.listarAbonos(id, authentication));
+    }
+
 }

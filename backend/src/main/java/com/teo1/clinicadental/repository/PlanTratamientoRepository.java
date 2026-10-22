@@ -22,9 +22,12 @@ public interface PlanTratamientoRepository extends JpaRepository<PlanTratamiento
     List<PlanTratamiento> findByDoctorIdOrderByFechaCreacionDesc(UUID doctorId);
 
     @EntityGraph(attributePaths = {"cliente", "cliente.usuario", "doctor", "doctor.usuario", "tratamiento"})
+    List<PlanTratamiento> findByClienteIdOrderByFechaCreacionDesc(UUID clienteId);
+
+    @EntityGraph(attributePaths = {"cliente", "cliente.usuario", "doctor", "doctor.usuario", "tratamiento"})
     Optional<PlanTratamiento> findConRelacionesById(UUID id);
 
-    // Bloquea el plan mientras se agenda una sesion, para que dos pedidos a la vez no superen el total
+    // Serialize session scheduling and payments on the same plan until transaction completion.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select plan from PlanTratamiento plan where plan.id = :id")
     Optional<PlanTratamiento> findByIdForUpdate(@Param("id") UUID id);
