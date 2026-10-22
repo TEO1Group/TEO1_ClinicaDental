@@ -120,7 +120,8 @@ public class ReporteController {
                     + "periodo y se informa aparte: no se suma a totalTratamientos para no contar dos veces un plan. Incluye a "
                     + "los doctores activos con ceros si no tienen ingresos y a los inactivos que si los tuvieron, ordenados por "
                     + "apellido y nombre."
-                    + " No cuenta citas cuya fecha y hora de inicio aun no llegan (hora de Guatemala); una cita pasada sin marcar sigue contando con su estado.")
+                    + " No cuenta tratamientos de citas cuya fecha y hora de inicio aun no llegan (hora de Guatemala), "
+                    + "ni de citas con estado distinto de ATENDIDA.")
     @ApiResponse(responseCode = "200", description = "Ganancias del periodo")
     @ApiResponse(responseCode = "400", description = "Falta desde o hasta, alguna fecha no tiene formato yyyy-MM-dd o desde es posterior a hasta", content = @Content(
             mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class),
