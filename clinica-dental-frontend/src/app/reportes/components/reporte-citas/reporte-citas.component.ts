@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Observable } from 'rxjs';
 import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 import {
   ReporteCitasPorDoctorResponse,
@@ -11,6 +12,7 @@ import {
 import { ReporteService } from '../../service/reporte.service';
 
 type TipoReporte = 'citasPorDoctor' | 'inasistencias' | 'ingresosPorTratamiento' | 'horasDemandadas';
+type ReporteResponse = ReporteCitasPorDoctorResponse | ReporteInasistenciasResponse | ReporteIngresosTratamientoResponse | ReporteHorasDemandadasResponse;
 
 @Component({
   selector: 'app-reporte-citas',
@@ -68,7 +70,7 @@ export class ReporteCitasComponent implements OnInit {
     }
 
     this._cargando.set(true);
-    const solicitud = {
+    const solicitud: Observable<ReporteResponse> = {
       citasPorDoctor: () => this.reporteService.citasPorDoctor(desde, hasta),
       inasistencias: () => this.reporteService.inasistencias(desde, hasta),
       ingresosPorTratamiento: () => this.reporteService.ingresosPorTratamiento(desde, hasta),

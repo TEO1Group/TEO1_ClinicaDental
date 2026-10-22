@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
@@ -21,12 +21,6 @@ export class SidebarComponent {
   private readonly authService = inject(AuthService);
 
   @Input() visible = false;
-    },
-    {
-      label: 'Planes de tratamiento',
-      icono: 'bi-clipboard2-pulse',
-      ruta: '/planes',
-      roles: ['ADMIN', 'DOCTOR', 'SECRETARIA']
   @Output() cerrar = new EventEmitter<void>();
 
   readonly rol = this.authService.rol;
@@ -61,6 +55,12 @@ export class SidebarComponent {
       icono: 'bi-calendar-check',
       ruta: '/citas',
       roles: ['ADMIN', 'DOCTOR', 'SECRETARIA', 'CLIENTE']
+    },
+    {
+      label: 'Planes de tratamiento',
+      icono: 'bi-clipboard2-pulse',
+      ruta: '/planes',
+      roles: ['ADMIN', 'DOCTOR', 'SECRETARIA']
     },
     {
       label: 'Mis Tratamientos',
