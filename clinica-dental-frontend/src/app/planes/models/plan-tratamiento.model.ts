@@ -38,3 +38,23 @@ export interface SesionPlanRequest {
   hora: string;
   notas?: string;
 }
+
+export interface AbonoPlanRequest {
+  monto: number;
+}
+
+export interface AbonoPlanResponse {
+  idAbono: string;
+  idPlan: string;
+  monto: number;
+  fecha: string;
+  idRegistradoPor: string | null;
+}
+
+export interface AbonosPlanResponse {
+  idPlan: string;
+  costoTotal: number;
+  totalAbonado: number;
+  saldo: number;
+  abonos: AbonoPlanResponse[];
+}

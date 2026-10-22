@@ -69,6 +69,12 @@ export class SidebarComponent {
       roles: ['CLIENTE']
     },
     {
+      label: 'Mis Planes',
+      icono: 'bi-clipboard2-check',
+      ruta: '/mis-planes',
+      roles: ['CLIENTE']
+    },
+    {
       label: 'Reportes',
       icono: 'bi-bar-chart-line',
       ruta: '/reportes',

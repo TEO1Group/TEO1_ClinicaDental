@@ -19,6 +19,7 @@ import { DetallePlanComponent } from './planes/components/detalle-plan/detalle-p
 import { ReporteCitasComponent } from './reportes/components/reporte-citas/reporte-citas.component';
 import { MisTratamientosComponent } from './tratamientos-paciente/components/mis-tratamientos/mis-tratamientos.component';
 import { ListadoTratamientosComponent } from './tratamientos-paciente/components/listado-tratamientos/listado-tratamientos.component';
+import { MisPlanesComponent } from './planes/components/mis-planes/mis-planes.component';
 //guards
 import { rolGuard } from './core/guards/rol.guard';
 
@@ -40,6 +41,7 @@ export const routes: Routes = [
   { path: 'pacientes/:id', component: DetallePacienteComponent, canActivate: [rolGuard(['ADMIN', 'DOCTOR', 'SECRETARIA'])]},
   { path: 'citas', component: ListadoCitasComponent, canActivate: [rolGuard(['ADMIN', 'DOCTOR', 'SECRETARIA', 'CLIENTE'])]},
   { path: 'citas/nueva', component: FormularioCitaComponent, canActivate: [rolGuard(['CLIENTE', 'SECRETARIA', 'ADMIN'])]},
+  { path: 'mis-planes', component: MisPlanesComponent, canActivate: [rolGuard(['CLIENTE'])]},
   { path: 'planes', component: ListadoPlanesComponent, canActivate: [rolGuard(['ADMIN', 'SECRETARIA', 'DOCTOR'])]},
   { path: 'planes/nuevo', component: FormularioPlanComponent, canActivate: [rolGuard(['ADMIN', 'SECRETARIA', 'DOCTOR'])]},
   { path: 'planes/:id', component: DetallePlanComponent, canActivate: [rolGuard(['ADMIN', 'SECRETARIA', 'DOCTOR'])]},

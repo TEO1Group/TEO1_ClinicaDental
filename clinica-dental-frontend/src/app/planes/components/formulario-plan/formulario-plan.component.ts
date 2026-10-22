@@ -8,8 +8,8 @@ import { DoctorResponse } from '../../../doctores/models/doctor.model';
 import { DoctorService } from '../../../doctores/service/doctor.service';
 import { ClienteResponse } from '../../../pacientes/models/paciente.model';
 import { PacienteService } from '../../../pacientes/service/paciente.service';
-import { TratamientoResponse } from '../../../pacientes/models/tratamiento.model';
-import { TratamientoService } from '../../../pacientes/service/tratamiento.service';
+import { TratamientoResponse } from '../../../tratamientos-paciente/models/tratamiento.model';
+import { TratamientoService } from '../../../tratamientos-paciente/service/tratamiento.service';
 import { PlanTratamientoRequest } from '../../models/plan-tratamiento.model';
 import { PlanTratamientoService } from '../../service/plan-tratamiento.service';
 
@@ -82,7 +82,7 @@ export class FormularioPlanComponent implements OnInit {
   }
 
   private cargarTratamientos(): void {
-    this.tratamientoService.listarCatalogo().subscribe({
+    this.tratamientoService.listar().subscribe({
       next: (tratamientos) => this.tratamientos.set(tratamientos),
       error: (error) => this.finalizarCargaConError(error, 'Error al cargar los tratamientos.')
     });
