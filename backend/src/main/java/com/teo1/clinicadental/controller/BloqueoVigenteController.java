@@ -4,6 +4,7 @@ import com.teo1.clinicadental.dto.BloqueoVigenteResponse;
 import com.teo1.clinicadental.dto.ErrorResponse;
 import com.teo1.clinicadental.service.BloqueoDoctorService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -37,7 +38,9 @@ public class BloqueoVigenteController {
     @ApiResponse(responseCode = "400", description = "Identificador no valido", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "Doctor no encontrado", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    public ResponseEntity<List<BloqueoVigenteResponse>> listarBloqueosVigentes(@PathVariable UUID idDoctor) {
+    public ResponseEntity<List<BloqueoVigenteResponse>> listarBloqueosVigentes(
+            @Parameter(description = "Identificador del doctor", example = "1d2e3f4a-5b6c-4d7e-8f9a-0b1c2d3e4f5a")
+            @PathVariable UUID idDoctor) {
         return ResponseEntity.ok(bloqueoDoctorService.listarBloqueosVigentes(idDoctor));
     }
 }

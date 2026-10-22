@@ -1,6 +1,7 @@
 package com.teo1.clinicadental.controller;
 
 import com.jayway.jsonpath.JsonPath;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -148,11 +149,6 @@ class OpenApiDocumentationIntegrationTests {
     @Test
     void paymentDocumentationMatchesAvailableControllersAndUsesJwtIdentity() throws Exception {
         String document = document();
-        Map<String, Object> paths = JsonPath.read(document, "$.paths");
-        if (!paths.containsKey("/mis-planes")) {
-            assertThat(paths).doesNotContainKey("/planes/{id}/abonos");
-            return;
-        }
         assertResponseSchema(document, "post", "/planes/{id}/abonos", "201", "AbonoPlanResponse");
         assertResponseSchema(document, "get", "/planes/{id}/abonos", "200", "AbonosPlanResponse");
         assertResponseSchema(document, "get", "/mis-planes", "200", "[]PlanTratamientoResponse");
@@ -170,6 +166,48 @@ class OpenApiDocumentationIntegrationTests {
             assertThat(amount.get("exclusiveMinimum")).isEqualTo(true);
             assertThat(((Number) amount.get("minimum")).doubleValue()).isZero();
         }
+    }
+
+    @Test
+    void currentBlocksAndEarningsDocumentTheirDistinctAccessAndPayloads() throws Exception {
+        String document = document();
+        Map<String, Object> blocks = JsonPath.read(document,
+                "$.paths['/doctores/{idDoctor}/bloqueos-vigentes'].get");
+        assertThat(blocks.get("description").toString()).contains("cualquier rol", "CLIENTE", "fin posterior", "Guatemala");
+        Map<String, Object> blockResponses = JsonPath.read(document,
+                "$.paths['/doctores/{idDoctor}/bloqueos-vigentes'].get.responses");
+        assertThat(blockResponses).containsOnlyKeys("200", "400", "401", "404");
+        List<Map<String, Object>> parameters = JsonPath.read(document,
+                "$.paths['/doctores/{idDoctor}/bloqueos-vigentes'].get.parameters");
+        assertThat(parameters).hasSize(1);
+        assertThat(parameters.get(0)).containsEntry("name", "idDoctor").containsEntry("in", "path")
+                .containsEntry("required", true).containsKey("example");
+        assertThat(((Map<?, ?>) parameters.get(0).get("schema")).get("format")).isEqualTo("uuid");
+        Map<String, Map<String, Object>> blockFields = JsonPath.read(document,
+                "$.components.schemas.BloqueoVigenteResponse.properties");
+        assertThat(blockFields).containsOnlyKeys("inicio", "fin", "motivo");
+        blockFields.values().forEach(field -> assertThat(field).containsKey("example"));
+        for (String field : List.of("inicio", "fin")) {
+            assertThat(blockFields.get(field)).containsEntry("type", "string");
+            assertThat(LocalDateTime.parse(blockFields.get(field).get("example").toString())).isNotNull();
+        }
+
+        Map<String, Object> earnings = JsonPath.read(document, "$.paths['/reportes/ganancias'].get");
+        assertThat(earnings.get("description").toString()).contains("ADMIN y SECRETARIA", "DOCTOR y CLIENTE no",
+                "ATENDIDA", "no se suma a totalTratamientos", "Guatemala");
+        Map<String, Map<String, Object>> earningsFields = JsonPath.read(document,
+                "$.components.schemas.ReporteGananciasResponse.properties");
+        assertThat(earningsFields).containsOnlyKeys("desde", "hasta", "totalTratamientos", "totalAbonos", "doctores");
+        for (String field : List.of("totalTratamientos", "totalAbonos")) {
+            assertThat(earningsFields.get(field)).containsEntry("type", "number").containsKey("example");
+        }
+        assertThat(earningsFields.get("doctores").get("items"))
+                .isEqualTo(Map.of("$ref", "#/components/schemas/GananciaDoctor"));
+        Map<String, Object> errorExample = JsonPath.read(document,
+                "$.paths['/reportes/ganancias'].get.responses['400'].content['application/json'].examples.rangoInvertido.value");
+        assertThat(errorExample).containsEntry("status", 400).containsEntry("error", "Bad Request")
+                .containsEntry("path", "/reportes/ganancias")
+                .containsEntry("mensaje", "La fecha desde no puede ser posterior a hasta");
     }
 
     @Test
