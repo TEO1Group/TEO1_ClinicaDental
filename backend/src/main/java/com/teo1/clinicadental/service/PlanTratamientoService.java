@@ -1,10 +1,14 @@
 package com.teo1.clinicadental.service;
 
+import com.teo1.clinicadental.dto.AbonoPlanRequest;
+import com.teo1.clinicadental.dto.AbonoPlanResponse;
+import com.teo1.clinicadental.dto.AbonosPlanResponse;
 import com.teo1.clinicadental.dto.CitaRequest;
 import com.teo1.clinicadental.dto.CitaResponse;
 import com.teo1.clinicadental.dto.PlanTratamientoRequest;
 import com.teo1.clinicadental.dto.PlanTratamientoResponse;
 import com.teo1.clinicadental.dto.SesionPlanRequest;
+import com.teo1.clinicadental.model.AbonoPlan;
 import com.teo1.clinicadental.model.Cliente;
 import com.teo1.clinicadental.model.Doctor;
 import com.teo1.clinicadental.model.EstadoCita;
@@ -19,6 +23,7 @@ import com.teo1.clinicadental.repository.ClienteRepository;
 import com.teo1.clinicadental.repository.DoctorRepository;
 import com.teo1.clinicadental.repository.PlanTratamientoRepository;
 import com.teo1.clinicadental.repository.TratamientoRepository;
+import com.teo1.clinicadental.repository.UsuarioRepository;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -29,6 +34,7 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -52,6 +58,7 @@ public class PlanTratamientoService {
     private final CitaService citaService;
     private final CitaMapper citaMapper;
     private final Clock clock;
+    private final UsuarioRepository usuarioRepository;
 
     public PlanTratamientoService(
             PlanTratamientoRepository planRepository,
@@ -62,7 +69,8 @@ public class PlanTratamientoService {
             TratamientoRepository tratamientoRepository,
             CitaService citaService,
             CitaMapper citaMapper,
-            Clock clock
+            Clock clock,
+            UsuarioRepository usuarioRepository
     ) {
         this.planRepository = planRepository;
         this.abonoPlanRepository = abonoPlanRepository;
@@ -73,6 +81,7 @@ public class PlanTratamientoService {
         this.citaService = citaService;
         this.citaMapper = citaMapper;
         this.clock = clock;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @Transactional
@@ -169,6 +178,50 @@ public class PlanTratamientoService {
         CitaResponse cita = citaService.crearCita(citaRequest, authentication);
         citaRepository.findById(cita.getIdCita()).orElseThrow().setPlan(plan);
         return cita;
+    }
+
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public AbonoPlanResponse registrarAbono(UUID id, AbonoPlanRequest request, Authentication authentication) {
+        if (!tieneRol(authentication, Rol.ADMIN) && !tieneRol(authentication, Rol.SECRETARIA)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Solo ADMIN o SECRETARIA pueden registrar abonos");
+        }
+        PlanTratamiento plan = planRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Plan no encontrado"));
+        // Read the balance only after acquiring the plan lock; all payments use this transaction.
+        BigDecimal saldo = resumir(List.of(plan)).get(0).getSaldo();
+        if (request.getMonto().compareTo(saldo) > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El monto no puede superar el saldo del plan");
+        }
+        AbonoPlan abono = abonoPlanRepository.save(AbonoPlan.builder()
+                .plan(plan)
+                .monto(request.getMonto())
+                .fecha(LocalDateTime.now(clock))
+                .registradoPor(usuarioRepository.getReferenceById(UUID.fromString(authentication.getName())))
+                .build());
+        return abonoResponse(abono);
+    }
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public AbonosPlanResponse listarAbonos(UUID id, Authentication authentication) {
+        PlanTratamiento plan = planRepository.findConRelacionesById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Plan no encontrado"));
+        validarAcceso(plan, authentication);
+        PlanTratamientoResponse resumen = resumir(List.of(plan)).get(0);
+        return new AbonosPlanResponse(id, resumen.getCostoTotal(), resumen.getTotalAbonado(), resumen.getSaldo(),
+                abonoPlanRepository.findByPlanIdOrderByFechaAscIdAsc(id).stream().map(this::abonoResponse).toList());
+    }
+
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public List<PlanTratamientoResponse> listarMisPlanes(Authentication authentication) {
+        Cliente cliente = clienteRepository.findByUsuarioId(UUID.fromString(authentication.getName()))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "El usuario no tiene un perfil de paciente"));
+        return resumir(planRepository.findByClienteIdOrderByFechaCreacionDesc(cliente.getId()));
+    }
+
+    private AbonoPlanResponse abonoResponse(AbonoPlan abono) {
+        return new AbonoPlanResponse(abono.getId(), abono.getPlan().getId(), abono.getMonto(), abono.getFecha(),
+                abono.getRegistradoPor() == null ? null : abono.getRegistradoPor().getId());
     }
 
     private List<PlanTratamientoResponse> resumir(List<PlanTratamiento> planes) {
