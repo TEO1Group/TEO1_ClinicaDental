@@ -2,8 +2,15 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
-import { ReporteCitasPorDoctorResponse } from '../../models/reporte-citas.model';
+import {
+  ReporteCitasPorDoctorResponse,
+  ReporteHorasDemandadasResponse,
+  ReporteInasistenciasResponse,
+  ReporteIngresosTratamientoResponse
+} from '../../models/reporte-citas.model';
 import { ReporteService } from '../../service/reporte.service';
+
+type TipoReporte = 'citasPorDoctor' | 'inasistencias' | 'ingresosPorTratamiento' | 'horasDemandadas';
 
 @Component({
   selector: 'app-reporte-citas',
@@ -22,11 +29,18 @@ export class ReporteCitasComponent implements OnInit {
     hasta: ['', [Validators.required]]
   });
 
-  private readonly _reporte = signal<ReporteCitasPorDoctorResponse | null>(null);
+  readonly tipoReporte = signal<TipoReporte>('citasPorDoctor');
+  private readonly _reporteCitas = signal<ReporteCitasPorDoctorResponse | null>(null);
+  private readonly _reporteInasistencias = signal<ReporteInasistenciasResponse | null>(null);
+  private readonly _reporteIngresos = signal<ReporteIngresosTratamientoResponse | null>(null);
+  private readonly _reporteHoras = signal<ReporteHorasDemandadasResponse | null>(null);
   private readonly _cargando = signal(false);
   private readonly _error = signal('');
 
-  readonly reporte = this._reporte.asReadonly();
+  readonly reporteCitas = this._reporteCitas.asReadonly();
+  readonly reporteInasistencias = this._reporteInasistencias.asReadonly();
+  readonly reporteIngresos = this._reporteIngresos.asReadonly();
+  readonly reporteHoras = this._reporteHoras.asReadonly();
   readonly cargando = this._cargando.asReadonly();
   readonly error = this._error.asReadonly();
 
@@ -54,9 +68,20 @@ export class ReporteCitasComponent implements OnInit {
     }
 
     this._cargando.set(true);
-    this.reporteService.citasPorDoctor(desde, hasta).subscribe({
+    const solicitud = {
+      citasPorDoctor: () => this.reporteService.citasPorDoctor(desde, hasta),
+      inasistencias: () => this.reporteService.inasistencias(desde, hasta),
+      ingresosPorTratamiento: () => this.reporteService.ingresosPorTratamiento(desde, hasta),
+      horasDemandadas: () => this.reporteService.horasDemandadas(desde, hasta)
+    }[this.tipoReporte()]();
+
+    solicitud.subscribe({
       next: (reporte) => {
-        this._reporte.set(reporte);
+        this.limpiarReportes();
+        if (this.tipoReporte() === 'citasPorDoctor') this._reporteCitas.set(reporte as ReporteCitasPorDoctorResponse);
+        if (this.tipoReporte() === 'inasistencias') this._reporteInasistencias.set(reporte as ReporteInasistenciasResponse);
+        if (this.tipoReporte() === 'ingresosPorTratamiento') this._reporteIngresos.set(reporte as ReporteIngresosTratamientoResponse);
+        if (this.tipoReporte() === 'horasDemandadas') this._reporteHoras.set(reporte as ReporteHorasDemandadasResponse);
         this._cargando.set(false);
       },
       error: (error) => {
@@ -67,24 +92,40 @@ export class ReporteCitasComponent implements OnInit {
     });
   }
 
+  seleccionarReporte(tipo: string): void {
+    this.tipoReporte.set(tipo as TipoReporte);
+    this.cargarReporte();
+  }
+
   totalAgendadas(): number {
-    return this.reporte()?.doctores.reduce((total, doctor) => total + doctor.agendadas, 0) || 0;
+    return this.reporteCitas()?.doctores.reduce((total, doctor) => total + doctor.agendadas, 0) || 0;
   }
 
   totalAtendidas(): number {
-    return this.reporte()?.doctores.reduce((total, doctor) => total + doctor.atendidas, 0) || 0;
+    return this.reporteCitas()?.doctores.reduce((total, doctor) => total + doctor.atendidas, 0) || 0;
   }
 
   totalCanceladas(): number {
-    return this.reporte()?.doctores.reduce((total, doctor) => total + doctor.canceladas, 0) || 0;
+    return this.reporteCitas()?.doctores.reduce((total, doctor) => total + doctor.canceladas, 0) || 0;
   }
 
   totalNoAsistio(): number {
-    return this.reporte()?.doctores.reduce((total, doctor) => total + doctor.noAsistio, 0) || 0;
+    return this.reporteCitas()?.doctores.reduce((total, doctor) => total + doctor.noAsistio, 0) || 0;
   }
 
   totalCitas(): number {
-    return this.reporte()?.doctores.reduce((total, doctor) => total + doctor.total, 0) || 0;
+    return this.reporteCitas()?.doctores.reduce((total, doctor) => total + doctor.total, 0) || 0;
+  }
+
+  sumarCitas(total: number, hora: { cantidad: number }): number {
+    return total + hora.cantidad;
+  }
+
+  private limpiarReportes(): void {
+    this._reporteCitas.set(null);
+    this._reporteInasistencias.set(null);
+    this._reporteIngresos.set(null);
+    this._reporteHoras.set(null);
   }
 
   private formatearFecha(fecha: Date): string {
