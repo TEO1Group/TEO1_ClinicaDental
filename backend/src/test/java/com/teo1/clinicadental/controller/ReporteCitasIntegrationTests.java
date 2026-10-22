@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.contains;
@@ -98,7 +99,7 @@ class ReporteCitasIntegrationTests {
         doctorInactivo = doctorRepository.save(Doctor.builder()
                 .usuario(crearUsuario(Rol.DOCTOR, EstadoUsuario.INACTIVO)).especialidad("Cirugia").build());
 
-        desde = LocalDate.now(clock).plusDays(30);
+        desde = LocalDate.now(clock).minusDays(400);
         hasta = desde.plusDays(2);
 
         crearCita(doctorConCitas, desde, "09:00", EstadoCita.AGENDADA);
@@ -219,6 +220,35 @@ class ReporteCitasIntegrationTests {
         horas(tokenCliente, desde.toString(), hasta.toString()).andExpect(status().isForbidden());
         mockMvc.perform(get("/reportes/horas-demandadas").param("desde", desde.toString()).param("hasta", hasta.toString()))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void lasCitasFuturasNoCuentanYLaDeLaHoraActualSi() throws Exception {
+        LocalDate hoy = LocalDate.now(clock);
+        LocalTime ahora = LocalTime.now(clock).truncatedTo(ChronoUnit.MINUTES);
+        crearCita(doctorSinCitas, hoy.minusDays(1), "09:00", EstadoCita.AGENDADA);
+        crearCita(doctorSinCitas, hoy, ahora.toString(), EstadoCita.AGENDADA);
+        crearCita(doctorSinCitas, hoy.plusDays(1), "09:00", EstadoCita.AGENDADA);
+        crearCita(doctorSinCitas, hoy.plusDays(1), "10:00", EstadoCita.ATENDIDA);
+        crearCita(doctorSinCitas, hoy.plusDays(2), "09:00", EstadoCita.CANCELADA);
+
+        reporte(tokenAdmin, hoy.minusDays(1).toString(), hoy.plusDays(2).toString())
+                .andExpect(status().isOk())
+                .andExpect(campo(doctorSinCitas, "agendadas").value(contains(2)))
+                .andExpect(campo(doctorSinCitas, "atendidas").value(contains(0)))
+                .andExpect(campo(doctorSinCitas, "canceladas").value(contains(0)))
+                .andExpect(campo(doctorSinCitas, "total").value(contains(2)));
+    }
+
+    @Test
+    void horasNoCuentaCitasFuturas() throws Exception {
+        LocalDate manana = LocalDate.now(clock).plusDays(1);
+        crearCita(doctorSinCitas, manana, "09:00", EstadoCita.AGENDADA);
+        crearCita(doctorSinCitas, manana, "10:00", EstadoCita.ATENDIDA);
+
+        horas(tokenAdmin, manana.toString(), manana.plusDays(2).toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.horas").isEmpty());
     }
 
     private ResultActions horas(String token, String inicio, String fin) throws Exception {

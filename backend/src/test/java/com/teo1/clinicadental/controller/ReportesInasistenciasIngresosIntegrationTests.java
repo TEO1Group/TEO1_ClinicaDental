@@ -105,7 +105,7 @@ class ReportesInasistenciasIngresosIntegrationTests {
         doctorB = doctorRepository.save(Doctor.builder()
                 .usuario(crearUsuario(Rol.DOCTOR, "Duarte")).especialidad("Endodoncia").build());
 
-        desde = LocalDate.now(clock).plusDays(30);
+        desde = LocalDate.now(clock).minusDays(400);
         hasta = desde.plusDays(2);
     }
 
@@ -198,6 +198,26 @@ class ReportesInasistenciasIngresosIntegrationTests {
                 .andExpect(jsonPath("$.ingresoTotal").value(4849.00))
                 .andExpect(jsonPath("$.tratamientos[1].cantidad").value(3));
         ingresos(tokenAdmin, hasta.plusYears(10), hasta.plusYears(10))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cantidadTotal").value(0))
+                .andExpect(jsonPath("$.ingresoTotal").value(0))
+                .andExpect(jsonPath("$.tratamientos").isEmpty());
+    }
+
+    @Test
+    void lasCitasFuturasNoCuentanEnInasistenciasNiEnIngresos() throws Exception {
+        LocalDate manana = LocalDate.now(clock).plusDays(1);
+        crearCita(doctorA, pacienteX, manana, "09:00", EstadoCita.CANCELADA);
+        crearCita(doctorA, pacienteY, manana, "10:00", EstadoCita.NO_ASISTIO);
+        registrar(crearCita(doctorB, pacienteX, manana, "09:00", EstadoCita.ATENDIDA),
+                crearTratamiento("Futuro", "500.00"), "500.00");
+
+        inasistencias(tokenAdmin, manana, manana.plusDays(2))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(0))
+                .andExpect(jsonPath("$.doctores").isEmpty())
+                .andExpect(jsonPath("$.pacientes").isEmpty());
+        ingresos(tokenAdmin, manana, manana.plusDays(2))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.cantidadTotal").value(0))
                 .andExpect(jsonPath("$.ingresoTotal").value(0))
