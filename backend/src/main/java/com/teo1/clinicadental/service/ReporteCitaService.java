@@ -5,13 +5,17 @@ import com.teo1.clinicadental.dto.ReporteHorasDemandadasResponse;
 import com.teo1.clinicadental.dto.ReporteInasistenciasResponse;
 import com.teo1.clinicadental.dto.ReporteIngresosTratamientoResponse;
 import com.teo1.clinicadental.dto.ReporteCitasPorDoctorResponse;
+import com.teo1.clinicadental.dto.ReporteGananciasResponse;
 import com.teo1.clinicadental.model.Doctor;
 import com.teo1.clinicadental.model.EstadoCita;
 import com.teo1.clinicadental.model.EstadoUsuario;
 import com.teo1.clinicadental.repository.DoctorRepository;
 import com.teo1.clinicadental.repository.ReporteCitaRepository;
+import com.teo1.clinicadental.repository.ReporteGananciaRepository;
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -31,14 +35,18 @@ import org.springframework.web.server.ResponseStatusException;
 public class ReporteCitaService {
 
     private final ReporteCitaRepository reporteCitaRepository;
+    private final ReporteGananciaRepository reporteGananciaRepository;
     private final DoctorRepository doctorRepository;
+    private final Clock clock;
 
     @Transactional(readOnly = true)
     public ReporteCitasPorDoctorResponse citasPorDoctor(LocalDate desde, LocalDate hasta) {
         validarPeriodo(desde, hasta);
+        LocalDateTime ahora = LocalDateTime.now(clock);
 
         Map<UUID, Map<EstadoCita, Long>> conteos = new HashMap<>();
-        for (ReporteCitaRepository.ConteoCitas conteo : reporteCitaRepository.contarPorDoctorYEstado(desde, hasta)) {
+        for (ReporteCitaRepository.ConteoCitas conteo : reporteCitaRepository.contarPorDoctorYEstado(
+                desde, hasta, ahora.toLocalDate(), ahora.toLocalTime())) {
             conteos.computeIfAbsent(conteo.getIdDoctor(), id -> new EnumMap<>(EstadoCita.class))
                     .merge(conteo.getEstado(), conteo.getCantidad(), Long::sum);
         }
@@ -56,8 +64,9 @@ public class ReporteCitaService {
     @Transactional(readOnly = true)
     public ReporteHorasDemandadasResponse horasDemandadas(LocalDate desde, LocalDate hasta) {
         validarPeriodo(desde, hasta);
+        LocalDateTime ahora = LocalDateTime.now(clock);
         return new ReporteHorasDemandadasResponse(desde, hasta,
-                reporteCitaRepository.contarPorHora(desde, hasta).stream()
+                reporteCitaRepository.contarPorHora(desde, hasta, ahora.toLocalDate(), ahora.toLocalTime()).stream()
                         .map(conteo -> new ReporteHorasDemandadasResponse.HoraDemandada(conteo.getHora(), conteo.getCantidad()))
                         .toList());
     }
@@ -66,6 +75,7 @@ public class ReporteCitaService {
     @Transactional(readOnly = true)
     public ReporteInasistenciasResponse inasistencias(LocalDate desde, LocalDate hasta) {
         validarPeriodo(desde, hasta);
+        LocalDateTime ahora = LocalDateTime.now(clock);
 
         Map<UUID, Fila> porDoctor = new LinkedHashMap<>();
         Map<UUID, Fila> porPaciente = new LinkedHashMap<>();
@@ -73,7 +83,8 @@ public class ReporteCitaService {
         long totalCanceladas = 0;
 
         for (ReporteCitaRepository.ConteoPorDoctorYPaciente conteo : reporteCitaRepository.contarPorDoctorYPaciente(
-                desde, hasta, List.of(EstadoCita.NO_ASISTIO, EstadoCita.CANCELADA))) {
+                desde, hasta, List.of(EstadoCita.NO_ASISTIO, EstadoCita.CANCELADA),
+                ahora.toLocalDate(), ahora.toLocalTime())) {
             boolean noAsistio = conteo.getEstado() == EstadoCita.NO_ASISTIO;
             porDoctor.computeIfAbsent(conteo.getIdDoctor(),
                             id -> new Fila(id, conteo.getNombreDoctor(), conteo.getApellidoDoctor()))
@@ -103,9 +114,11 @@ public class ReporteCitaService {
     @Transactional(readOnly = true)
     public ReporteIngresosTratamientoResponse ingresosPorTratamiento(LocalDate desde, LocalDate hasta) {
         validarPeriodo(desde, hasta);
+        LocalDateTime ahora = LocalDateTime.now(clock);
 
         List<ReporteIngresosTratamientoResponse.IngresoTratamiento> tratamientos =
-                reporteCitaRepository.sumarIngresosPorTratamiento(desde, hasta).stream()
+                reporteCitaRepository.sumarIngresosPorTratamiento(
+                        desde, hasta, ahora.toLocalDate(), ahora.toLocalTime()).stream()
                         .map(ingreso -> new ReporteIngresosTratamientoResponse.IngresoTratamiento(
                                 ingreso.getIdTratamiento(), ingreso.getNombre(), ingreso.getCantidad(), ingreso.getTotal()))
                         .toList();
@@ -115,6 +128,39 @@ public class ReporteCitaService {
                 tratamientos.stream().map(ReporteIngresosTratamientoResponse.IngresoTratamiento::total)
                         .reduce(BigDecimal.ZERO, BigDecimal::add),
                 tratamientos);
+    }
+
+    @Transactional(readOnly = true)
+    public ReporteGananciasResponse ganancias(LocalDate desde, LocalDate hasta) {
+        validarPeriodo(desde, hasta);
+        LocalDateTime ahora = LocalDateTime.now(clock);
+
+        Map<UUID, ReporteGananciasResponse.GananciaDoctor> porDoctor = new HashMap<>();
+        for (ReporteGananciaRepository.IngresoDoctor ingreso
+                : reporteGananciaRepository.sumarTratamientosPorDoctor(
+                desde, hasta, EstadoCita.ATENDIDA, ahora.toLocalDate(), ahora.toLocalTime())) {
+            porDoctor.put(ingreso.getIdDoctor(), new ReporteGananciasResponse.GananciaDoctor(ingreso.getIdDoctor(),
+                    ingreso.getNombreDoctor(), ingreso.getApellidoDoctor(), ingreso.getCantidad(), ingreso.getTotal()));
+        }
+        for (Doctor doctor : doctorRepository.findByUsuarioEstado(EstadoUsuario.ACTIVO)) {
+            porDoctor.putIfAbsent(doctor.getId(), new ReporteGananciasResponse.GananciaDoctor(doctor.getId(),
+                    doctor.getUsuario().getNombre(), doctor.getUsuario().getApellido(), 0, BigDecimal.ZERO));
+        }
+
+        List<ReporteGananciasResponse.GananciaDoctor> doctores = porDoctor.values().stream()
+                .sorted(Comparator
+                        .comparing(ReporteGananciasResponse.GananciaDoctor::apellidoDoctor, String.CASE_INSENSITIVE_ORDER)
+                        .thenComparing(ReporteGananciasResponse.GananciaDoctor::nombreDoctor, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+
+        BigDecimal totalTratamientos = doctores.stream()
+                .map(ReporteGananciasResponse.GananciaDoctor::total)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalAbonos = reporteGananciaRepository.sumarAbonos(
+                desde.atStartOfDay(), hasta.plusDays(1).atStartOfDay());
+
+        return new ReporteGananciasResponse(desde, hasta, totalTratamientos,
+                totalAbonos != null ? totalAbonos : BigDecimal.ZERO, doctores);
     }
 
     private List<Fila> ordenar(Collection<Fila> filas) {

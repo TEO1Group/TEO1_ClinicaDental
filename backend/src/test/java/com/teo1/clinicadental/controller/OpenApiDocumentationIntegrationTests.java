@@ -97,6 +97,8 @@ class OpenApiDocumentationIntegrationTests {
                 {"get", "/reportes/horas-demandadas", "200", "ReporteHorasDemandadasResponse"},
                 {"get", "/reportes/inasistencias", "200", "ReporteInasistenciasResponse"},
                 {"get", "/reportes/ingresos-por-tratamiento", "200", "ReporteIngresosTratamientoResponse"},
+                {"get", "/reportes/ganancias", "200", "ReporteGananciasResponse"},
+                {"get", "/doctores/{idDoctor}/bloqueos-vigentes", "200", "[]BloqueoVigenteResponse"},
                 {"get", "/tratamientos", "200", "[]TratamientoResponse"},
                 {"post", "/tratamientos", "201", "TratamientoResponse"},
                 {"put", "/tratamientos/{id}", "200", "TratamientoResponse"},
@@ -120,7 +122,7 @@ class OpenApiDocumentationIntegrationTests {
     @Test
     void sprintSixFiltersAndValidationLimitsAreDocumented() throws Exception {
         String document = document();
-        for (String report : List.of("citas-por-doctor", "horas-demandadas", "inasistencias", "ingresos-por-tratamiento")) {
+        for (String report : List.of("citas-por-doctor", "horas-demandadas", "inasistencias", "ingresos-por-tratamiento", "ganancias")) {
             List<Map<String, Object>> parameters = JsonPath.read(document, "$.paths['/reportes/" + report + "'].get.parameters");
             for (String name : List.of("desde", "hasta")) {
                 Map<String, Object> parameter = parameters.stream().filter(p -> name.equals(p.get("name"))).findFirst().orElseThrow();
