@@ -19,7 +19,7 @@ public class InasistenciasPacienteResponse {
     @Schema(description = "Cantidad de inasistencias con la que el paciente ya no puede agendar", example = "3")
     private int limite;
 
-    @Schema(description = "true si el paciente no puede agendar citas hasta que se le levante la restriccion", example = "false")
+    @Schema(description = "true si alcanzo el limite de inasistencias; no representa otras restricciones del paciente", example = "false")
     private boolean bloqueado;
 
     @Schema(description = "Ultimo levantamiento de la restriccion; null si nunca se le levanto", nullable = true)

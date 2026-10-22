@@ -5,6 +5,7 @@ import com.teo1.clinicadental.dto.TratamientoRequest;
 import com.teo1.clinicadental.dto.TratamientoResponse;
 import com.teo1.clinicadental.service.TratamientoService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -46,6 +47,7 @@ public class TratamientoController {
     @ApiResponse(responseCode = "403", description = "Se requiere ADMIN, DOCTOR o SECRETARIA; solo ADMIN puede incluir inactivos", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "400", description = "incluirInactivos no es booleano", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<List<TratamientoResponse>> listarCatalogo(
+            @Parameter(description = "Solo ADMIN puede incluir tratamientos inactivos", example = "false")
             @RequestParam(defaultValue = "false") boolean incluirInactivos, Authentication authentication) {
         return ResponseEntity.ok(tratamientoService.listarCatalogo(incluirInactivos, authentication));
     }
