@@ -190,7 +190,7 @@
           type="date"
           class="form-control"
           [value]="reprogramarFecha()"
-          (input)="reprogramarFecha.set($any($event.target).value)"
+          (input)="actualizarReprogramarFecha($any($event.target).value)"
         />
       </div>
 
@@ -203,9 +203,17 @@
           type="time"
           class="form-control"
           [value]="reprogramarHora()"
-          (input)="reprogramarHora.set($any($event.target).value)"
+          (input)="actualizarReprogramarHora($any($event.target).value)"
         />
       </div>
+
+      @if (reprogramarBloqueo(); as bloqueo) {
+        <div class="alert alert-warning" role="alert">
+          <i class="bi bi-calendar-x me-2"></i>
+          El doctor no está disponible en este horario: {{ bloqueo.motivo }}
+          ({{ bloqueo.inicio.replace('T', ' ') }} - {{ bloqueo.fin.replace('T', ' ') }}).
+        </div>
+      }
 
       <div class="mb-3">
         <label for="reprogramarMotivo" class="form-label fw-semibold">
@@ -227,7 +235,7 @@
         <button type="button" class="btn btn-outline-secondary" (click)="cerrarModalReprogramar()">
           Cancelar
         </button>
-        <button type="button" class="btn btn-primario text-white" (click)="confirmarReprogramar()" [disabled]="reprogramarEnviando()">
+        <button type="button" class="btn btn-primario text-white" (click)="confirmarReprogramar()" [disabled]="reprogramarEnviando() || reprogramarBloqueo() !== null">
           @if (reprogramarEnviando()) {
             <span class="spinner-border spinner-border-sm me-1"></span>
           }

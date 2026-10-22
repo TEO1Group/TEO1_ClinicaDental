@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 import { DoctorResponse } from '../../../doctores/models/doctor.model';
+import { BloqueoDoctorResponse } from '../../../doctores/models/bloqueo.model';
 import { HorarioResponse } from '../../../doctores/models/horario.mode';
 import { DoctorService } from '../../../doctores/service/doctor.service';
 import { ClienteResponse } from '../../../pacientes/models/paciente.model';
@@ -46,11 +47,13 @@ export class FormularioCitaComponent implements OnInit {
   readonly doctores = signal<DoctorResponse[]>([]);
   readonly pacientes = signal<ClienteResponse[]>([]);
   readonly horarios = signal<HorarioResponse[]>([]);
+  readonly bloqueos = signal<BloqueoDoctorResponse[]>([]);
   readonly cargandoDoctores = signal(false);
   readonly cargandoPacientes = signal(false);
   readonly cargandoHorarios = signal(false);
   readonly isSubmitting = signal(false);
   readonly error = signal('');
+  readonly bloqueoSeleccionado = signal<BloqueoDoctorResponse | null>(null);
   readonly fechaMinima = obtenerFechaMinimaGuatemala();
 
   readonly formulario = this.formBuilder.nonNullable.group({
@@ -69,10 +72,15 @@ export class FormularioCitaComponent implements OnInit {
 
     this.formulario.controls.idDoctor.valueChanges.subscribe(idDoctor => {
       this.horarios.set([]);
+      this.bloqueos.set([]);
+      this.bloqueoSeleccionado.set(null);
       if (idDoctor) {
         this.cargarHorarios(idDoctor);
+        this.cargarBloqueos(idDoctor);
       }
     });
+    this.formulario.controls.fecha.valueChanges.subscribe(() => this.actualizarBloqueoSeleccionado());
+    this.formulario.controls.hora.valueChanges.subscribe(() => this.actualizarBloqueoSeleccionado());
   }
 
   puedeElegirPaciente(): boolean {
@@ -121,9 +129,31 @@ export class FormularioCitaComponent implements OnInit {
     });
   }
 
+  cargarBloqueos(idDoctor: string): void {
+    this.doctorService.listarBloqueos(idDoctor).subscribe({
+      next: (bloqueos) => {
+        this.bloqueos.set(bloqueos);
+        this.actualizarBloqueoSeleccionado();
+      },
+      error: (error) => {
+        this.bloqueos.set([]);
+        this.bloqueoSeleccionado.set(null);
+        this.error.set(error.error?.mensaje || 'Error al cargar los bloqueos del doctor.');
+      }
+    });
+  }
+
+  hayBloqueoSeleccionado(): boolean {
+    return this.bloqueoSeleccionado() !== null;
+  }
+
   agendar(): void {
     if (this.formulario.invalid) {
       this.formulario.markAllAsTouched();
+      return;
+    }
+
+    if (this.hayBloqueoSeleccionado()) {
       return;
     }
 
@@ -161,5 +191,21 @@ export class FormularioCitaComponent implements OnInit {
     if (rol === 'CLIENTE' || rol === 'DOCTOR') {
       this.citaService.recargarProximas();
     }
+  }
+
+  private actualizarBloqueoSeleccionado(): void {
+    const fecha = this.formulario.controls.fecha.value;
+    const hora = this.formulario.controls.hora.value;
+    this.bloqueoSeleccionado.set(this.buscarBloqueo(fecha, hora));
+  }
+
+  private buscarBloqueo(fecha: string, hora: string): BloqueoDoctorResponse | null {
+    if (!fecha || !hora) return null;
+    const inicioCita = `${fecha}T${hora}`;
+    return this.bloqueos().find(bloqueo => {
+      const inicioBloqueo = bloqueo.inicio.slice(0, 16);
+      const finBloqueo = bloqueo.fin.slice(0, 16);
+      return inicioCita >= inicioBloqueo && inicioCita < finBloqueo;
+    }) || null;
   }
 }
