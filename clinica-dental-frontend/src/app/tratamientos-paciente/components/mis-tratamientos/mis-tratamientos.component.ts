@@ -4,7 +4,7 @@ import { MisTratamientosService } from '../../service/mis-tratamientos.service';
 import {
   TratamientosPacienteResponse,
   CitaTratamientoResponse
-} from '../../../pacientes/models/tratamiento.model';
+} from '../../models/tratamiento.model';
 
 interface CitaAgrupada {
   idCita: string;

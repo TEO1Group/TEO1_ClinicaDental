@@ -9,7 +9,7 @@ import {
   EstadoCitaRequest,
   ReprogramarCitaRequest
 } from '../models/cita.model';
-import { CitaTratamientoRequest, CitaTratamientoResponse } from '../../pacientes/models/tratamiento.model';
+import { CitaTratamientoRequest, CitaTratamientoResponse } from '../../tratamientos-paciente/models/tratamiento.model';
 
 @Injectable({ providedIn: 'root' })
 export class CitaService extends ApiService {

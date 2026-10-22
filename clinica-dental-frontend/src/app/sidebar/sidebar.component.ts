@@ -67,6 +67,12 @@ export class SidebarComponent {
       icono: 'bi-bar-chart-line',
       ruta: '/reportes',
       roles: ['ADMIN', 'SECRETARIA']
+    },
+    {
+      label: 'Tratamientos',
+      icono: 'bi-journal-medical',
+      ruta: '/tratamientos',
+      roles: ['ADMIN']
     }
   ];
 

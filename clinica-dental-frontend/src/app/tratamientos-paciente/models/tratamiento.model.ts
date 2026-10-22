@@ -4,6 +4,15 @@ export interface TratamientoResponse {
   descripcion: string | null;
   duracionMinutos: number;
   costo: number;
+  activo: boolean;
+}
+
+export interface TratamientoRequest {
+  nombre: string;
+  descripcion?: string;
+  duracionMinutos: number;
+  costo: number;
+  activo?: boolean;
 }
 
 export interface CitaTratamientoRequest {
