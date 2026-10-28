@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
@@ -57,9 +57,21 @@ export class SidebarComponent {
       roles: ['ADMIN', 'DOCTOR', 'SECRETARIA', 'CLIENTE']
     },
     {
+      label: 'Planes de tratamiento',
+      icono: 'bi-clipboard2-pulse',
+      ruta: '/planes',
+      roles: ['ADMIN', 'DOCTOR', 'SECRETARIA']
+    },
+    {
       label: 'Mis Tratamientos',
       icono: 'bi-clipboard2-pulse',
       ruta: '/mis-tratamientos',
+      roles: ['CLIENTE']
+    },
+    {
+      label: 'Mis Planes',
+      icono: 'bi-clipboard2-check',
+      ruta: '/mis-planes',
       roles: ['CLIENTE']
     },
     {
@@ -67,6 +79,12 @@ export class SidebarComponent {
       icono: 'bi-bar-chart-line',
       ruta: '/reportes',
       roles: ['ADMIN', 'SECRETARIA']
+    },
+    {
+      label: 'Tratamientos',
+      icono: 'bi-journal-medical',
+      ruta: '/tratamientos',
+      roles: ['ADMIN']
     }
   ];
 

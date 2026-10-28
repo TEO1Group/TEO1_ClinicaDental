@@ -3,6 +3,7 @@ package com.teo1.clinicadental.service;
 import com.teo1.clinicadental.dto.CitaTratamientoRequest;
 import com.teo1.clinicadental.dto.CitaTratamientoResponse;
 import com.teo1.clinicadental.dto.TratamientoResponse;
+import com.teo1.clinicadental.dto.TratamientoRequest;
 import com.teo1.clinicadental.dto.TratamientosPacienteResponse;
 import com.teo1.clinicadental.model.Cita;
 import com.teo1.clinicadental.model.CitaTratamiento;
@@ -37,15 +38,53 @@ public class TratamientoService {
     private final Clock clock;
 
     @Transactional(readOnly = true)
-    public List<TratamientoResponse> listarCatalogo() {
-        return tratamientoRepository.findAllByOrderByNombreAsc().stream()
-                .map(tratamiento -> new TratamientoResponse(
-                        tratamiento.getId(),
-                        tratamiento.getNombre(),
-                        tratamiento.getDescripcion(),
-                        tratamiento.getDuracionMinutos(),
-                        tratamiento.getCosto()))
-                .toList();
+    public List<TratamientoResponse> listarCatalogo(boolean incluirInactivos, Authentication authentication) {
+        if (incluirInactivos) {
+            requerirAdmin(authentication);
+        }
+        List<Tratamiento> catalogo = incluirInactivos ? tratamientoRepository.findAllByOrderByNombreAsc()
+                : tratamientoRepository.findByActivoTrueOrderByNombreAsc();
+        return catalogo.stream().map(this::catalogoResponse).toList();
+    }
+
+    @Transactional
+    public TratamientoResponse crearCatalogo(TratamientoRequest request, Authentication authentication) {
+        requerirAdmin(authentication);
+        if (tratamientoRepository.existsByNombre(request.getNombre().trim())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe un tratamiento con ese nombre");
+        }
+        return guardarCatalogo(new Tratamiento(), request);
+    }
+
+    @Transactional
+    public TratamientoResponse actualizarCatalogo(UUID id, TratamientoRequest request, Authentication authentication) {
+        requerirAdmin(authentication);
+        Tratamiento tratamiento = tratamientoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tratamiento no encontrado"));
+        if (tratamientoRepository.existsByNombreAndIdNot(request.getNombre().trim(), id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ya existe un tratamiento con ese nombre");
+        }
+        return guardarCatalogo(tratamiento, request);
+    }
+
+    private void requerirAdmin(Authentication authentication) {
+        if (!tieneRol(authentication, Rol.ADMIN)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Se requiere el rol ADMIN");
+        }
+    }
+
+    private TratamientoResponse guardarCatalogo(Tratamiento tratamiento, TratamientoRequest request) {
+        tratamiento.setNombre(request.getNombre().trim());
+        tratamiento.setDescripcion(request.getDescripcion());
+        tratamiento.setDuracionMinutos(request.getDuracionMinutos());
+        tratamiento.setCosto(request.getCosto());
+        tratamiento.setActivo(request.getActivo());
+        return catalogoResponse(tratamientoRepository.saveAndFlush(tratamiento));
+    }
+
+    private TratamientoResponse catalogoResponse(Tratamiento tratamiento) {
+        return new TratamientoResponse(tratamiento.getId(), tratamiento.getNombre(), tratamiento.getDescripcion(),
+                tratamiento.getDuracionMinutos(), tratamiento.getCosto(), tratamiento.isActivo());
     }
 
     @Transactional
@@ -62,6 +101,10 @@ public class TratamientoService {
 
         Tratamiento tratamiento = tratamientoRepository.findById(request.getIdTratamiento())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tratamiento no encontrado"));
+
+        if (!tratamiento.isActivo()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El tratamiento esta inactivo");
+        }
 
         BigDecimal costo = request.getCosto() != null ? request.getCosto() : tratamiento.getCosto();
         if (costo.signum() < 0) {

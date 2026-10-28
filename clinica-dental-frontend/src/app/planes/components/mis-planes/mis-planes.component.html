@@ -1,0 +1,121 @@
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-12 col-xl-10">
+
+      <div class="mb-4">
+        <h2 class="fw-bold text-primario mb-1">Mis Planes de Tratamiento</h2>
+        <p class="text-muted mb-0">Consulta el avance y saldo de tus planes</p>
+      </div>
+
+      @if (error()) {
+        <div class="alert alert-danger" role="alert">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error() }}
+        </div>
+      }
+
+      @if (cargando()) {
+        <div class="text-center py-5">
+          <div class="spinner-border text-primario" role="status">
+            <span class="visually-hidden">Cargando...</span>
+          </div>
+          <p class="text-muted mt-3 mb-0">Cargando tus planes...</p>
+        </div>
+      }
+
+      @if (!cargando() && planes().length > 0) {
+        <div class="planes-lista">
+          @for (plan of planes(); track plan.idPlan) {
+            <div class="card shadow-sm border-0 rounded-4 mb-4">
+              <div class="card-header-plan">
+                <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                  <div>
+                    <h5 class="fw-bold mb-1">{{ plan.nombreTratamiento }}</h5>
+                    <span class="doctor-info">{{ nombreDoctor(plan) }}</span>
+                  </div>
+                  <span class="badge" [ngClass]="claseEstado(plan.estado)">
+                    {{ etiquetaEstado(plan.estado) }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="card-body p-4">
+                <div class="row g-3 mb-3">
+                  <div class="col-md-4">
+                    <div class="stat-card">
+                      <i class="bi bi-calendar-check stat-icon text-primario"></i>
+                      <div>
+                        <span class="stat-label">Sesiones</span>
+                        <span class="stat-value">{{ plan.sesionesAtendidas }} / {{ plan.totalSesiones }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="stat-card">
+                      <i class="bi bi-cash-stack stat-icon text-success"></i>
+                      <div>
+                        <span class="stat-label">Abonado</span>
+                        <span class="stat-value text-success">Q{{ plan.totalAbonado | number:'1.2-2' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="stat-card">
+                      <i class="bi bi-wallet2 stat-icon text-primario"></i>
+                      <div>
+                        <span class="stat-label">Saldo pendiente</span>
+                        <span class="stat-value text-primario">Q{{ plan.saldo | number:'1.2-2' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mb-2">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="small text-muted">Avance del tratamiento</span>
+                    <span class="small fw-bold text-primario">{{ plan.porcentajeAvance }}%</span>
+                  </div>
+                  <div class="progress" style="height: 10px;">
+                    <div
+                      class="progress-bar bg-primario"
+                      role="progressbar"
+                      [style.width.%]="plan.porcentajeAvance"
+                      [attr.aria-valuenow]="plan.porcentajeAvance"
+                      aria-valuemin="0"
+                      aria-valuemax="100"
+                    ></div>
+                  </div>
+                </div>
+
+                <div class="row g-2 mt-3">
+                  <div class="col-md-6">
+                    <div class="mini-info">
+                      <span class="mini-label">Costo total</span>
+                      <span class="mini-value">Q{{ plan.costoTotal | number:'1.2-2' }}</span>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="mini-info">
+                      <span class="mini-label">Sesiones pendientes</span>
+                      <span class="mini-value">{{ plan.sesionesPendientes }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      @if (!cargando() && planes().length === 0 && !error()) {
+        <div class="empty-state">
+          <div class="empty-icon-wrap">
+            <i class="bi bi-clipboard2-x"></i>
+          </div>
+          <h4 class="fw-bold mt-3 mb-2">Aún no tienes planes</h4>
+          <p class="text-muted mb-0">Cuando tu doctor te asigne un plan de tratamiento, aparecerá aquí.</p>
+        </div>
+      }
+
+    </div>
+  </div>
+</div>

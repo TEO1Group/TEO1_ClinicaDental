@@ -1,8 +1,17 @@
--- Datos de demo de la Clínica Dental (Sprint 5).
+-- Datos de demo de la Clínica Dental (Sprint 6).
 --
--- Crea: 2 doctores con horarios, 1 secretaria, 4 pacientes (uno en lista negra), citas de ayer, hoy y
+-- Crea: 2 doctores con horarios, 1 secretaria, 5 pacientes (uno en lista negra), citas de ayer, hoy y
 -- mañana en todos los estados, tratamientos registrados, una reprogramación, historial clínico y un
 -- bloqueo de doctor. Las fechas se calculan al correr el script (zona America/Guatemala).
+--
+-- Sprint 6:
+--   - Inasistencias: Luis Pérez tiene 2 desde que le levantaron la restricción hace 40 días (antes tuvo 3);
+--     Carmen Díaz tiene 3 y está bloqueada para agendar hasta que se le levante.
+--   - Planes: Ana López, endodoncia de 3 sesiones con 2 atendidas, 1 agendada y 2 abonos (saldo Q2,000);
+--     María Gómez, ortodoncia de 6 sesiones con 2 atendidas, 1 cancelada, su cita de mañana y 1 abono.
+--   - Reportes: citas NO_ASISTIO, CANCELADA y ATENDIDA con tratamientos en las últimas semanas.
+--
+-- Requiere el esquema completo o las migraciones hasta 2026-10-sprint6-*.sql (usa el catálogo del Sprint 6).
 --
 -- La contraseña NO está en el repositorio: se pasa al ejecutar y se guarda con BCrypt (pgcrypto).
 -- Todos los usuarios de demo usan esa misma contraseña.
@@ -46,7 +55,7 @@ DELETE FROM usuario WHERE id_usuario IN (
     'de000000-0000-4000-8000-000000000001', 'de000000-0000-4000-8000-000000000002',
     'de000000-0000-4000-8000-000000000003', 'de000000-0000-4000-8000-000000000011',
     'de000000-0000-4000-8000-000000000012', 'de000000-0000-4000-8000-000000000013',
-    'de000000-0000-4000-8000-000000000014'
+    'de000000-0000-4000-8000-000000000014', 'de000000-0000-4000-8000-000000000015'
 );
 
 -- 2. Usuarios
@@ -60,7 +69,8 @@ FROM (VALUES
     ('de000000-0000-4000-8000-000000000011', 'Ana',    'López',    :'correo_demo',                     'CLIENTE',    '55520001'),
     ('de000000-0000-4000-8000-000000000012', 'Luis',   'Pérez',    'luis.perez@clinica-demo.test',     'CLIENTE',    '55520002'),
     ('de000000-0000-4000-8000-000000000013', 'María',  'Gómez',    'maria.gomez@clinica-demo.test',    'CLIENTE',    '55520003'),
-    ('de000000-0000-4000-8000-000000000014', 'Jorge',  'Ruiz',     'jorge.ruiz@clinica-demo.test',     'CLIENTE',    '55520004')
+    ('de000000-0000-4000-8000-000000000014', 'Jorge',  'Ruiz',     'jorge.ruiz@clinica-demo.test',     'CLIENTE',    '55520004'),
+    ('de000000-0000-4000-8000-000000000015', 'Carmen', 'Díaz',     'carmen.diaz@clinica-demo.test',    'CLIENTE',    '55520005')
 ) AS u (id, nombre, apellido, email, rol, telefono);
 
 -- 3. Perfiles
@@ -76,7 +86,8 @@ INSERT INTO cliente (id_cliente, id_usuario, dpi, direccion, fecha_nacimiento, e
     ('de000000-0000-4000-8000-0000000000c2', 'de000000-0000-4000-8000-000000000012', '9900000000012', 'Zona 10, Guatemala', '1988-09-30', FALSE, NULL),
     ('de000000-0000-4000-8000-0000000000c3', 'de000000-0000-4000-8000-000000000013', '9900000000013', 'Mixco',              '2001-01-05', FALSE, NULL),
     ('de000000-0000-4000-8000-0000000000c4', 'de000000-0000-4000-8000-000000000014', '9900000000014', 'Villa Nueva',        '1979-11-21', TRUE,
-     'Tres inasistencias seguidas sin avisar');
+     'Tres inasistencias seguidas sin avisar'),
+    ('de000000-0000-4000-8000-0000000000c5', 'de000000-0000-4000-8000-000000000015', '9900000000015', 'Zona 7, Guatemala',  '1992-06-17', FALSE, NULL);
 
 -- 4. Horarios: todos los días, para que la demo funcione cualquier día de la semana
 INSERT INTO horario (id_doctor, dia_semana, hora_inicio, hora_fin)
@@ -135,6 +146,90 @@ INSERT INTO bloqueo_doctor (id_doctor, inicio, fin, motivo, creado_por)
 VALUES ('de000000-0000-4000-8000-0000000000d2', :'pasado_manana'::date + time '08:00', :'pasado_manana'::date + time '13:00',
         'Congreso de ortodoncia', 'de000000-0000-4000-8000-000000000003');
 
+-- 10. Inasistencias (HU-25). Luis Pérez: 3 en el pasado, levantamiento hace 40 días y 2 nuevas
+--     (la de hace 10 días y la de ayer), así se ve que el conteo empieza de cero. Carmen Díaz: 3, bloqueada.
+INSERT INTO cita (id_cita, id_cliente, id_doctor, fecha, hora, estado, notas, motivo_estado) VALUES
+    ('de000000-0000-4000-8000-00000000c401', 'de000000-0000-4000-8000-0000000000c2', 'de000000-0000-4000-8000-0000000000d1',
+     :'hoy'::date - 60, '09:00', 'NO_ASISTIO', 'Limpieza dental', 'El paciente no se presentó'),
+    ('de000000-0000-4000-8000-00000000c402', 'de000000-0000-4000-8000-0000000000c2', 'de000000-0000-4000-8000-0000000000d1',
+     :'hoy'::date - 55, '09:00', 'NO_ASISTIO', 'Limpieza dental', 'El paciente no se presentó'),
+    ('de000000-0000-4000-8000-00000000c403', 'de000000-0000-4000-8000-0000000000c2', 'de000000-0000-4000-8000-0000000000d1',
+     :'hoy'::date - 50, '09:00', 'NO_ASISTIO', 'Limpieza dental', 'No contestó las llamadas'),
+    ('de000000-0000-4000-8000-00000000c404', 'de000000-0000-4000-8000-0000000000c2', 'de000000-0000-4000-8000-0000000000d2',
+     :'hoy'::date - 10, '10:00', 'NO_ASISTIO', 'Evaluación para brackets', 'Avisó tarde que no llegaba'),
+    ('de000000-0000-4000-8000-00000000c501', 'de000000-0000-4000-8000-0000000000c5', 'de000000-0000-4000-8000-0000000000d1',
+     :'hoy'::date - 21, '11:00', 'NO_ASISTIO', 'Dolor de encías', 'La paciente no se presentó'),
+    ('de000000-0000-4000-8000-00000000c502', 'de000000-0000-4000-8000-0000000000c5', 'de000000-0000-4000-8000-0000000000d1',
+     :'hoy'::date - 14, '11:00', 'NO_ASISTIO', 'Dolor de encías', 'La paciente no se presentó'),
+    ('de000000-0000-4000-8000-00000000c503', 'de000000-0000-4000-8000-0000000000c5', 'de000000-0000-4000-8000-0000000000d2',
+     :'hoy'::date - 7, '11:00', 'NO_ASISTIO', 'Evaluación de mordida', 'La paciente no se presentó'),
+    ('de000000-0000-4000-8000-00000000c504', 'de000000-0000-4000-8000-0000000000c5', 'de000000-0000-4000-8000-0000000000d2',
+     :'hoy'::date - 3, '14:00', 'CANCELADA', 'Evaluación de mordida', 'Cambio de trabajo');
+
+INSERT INTO levantamiento_inasistencia (id_cliente, motivo, inasistencias, levantado_por, fecha) VALUES
+    ('de000000-0000-4000-8000-0000000000c2', 'Se comprometió a avisar con anticipación', 3,
+     'de000000-0000-4000-8000-000000000003', :'hoy'::date - 40 + time '10:00');
+
+-- 11. Planes de tratamiento (HU-26)
+INSERT INTO plan_tratamiento (id_plan, id_cliente, id_doctor, id_tratamiento, total_sesiones, costo_total, estado, fecha_creacion)
+SELECT p.id_plan::uuid, p.id_cliente::uuid, p.id_doctor::uuid,
+       (SELECT id_tratamiento FROM tratamiento WHERE nombre = p.tratamiento), p.sesiones, p.costo, 'ACTIVO', p.creado
+FROM (VALUES
+    ('de000000-0000-4000-8000-0000000000e1', 'de000000-0000-4000-8000-0000000000c1', 'de000000-0000-4000-8000-0000000000d1',
+     'Endodoncia', 3, 4500.00, :'hoy'::date - 15 + time '10:00'),
+    ('de000000-0000-4000-8000-0000000000e2', 'de000000-0000-4000-8000-0000000000c3', 'de000000-0000-4000-8000-0000000000d2',
+     'Control de ortodoncia', 6, 1800.00, :'hoy'::date - 30 + time '11:00')
+) AS p (id_plan, id_cliente, id_doctor, tratamiento, sesiones, costo, creado);
+
+INSERT INTO cita (id_cita, id_cliente, id_doctor, fecha, hora, estado, notas, motivo_estado, id_plan) VALUES
+    -- Ana López, endodoncia: 2 atendidas y la tercera pasado mañana
+    ('de000000-0000-4000-8000-00000000c601', 'de000000-0000-4000-8000-0000000000c1', 'de000000-0000-4000-8000-0000000000d1',
+     :'hoy'::date - 14, '09:00', 'ATENDIDA', 'Sesion 1 de 3: Endodoncia', NULL, 'de000000-0000-4000-8000-0000000000e1'),
+    ('de000000-0000-4000-8000-00000000c602', 'de000000-0000-4000-8000-0000000000c1', 'de000000-0000-4000-8000-0000000000d1',
+     :'hoy'::date - 7, '09:00', 'ATENDIDA', 'Sesion 2 de 3: Endodoncia', NULL, 'de000000-0000-4000-8000-0000000000e1'),
+    ('de000000-0000-4000-8000-00000000c603', 'de000000-0000-4000-8000-0000000000c1', 'de000000-0000-4000-8000-0000000000d1',
+     :'pasado_manana', '10:00', 'AGENDADA', 'Sesion 3 de 3: Endodoncia', NULL, 'de000000-0000-4000-8000-0000000000e1'),
+    -- María Gómez, ortodoncia: 2 atendidas y 1 cancelada (su cita de mañana se vincula abajo)
+    ('de000000-0000-4000-8000-00000000c701', 'de000000-0000-4000-8000-0000000000c3', 'de000000-0000-4000-8000-0000000000d2',
+     :'hoy'::date - 28, '10:00', 'ATENDIDA', 'Sesion 1 de 6: Control de ortodoncia', NULL, 'de000000-0000-4000-8000-0000000000e2'),
+    ('de000000-0000-4000-8000-00000000c702', 'de000000-0000-4000-8000-0000000000c3', 'de000000-0000-4000-8000-0000000000d2',
+     :'hoy'::date - 21, '10:00', 'CANCELADA', 'Sesion 2 de 6: Control de ortodoncia', 'La paciente estaba enferma',
+     'de000000-0000-4000-8000-0000000000e2'),
+    ('de000000-0000-4000-8000-00000000c703', 'de000000-0000-4000-8000-0000000000c3', 'de000000-0000-4000-8000-0000000000d2',
+     :'hoy'::date - 14, '10:00', 'ATENDIDA', 'Sesion 2 de 6: Control de ortodoncia', NULL, 'de000000-0000-4000-8000-0000000000e2');
+
+UPDATE cita SET id_plan = 'de000000-0000-4000-8000-0000000000e2'
+WHERE id_cita = 'de000000-0000-4000-8000-00000000c302';
+
+INSERT INTO abono_plan (id_plan, monto, fecha, registrado_por) VALUES
+    ('de000000-0000-4000-8000-0000000000e1', 1500.00, :'hoy'::date - 14 + time '09:45', 'de000000-0000-4000-8000-000000000003'),
+    ('de000000-0000-4000-8000-0000000000e1', 1000.00, :'hoy'::date - 7 + time '09:50', 'de000000-0000-4000-8000-000000000003'),
+    ('de000000-0000-4000-8000-0000000000e2',  600.00, :'hoy'::date - 28 + time '10:40', 'de000000-0000-4000-8000-000000000003');
+
+-- 12. Más citas atendidas en las últimas semanas para el reporte de ingresos
+INSERT INTO cita (id_cita, id_cliente, id_doctor, fecha, hora, estado, notas) VALUES
+    ('de000000-0000-4000-8000-00000000c801', 'de000000-0000-4000-8000-0000000000c2', 'de000000-0000-4000-8000-0000000000d1',
+     :'hoy'::date - 5, '08:00', 'ATENDIDA', 'Muela con movilidad'),
+    ('de000000-0000-4000-8000-00000000c802', 'de000000-0000-4000-8000-0000000000c3', 'de000000-0000-4000-8000-0000000000d1',
+     :'hoy'::date - 4, '15:00', 'ATENDIDA', 'Blanqueamiento'),
+    ('de000000-0000-4000-8000-00000000c803', 'de000000-0000-4000-8000-0000000000c5', 'de000000-0000-4000-8000-0000000000d1',
+     :'hoy'::date - 3, '09:00', 'ATENDIDA', 'Limpieza dental');
+
+-- Tratamientos de las sesiones de los planes y de las citas anteriores (algunos con costo ajustado)
+INSERT INTO cita_tratamiento (id_cita, id_tratamiento, costo, observaciones, fecha_registro)
+SELECT t.id_cita::uuid, tr.id_tratamiento, coalesce(t.costo, tr.costo), t.observaciones, c.fecha + c.hora + interval '30 minutes'
+FROM (VALUES
+    ('de000000-0000-4000-8000-00000000c601', 'Endodoncia',            1500.00,       'Apertura y limpieza de conductos, pieza 46'),
+    ('de000000-0000-4000-8000-00000000c602', 'Endodoncia',            1500.00,       'Obturación de conductos, pieza 46'),
+    ('de000000-0000-4000-8000-00000000c701', 'Control de ortodoncia', NULL::numeric, 'Colocación de arco superior'),
+    ('de000000-0000-4000-8000-00000000c703', 'Control de ortodoncia', NULL::numeric, 'Cambio de ligas'),
+    ('de000000-0000-4000-8000-00000000c801', 'Extracción simple',     NULL::numeric, 'Pieza 18'),
+    ('de000000-0000-4000-8000-00000000c802', 'Blanqueamiento dental', 1350.00,       'Descuento por paciente frecuente'),
+    ('de000000-0000-4000-8000-00000000c803', 'Limpieza dental',       NULL::numeric, NULL)
+) AS t (id_cita, tratamiento, costo, observaciones)
+JOIN tratamiento tr ON tr.nombre = t.tratamiento
+JOIN cita c ON c.id_cita = t.id_cita::uuid;
+
 COMMIT;
 
 \echo 'Datos de demo cargados. Usuarios (todos con la contraseña indicada en clave_demo):'
@@ -142,3 +237,28 @@ SELECT u.email, r.nombre_rol AS rol, u.nombre || ' ' || u.apellido AS nombre
 FROM usuario u JOIN rol r USING (id_rol)
 WHERE u.id_usuario::text LIKE 'de000000-%'
 ORDER BY r.nombre_rol, u.apellido;
+
+\echo 'Inasistencias desde el último levantamiento (con 3 o más el paciente no puede agendar):'
+SELECT u.nombre || ' ' || u.apellido AS paciente,
+       count(c.id_cita) FILTER (WHERE c.estado = 'NO_ASISTIO'
+           AND (c.fecha + c.hora) > coalesce(l.ultimo, '-infinity')) AS inasistencias
+FROM cliente cl
+JOIN usuario u USING (id_usuario)
+LEFT JOIN cita c ON c.id_cliente = cl.id_cliente
+LEFT JOIN (SELECT id_cliente, max(fecha) AS ultimo FROM levantamiento_inasistencia GROUP BY id_cliente) l
+       ON l.id_cliente = cl.id_cliente
+WHERE cl.id_cliente::text LIKE 'de000000-%'
+GROUP BY u.nombre, u.apellido
+ORDER BY inasistencias DESC, u.apellido;
+
+\echo 'Planes de tratamiento:'
+SELECT u.nombre || ' ' || u.apellido AS paciente, t.nombre AS tratamiento, p.total_sesiones,
+       (SELECT count(*) FROM cita c WHERE c.id_plan = p.id_plan AND c.estado = 'ATENDIDA') AS atendidas,
+       p.costo_total,
+       p.costo_total - coalesce((SELECT sum(monto) FROM abono_plan a WHERE a.id_plan = p.id_plan), 0) AS saldo
+FROM plan_tratamiento p
+JOIN cliente cl USING (id_cliente)
+JOIN usuario u USING (id_usuario)
+JOIN tratamiento t USING (id_tratamiento)
+WHERE p.id_plan::text LIKE 'de000000-%'
+ORDER BY u.apellido;

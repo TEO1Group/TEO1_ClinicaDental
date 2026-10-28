@@ -2,6 +2,7 @@ package com.teo1.clinicadental.service;
 
 import com.teo1.clinicadental.dto.BloqueoDoctorRequest;
 import com.teo1.clinicadental.dto.BloqueoDoctorResponse;
+import com.teo1.clinicadental.dto.BloqueoVigenteResponse;
 import com.teo1.clinicadental.model.BloqueoDoctor;
 import com.teo1.clinicadental.model.Doctor;
 import com.teo1.clinicadental.model.EstadoCita;
@@ -100,6 +101,19 @@ public class BloqueoDoctorService {
 
         return bloqueoDoctorRepository.findByDoctorIdOrderByInicioAsc(doctorId).stream()
                 .map(this::toResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<BloqueoVigenteResponse> listarBloqueosVigentes(UUID doctorId) {
+        if (!doctorRepository.existsById(doctorId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Doctor no encontrado");
+        }
+
+        LocalDateTime ahora = LocalDateTime.now(clock);
+        return bloqueoDoctorRepository.findByDoctorIdOrderByInicioAsc(doctorId).stream()
+                .filter(bloqueo -> bloqueo.getFin().isAfter(ahora))
+                .map(bloqueo -> new BloqueoVigenteResponse(bloqueo.getInicio(), bloqueo.getFin(), bloqueo.getMotivo()))
                 .toList();
     }
 

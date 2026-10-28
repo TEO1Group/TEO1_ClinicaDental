@@ -4,6 +4,8 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { BloqueoDoctorResponse } from '../../../doctores/models/bloqueo.model';
+import { DoctorService } from '../../../doctores/service/doctor.service';
 import { CitaResponse, EstadoCita, EstadoCitaRequest } from '../../models/cita.model';
 import { CitaService } from '../../service/cita.service';
 import { RouterLink } from '@angular/router';
@@ -20,6 +22,7 @@ export class ListadoCitasComponent implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly notificacionService = inject(NotificacionService);
+  private readonly doctorService = inject(DoctorService);
 
   readonly rol = this.authService.rol;
   readonly usuarioActual = this.authService.usuarioActual;
@@ -64,6 +67,8 @@ export class ListadoCitasComponent implements OnInit {
   readonly reprogramarCita = signal<CitaResponse | null>(null);
   readonly reprogramarError = signal('');
   readonly reprogramarEnviando = signal(false);
+  readonly reprogramarBloqueos = signal<BloqueoDoctorResponse[]>([]);
+  readonly reprogramarBloqueo = signal<BloqueoDoctorResponse | null>(null);
 
   ngOnInit(): void {
     this.cargarCitas();
@@ -174,7 +179,10 @@ export class ListadoCitasComponent implements OnInit {
     this.reprogramarHora.set(cita.hora.slice(0, 5));
     this.reprogramarMotivo.set('');
     this.reprogramarError.set('');
+    this.reprogramarBloqueos.set([]);
+    this.reprogramarBloqueo.set(null);
     this.reprogramarModalAbierto.set(true);
+    this.cargarBloqueosReprogramar(cita.idDoctor);
   }
 
   cerrarModalReprogramar(): void {
@@ -184,6 +192,30 @@ export class ListadoCitasComponent implements OnInit {
     this.reprogramarHora.set('');
     this.reprogramarMotivo.set('');
     this.reprogramarError.set('');
+    this.reprogramarBloqueos.set([]);
+    this.reprogramarBloqueo.set(null);
+  }
+
+  actualizarReprogramarFecha(fecha: string): void {
+    this.reprogramarFecha.set(fecha);
+    this.actualizarBloqueoReprogramar();
+  }
+
+  actualizarReprogramarHora(hora: string): void {
+    this.reprogramarHora.set(hora);
+    this.actualizarBloqueoReprogramar();
+  }
+
+  cargarBloqueosReprogramar(idDoctor: string): void {
+    this.doctorService.listarBloqueos(idDoctor).subscribe({
+      next: (bloqueos) => {
+        this.reprogramarBloqueos.set(bloqueos);
+        this.actualizarBloqueoReprogramar();
+      },
+      error: (error) => {
+        this.reprogramarError.set(error.error?.mensaje || 'Error al cargar los bloqueos del doctor.');
+      }
+    });
   }
 
   confirmarReprogramar(): void {
@@ -201,6 +233,10 @@ export class ListadoCitasComponent implements OnInit {
 
     if (!motivo) {
       this.reprogramarError.set('El motivo es obligatorio.');
+      return;
+    }
+
+    if (this.reprogramarBloqueo()) {
       return;
     }
 
@@ -233,6 +269,22 @@ export class ListadoCitasComponent implements OnInit {
     if (rol === 'CLIENTE' || rol === 'DOCTOR') {
       this.citaService.recargarProximas();
     }
+  }
+
+  private actualizarBloqueoReprogramar(): void {
+    const fecha = this.reprogramarFecha();
+    const hora = this.reprogramarHora();
+    if (!fecha || !hora) {
+      this.reprogramarBloqueo.set(null);
+      return;
+    }
+
+    const inicioCita = `${fecha}T${hora}`;
+    this.reprogramarBloqueo.set(this.reprogramarBloqueos().find(bloqueo => {
+      const inicioBloqueo = bloqueo.inicio.slice(0, 16);
+      const finBloqueo = bloqueo.fin.slice(0, 16);
+      return inicioCita >= inicioBloqueo && inicioCita < finBloqueo;
+    }) || null);
   }
 
   nombreDoctor(cita: CitaResponse): string {

@@ -3,11 +3,14 @@
 CREATE EXTENSION IF NOT EXISTS "pgcrypto"; 
 DROP TABLE IF EXISTS pago CASCADE;
 DROP TABLE IF EXISTS valoracion CASCADE;
+DROP TABLE IF EXISTS abono_plan CASCADE;
+DROP TABLE IF EXISTS levantamiento_inasistencia CASCADE;
 DROP TABLE IF EXISTS bloqueo_doctor CASCADE;
 DROP TABLE IF EXISTS cita_reprogramacion CASCADE;
 DROP TABLE IF EXISTS cita_tratamiento CASCADE;
 DROP TABLE IF EXISTS tratamiento_medicamento CASCADE;
 DROP TABLE IF EXISTS cita CASCADE;
+DROP TABLE IF EXISTS plan_tratamiento CASCADE;
 DROP TABLE IF EXISTS medicamento CASCADE;
 DROP TABLE IF EXISTS tratamiento CASCADE;
 DROP TABLE IF EXISTS historial_clinico CASCADE;
@@ -90,7 +93,8 @@ CREATE TABLE tratamiento (
     nombre           VARCHAR(100) NOT NULL,
     descripcion      TEXT,
     duracion_minutos INTEGER NOT NULL CHECK (duracion_minutos > 0),
-    costo            NUMERIC(10,2) NOT NULL CHECK (costo >= 0)
+    costo            NUMERIC(10,2) NOT NULL CHECK (costo >= 0),
+    activo           BOOLEAN NOT NULL DEFAULT TRUE
 );
 
 -- Catalogo inicial de tratamientos (el costo es el precio sugerido; se puede ajustar al registrarlo en la cita)
@@ -125,6 +129,19 @@ CREATE TABLE tratamiento_medicamento (
     PRIMARY KEY (id_tratamiento, id_medicamento)
 );
 
+-- Plan de tratamiento de varias sesiones; cada sesion es una cita vinculada con cita.id_plan
+CREATE TABLE plan_tratamiento (
+    id_plan          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_cliente       UUID NOT NULL REFERENCES cliente(id_cliente) ON DELETE CASCADE,
+    id_doctor        UUID NOT NULL REFERENCES doctor(id_doctor) ON DELETE CASCADE,
+    id_tratamiento   UUID NOT NULL REFERENCES tratamiento(id_tratamiento),
+    total_sesiones   INTEGER NOT NULL CHECK (total_sesiones > 0),
+    costo_total      NUMERIC(10,2) NOT NULL CHECK (costo_total >= 0),
+    estado           VARCHAR(15) NOT NULL DEFAULT 'ACTIVO' CHECK (estado IN
+                        ('ACTIVO','COMPLETADO','CANCELADO')),
+    fecha_creacion   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE cita (
     id_cita     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     id_cliente  UUID NOT NULL REFERENCES cliente(id_cliente) ON DELETE CASCADE,
@@ -136,7 +153,9 @@ CREATE TABLE cita (
     notas       TEXT,
     recordatorio_enviado BOOLEAN NOT NULL DEFAULT FALSE,
     -- Motivo del ultimo cambio de estado (obligatorio al cancelar o marcar NO_ASISTIO)
-    motivo_estado VARCHAR(200)
+    motivo_estado VARCHAR(200),
+    -- Plan al que pertenece la cita como sesion; NULL si es una cita suelta
+    id_plan     UUID REFERENCES plan_tratamiento(id_plan) ON DELETE SET NULL
 );
 
 -- Evita que un mismo doctor tenga dos citas activas en la misma fecha y hora.
@@ -179,6 +198,25 @@ CREATE TABLE bloqueo_doctor (
     CHECK (fin > inicio)
 );
 
+-- Levantamientos de la restriccion por inasistencias (HU-25). Las inasistencias se cuentan
+-- desde el ultimo levantamiento del paciente, asi el conteo vuelve a cero sin tocar las citas.
+CREATE TABLE levantamiento_inasistencia (
+    id_levantamiento  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_cliente        UUID NOT NULL REFERENCES cliente(id_cliente) ON DELETE CASCADE,
+    motivo            VARCHAR(200) NOT NULL,
+    inasistencias     INTEGER NOT NULL CHECK (inasistencias >= 0),
+    levantado_por     UUID REFERENCES usuario(id_usuario) ON DELETE SET NULL,
+    fecha             TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Pagos parciales de un plan; el saldo es costo_total menos la suma de abonos
+CREATE TABLE abono_plan (
+    id_abono        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id_plan         UUID NOT NULL REFERENCES plan_tratamiento(id_plan) ON DELETE CASCADE,
+    monto           NUMERIC(10,2) NOT NULL CHECK (monto > 0),
+    fecha           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    registrado_por  UUID REFERENCES usuario(id_usuario) ON DELETE SET NULL
+);
 
 CREATE TABLE valoracion (
     id_valoracion  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -208,3 +246,23 @@ CREATE INDEX idx_historial_cliente ON historial_clinico(id_cliente);
 CREATE INDEX idx_cita_tratamiento_cita ON cita_tratamiento(id_cita);
 CREATE INDEX idx_bloqueo_doctor   ON bloqueo_doctor(id_doctor, inicio);
 CREATE UNIQUE INDEX uq_tratamiento_nombre ON tratamiento(nombre);
+CREATE INDEX idx_cita_plan        ON cita(id_plan);
+CREATE INDEX idx_plan_cliente     ON plan_tratamiento(id_cliente);
+CREATE INDEX idx_plan_doctor      ON plan_tratamiento(id_doctor);
+CREATE INDEX idx_abono_plan       ON abono_plan(id_plan);
+CREATE INDEX idx_levantamiento_cliente ON levantamiento_inasistencia(id_cliente, fecha);
+
+-- Proposed additions: names, durations and prices require team approval before merge.
+INSERT INTO tratamiento (nombre, descripcion, duracion_minutos, costo)
+VALUES
+    ('Corona de zirconio', 'Restauración fija por pieza', 60, 2500.00),
+    ('Corona metal porcelana', 'Corona fija por pieza', 60, 2000.00),
+    ('Puente dental', 'Reposición fija de una pieza ausente', 90, 3500.00),
+    ('Prótesis parcial removible', 'Reposición removible de piezas', 60, 2800.00),
+    ('Prótesis total', 'Prótesis completa por arcada', 90, 4500.00),
+    ('Incrustación dental', 'Restauración indirecta por pieza', 60, 1600.00),
+    ('Carilla de resina', 'Restauración estética anterior por pieza', 45, 900.00),
+    ('Carilla de porcelana', 'Restauración estética cerámica por pieza', 60, 2500.00),
+    ('Raspado y alisado radicular', 'Tratamiento periodontal por cuadrante', 60, 800.00),
+    ('Control de ortodoncia', 'Revisión y ajuste periódico', 30, 300.00)
+ON CONFLICT (nombre) DO NOTHING;

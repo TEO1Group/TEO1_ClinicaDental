@@ -2,6 +2,7 @@ package com.teo1.clinicadental.service;
 
 import com.teo1.clinicadental.dto.BloqueoDoctorRequest;
 import com.teo1.clinicadental.dto.BloqueoDoctorResponse;
+import com.teo1.clinicadental.dto.BloqueoVigenteResponse;
 import com.teo1.clinicadental.model.BloqueoDoctor;
 import com.teo1.clinicadental.model.Cita;
 import com.teo1.clinicadental.model.Doctor;
@@ -257,6 +258,58 @@ class BloqueoDoctorServiceTests {
 
         assertEstado(HttpStatus.NOT_FOUND, () -> bloqueoDoctorService.listarBloqueos(
                 doctor.getId(), autenticacion(UUID.randomUUID(), "SECRETARIA")));
+    }
+
+    @Test
+    void vigentesDevuelveSoloLosQueNoTerminanOrdenadosPorInicio() {
+        BloqueoDoctor terminado = bloqueoEntre(LocalDateTime.of(2026, 10, 7, 8, 0), LocalDateTime.of(2026, 10, 7, 12, 0), "Ayer");
+        BloqueoDoctor enCurso = bloqueoEntre(LocalDateTime.of(2026, 10, 8, 7, 0), LocalDateTime.of(2026, 10, 8, 9, 0), "En curso");
+        BloqueoDoctor manana = bloqueoEntre(LocalDateTime.of(2026, 10, 9, 8, 0), LocalDateTime.of(2026, 10, 9, 10, 0), "Congreso");
+        BloqueoDoctor despues = bloqueoEntre(LocalDateTime.of(2026, 10, 12, 8, 0), LocalDateTime.of(2026, 10, 13, 8, 0), "Vacaciones");
+        when(doctorRepository.existsById(doctor.getId())).thenReturn(true);
+        when(bloqueoDoctorRepository.findByDoctorIdOrderByInicioAsc(doctor.getId()))
+                .thenReturn(List.of(terminado, enCurso, manana, despues));
+
+        List<BloqueoVigenteResponse> vigentes = bloqueoDoctorService.listarBloqueosVigentes(doctor.getId());
+
+        assertEquals(List.of("En curso", "Congreso", "Vacaciones"),
+                vigentes.stream().map(BloqueoVigenteResponse::getMotivo).toList());
+        assertEquals(LocalDateTime.of(2026, 10, 8, 7, 0), vigentes.get(0).getInicio());
+        assertEquals(LocalDateTime.of(2026, 10, 8, 9, 0), vigentes.get(0).getFin());
+    }
+
+    @Test
+    void vigentesExcluyeElBloqueoTerminadoAunqueTermineJustoAhora() {
+        BloqueoDoctor terminaAhora = bloqueoEntre(LocalDateTime.of(2026, 10, 8, 6, 0), LocalDateTime.of(2026, 10, 8, 8, 0), "Guardia");
+        BloqueoDoctor antiguo = bloqueoEntre(LocalDateTime.of(2026, 9, 1, 8, 0), LocalDateTime.of(2026, 9, 5, 8, 0), "Viaje");
+        when(doctorRepository.existsById(doctor.getId())).thenReturn(true);
+        when(bloqueoDoctorRepository.findByDoctorIdOrderByInicioAsc(doctor.getId()))
+                .thenReturn(List.of(antiguo, terminaAhora));
+
+        assertTrue(bloqueoDoctorService.listarBloqueosVigentes(doctor.getId()).isEmpty());
+    }
+
+    @Test
+    void vigentesDeDoctorInexistenteDevuelveNoEncontrado() {
+        when(doctorRepository.existsById(doctor.getId())).thenReturn(false);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> bloqueoDoctorService.listarBloqueosVigentes(doctor.getId()));
+
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
+        assertEquals("Doctor no encontrado", exception.getReason());
+        verifyNoInteractions(bloqueoDoctorRepository);
+    }
+
+    private BloqueoDoctor bloqueoEntre(LocalDateTime inicio, LocalDateTime fin, String motivo) {
+        return BloqueoDoctor.builder()
+                .id(UUID.randomUUID())
+                .doctor(doctor)
+                .inicio(inicio)
+                .fin(fin)
+                .motivo(motivo)
+                .fechaCreacion(LocalDateTime.of(2026, 9, 1, 8, 0))
+                .build();
     }
 
     private void prepararDoctor() {

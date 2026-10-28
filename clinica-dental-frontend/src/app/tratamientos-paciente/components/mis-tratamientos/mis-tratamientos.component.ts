@@ -1,68 +1,10 @@
-/*import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
-import { MisTratamientosService } from '../../service/mis-tratamientos.service';
-import {
-  TratamientosPacienteResponse,
-  CitaTratamientoResponse
-} from '../../../pacientes/models/tratamiento.model';
-
-@Component({
-  selector: 'app-mis-tratamientos',
-  standalone: true,
-  imports: [CommonModule, RouterLink],
-  templateUrl: './mis-tratamientos.component.html',
-  styleUrl: './mis-tratamientos.component.scss'
-})
-export class MisTratamientosComponent implements OnInit {
-  private readonly misTratamientosService = inject(MisTratamientosService);
-
-  private readonly _data = signal<TratamientosPacienteResponse | null>(null);
-  private readonly _cargando = signal<boolean>(false);
-  private readonly _error = signal<string>('');
-
-  readonly data = this._data.asReadonly();
-  readonly cargando = this._cargando.asReadonly();
-  readonly error = this._error.asReadonly();
-
-  ngOnInit(): void {
-    this.cargar();
-  }
-
-  cargar(): void {
-    this._cargando.set(true);
-    this._error.set('');
-
-    this.misTratamientosService.listarMisTratamientos().subscribe({
-      next: (response) => {
-        this._data.set(response);
-        this._cargando.set(false);
-      },
-      error: (error) => {
-        this._cargando.set(false);
-        if (error.status === 403) return;
-        this._error.set(error.error?.mensaje || 'Error al cargar tus tratamientos.');
-      }
-    });
-  }
-
-  formatearHora(hora: string): string {
-    return hora.slice(0, 5);
-  }
-
-  nombreDoctor(t: CitaTratamientoResponse): string {
-    return `Dr. ${t.nombreDoctor} ${t.apellidoDoctor}`;
-  }
-}*/
-
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { MisTratamientosService } from '../../service/mis-tratamientos.service';
 import {
   TratamientosPacienteResponse,
   CitaTratamientoResponse
-} from '../../../pacientes/models/tratamiento.model';
+} from '../../models/tratamiento.model';
 
 interface CitaAgrupada {
   idCita: string;
@@ -77,7 +19,7 @@ interface CitaAgrupada {
 @Component({
   selector: 'app-mis-tratamientos',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule],
   templateUrl: './mis-tratamientos.component.html',
   styleUrl: './mis-tratamientos.component.scss'
 })

@@ -44,6 +44,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -71,6 +72,9 @@ class CitaServiceTests {
     @Mock
     private BloqueoDoctorRepository bloqueoDoctorRepository;
 
+    @Mock
+    private InasistenciaService inasistenciaService;
+
     private CitaService citaService;
     private Doctor doctor;
     private Cliente cliente;
@@ -83,7 +87,8 @@ class CitaServiceTests {
                 new DisponibilidadCitaService(
                 citaRepository, horarioRepository, bloqueoDoctorRepository, clock, 30, 24);
         citaService = new CitaService(
-                citaRepository, clienteRepository, doctorRepository, disponibilidadCitaService, new CitaMapper(), clock);
+                citaRepository, clienteRepository, doctorRepository, disponibilidadCitaService, inasistenciaService,
+                new CitaMapper(), clock);
 
         usuarioClienteId = UUID.randomUUID();
         doctor = Doctor.builder()
@@ -179,6 +184,16 @@ class CitaServiceTests {
         prepararPacienteYDoctor();
 
         assertEstado(HttpStatus.FORBIDDEN, () -> citaService.crearCita(request(LocalTime.of(9, 0)), autenticacion("CLIENTE")));
+    }
+
+    @Test
+    void pacienteBloqueadoPorInasistenciasNoAgenda() {
+        prepararPacienteYDoctor();
+        doThrow(new ResponseStatusException(HttpStatus.CONFLICT, "Bloqueado por inasistencias"))
+                .when(inasistenciaService).validarPuedeAgendar(cliente);
+
+        assertEstado(HttpStatus.CONFLICT, () -> citaService.crearCita(request(LocalTime.of(9, 0)), autenticacion("CLIENTE")));
+        verify(citaRepository, never()).saveAndFlush(any(Cita.class));
     }
 
     @Test

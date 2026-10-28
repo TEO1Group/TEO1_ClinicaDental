@@ -2,13 +2,22 @@ package com.teo1.clinicadental.service;
 
 import com.teo1.clinicadental.dto.CitasPorDoctorResponse;
 import com.teo1.clinicadental.dto.ReporteCitasPorDoctorResponse;
+import com.teo1.clinicadental.dto.ReporteGananciasResponse;
+import com.teo1.clinicadental.dto.ReporteHorasDemandadasResponse;
+import com.teo1.clinicadental.dto.ReporteInasistenciasResponse;
 import com.teo1.clinicadental.model.Doctor;
 import com.teo1.clinicadental.model.EstadoCita;
 import com.teo1.clinicadental.model.EstadoUsuario;
 import com.teo1.clinicadental.model.Usuario;
 import com.teo1.clinicadental.repository.DoctorRepository;
 import com.teo1.clinicadental.repository.ReporteCitaRepository;
+import com.teo1.clinicadental.repository.ReporteGananciaRepository;
+import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,6 +30,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -29,9 +39,15 @@ class ReporteCitaServiceTests {
 
     private static final LocalDate DESDE = LocalDate.of(2026, 10, 1);
     private static final LocalDate HASTA = LocalDate.of(2026, 10, 31);
+    private static final ZoneId ZONA = ZoneId.of("America/Guatemala");
+    private static final LocalDate HOY = LocalDate.of(2026, 10, 20);
+    private static final LocalTime HORA = LocalTime.of(15, 30);
 
     @Mock
     private ReporteCitaRepository reporteCitaRepository;
+
+    @Mock
+    private ReporteGananciaRepository reporteGananciaRepository;
 
     @Mock
     private DoctorRepository doctorRepository;
@@ -43,7 +59,8 @@ class ReporteCitaServiceTests {
 
     @BeforeEach
     void setUp() {
-        reporteCitaService = new ReporteCitaService(reporteCitaRepository, doctorRepository);
+        reporteCitaService = new ReporteCitaService(reporteCitaRepository, reporteGananciaRepository, doctorRepository,
+                Clock.fixed(ZonedDateTime.of(HOY, HORA, ZONA).toInstant(), ZONA));
         perez = doctor("Carlos", "Perez", "Ortodoncia");
         diaz = doctor("Laura", "Diaz", "Endodoncia");
         sinCitas = doctor("Ana", "Diaz", "Odontologia general");
@@ -52,7 +69,7 @@ class ReporteCitaServiceTests {
     @Test
     void cuentaLasCitasPorEstadoYElTotal() {
         when(doctorRepository.findByUsuarioEstado(EstadoUsuario.ACTIVO)).thenReturn(List.of(perez, diaz));
-        when(reporteCitaRepository.contarPorDoctorYEstado(DESDE, HASTA)).thenReturn(List.of(
+        when(reporteCitaRepository.contarPorDoctorYEstado(DESDE, HASTA, HOY, HORA)).thenReturn(List.of(
                 conteo(perez, EstadoCita.AGENDADA, 4),
                 conteo(perez, EstadoCita.ATENDIDA, 10),
                 conteo(perez, EstadoCita.CANCELADA, 2),
@@ -82,7 +99,7 @@ class ReporteCitaServiceTests {
     @Test
     void doctorSinCitasApareceConCeros() {
         when(doctorRepository.findByUsuarioEstado(EstadoUsuario.ACTIVO)).thenReturn(List.of(sinCitas));
-        when(reporteCitaRepository.contarPorDoctorYEstado(DESDE, HASTA)).thenReturn(List.of());
+        when(reporteCitaRepository.contarPorDoctorYEstado(DESDE, HASTA, HOY, HORA)).thenReturn(List.of());
 
         CitasPorDoctorResponse fila = fila(reporteCitaService.citasPorDoctor(DESDE, HASTA), sinCitas);
 
@@ -97,7 +114,7 @@ class ReporteCitaServiceTests {
     void conteosDeDoctoresInactivosNoAparecen() {
         Doctor inactivo = doctor("Pedro", "Gomez", "Ortodoncia");
         when(doctorRepository.findByUsuarioEstado(EstadoUsuario.ACTIVO)).thenReturn(List.of(perez));
-        when(reporteCitaRepository.contarPorDoctorYEstado(DESDE, HASTA)).thenReturn(List.of(
+        when(reporteCitaRepository.contarPorDoctorYEstado(DESDE, HASTA, HOY, HORA)).thenReturn(List.of(
                 conteo(inactivo, EstadoCita.ATENDIDA, 5)));
 
         ReporteCitasPorDoctorResponse reporte = reporteCitaService.citasPorDoctor(DESDE, HASTA);
@@ -110,7 +127,7 @@ class ReporteCitaServiceTests {
     @Test
     void doctoresOrdenadosPorApellidoYNombre() {
         when(doctorRepository.findByUsuarioEstado(EstadoUsuario.ACTIVO)).thenReturn(List.of(perez, diaz, sinCitas));
-        when(reporteCitaRepository.contarPorDoctorYEstado(DESDE, HASTA)).thenReturn(List.of());
+        when(reporteCitaRepository.contarPorDoctorYEstado(DESDE, HASTA, HOY, HORA)).thenReturn(List.of());
 
         List<CitasPorDoctorResponse> doctores = reporteCitaService.citasPorDoctor(DESDE, HASTA).getDoctores();
 
@@ -121,7 +138,7 @@ class ReporteCitaServiceTests {
     @Test
     void unSoloDiaEsUnPeriodoValido() {
         when(doctorRepository.findByUsuarioEstado(EstadoUsuario.ACTIVO)).thenReturn(List.of());
-        when(reporteCitaRepository.contarPorDoctorYEstado(DESDE, DESDE)).thenReturn(List.of());
+        when(reporteCitaRepository.contarPorDoctorYEstado(DESDE, DESDE, HOY, HORA)).thenReturn(List.of());
 
         assertEquals(0, reporteCitaService.citasPorDoctor(DESDE, DESDE).getDoctores().size());
     }
@@ -145,6 +162,182 @@ class ReporteCitaServiceTests {
         assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
         assertEquals("La fecha desde no puede ser posterior a hasta", exception.getReason());
         verifyNoInteractions(reporteCitaRepository, doctorRepository);
+    }
+
+    @Test
+    void gananciasSumaLosTratamientosDeCadaDoctorYElTotal() {
+        when(reporteGananciaRepository.sumarTratamientosPorDoctor(DESDE, HASTA, EstadoCita.ATENDIDA, HOY, HORA)).thenReturn(List.of(
+                ingreso(perez, 3, "1200.50"),
+                ingreso(diaz, 2, "650.25")));
+        when(doctorRepository.findByUsuarioEstado(EstadoUsuario.ACTIVO)).thenReturn(List.of(perez, diaz));
+        when(reporteGananciaRepository.sumarAbonos(DESDE.atStartOfDay(), HASTA.plusDays(1).atStartOfDay()))
+                .thenReturn(null);
+
+        ReporteGananciasResponse reporte = reporteCitaService.ganancias(DESDE, HASTA);
+
+        assertEquals(DESDE, reporte.desde());
+        assertEquals(HASTA, reporte.hasta());
+        assertEquals(new BigDecimal("1850.75"), reporte.totalTratamientos());
+        assertEquals(0, BigDecimal.ZERO.compareTo(reporte.totalAbonos()));
+        ReporteGananciasResponse.GananciaDoctor filaPerez = ganancia(reporte, perez);
+        assertEquals(3, filaPerez.cantidadTratamientos());
+        assertEquals(new BigDecimal("1200.50"), filaPerez.total());
+        assertEquals("Carlos", filaPerez.nombreDoctor());
+        assertEquals("Perez", filaPerez.apellidoDoctor());
+        assertEquals(new BigDecimal("650.25"), ganancia(reporte, diaz).total());
+    }
+
+    @Test
+    void gananciasDoctorSinTratamientosApareceEnCeroYOrdenado() {
+        when(reporteGananciaRepository.sumarTratamientosPorDoctor(DESDE, HASTA, EstadoCita.ATENDIDA, HOY, HORA))
+                .thenReturn(List.of(ingreso(perez, 1, "300.00")));
+        when(doctorRepository.findByUsuarioEstado(EstadoUsuario.ACTIVO)).thenReturn(List.of(perez, diaz, sinCitas));
+        when(reporteGananciaRepository.sumarAbonos(DESDE.atStartOfDay(), HASTA.plusDays(1).atStartOfDay()))
+                .thenReturn(null);
+
+        ReporteGananciasResponse reporte = reporteCitaService.ganancias(DESDE, HASTA);
+
+        assertEquals(List.of(sinCitas.getId(), diaz.getId(), perez.getId()),
+                reporte.doctores().stream().map(ReporteGananciasResponse.GananciaDoctor::idDoctor).toList());
+        assertEquals(0, ganancia(reporte, sinCitas).cantidadTratamientos());
+        assertEquals(0, BigDecimal.ZERO.compareTo(ganancia(reporte, sinCitas).total()));
+        assertEquals(new BigDecimal("300.00"), reporte.totalTratamientos());
+    }
+
+    @Test
+    void gananciasIncluyeAlDoctorInactivoConIngresos() {
+        when(reporteGananciaRepository.sumarTratamientosPorDoctor(DESDE, HASTA, EstadoCita.ATENDIDA, HOY, HORA))
+                .thenReturn(List.of(ingreso(diaz, 1, "400.00")));
+        when(doctorRepository.findByUsuarioEstado(EstadoUsuario.ACTIVO)).thenReturn(List.of(perez));
+        when(reporteGananciaRepository.sumarAbonos(DESDE.atStartOfDay(), HASTA.plusDays(1).atStartOfDay()))
+                .thenReturn(null);
+
+        ReporteGananciasResponse reporte = reporteCitaService.ganancias(DESDE, HASTA);
+
+        assertEquals(2, reporte.doctores().size());
+        assertEquals(new BigDecimal("400.00"), ganancia(reporte, diaz).total());
+        assertEquals(new BigDecimal("400.00"), reporte.totalTratamientos());
+    }
+
+    @Test
+    void gananciasMuestraLosAbonosAparteSinSumarlosALosTratamientos() {
+        when(reporteGananciaRepository.sumarTratamientosPorDoctor(DESDE, HASTA, EstadoCita.ATENDIDA, HOY, HORA))
+                .thenReturn(List.of(ingreso(perez, 2, "900.00")));
+        when(doctorRepository.findByUsuarioEstado(EstadoUsuario.ACTIVO)).thenReturn(List.of(perez));
+        when(reporteGananciaRepository.sumarAbonos(DESDE.atStartOfDay(), HASTA.plusDays(1).atStartOfDay()))
+                .thenReturn(new BigDecimal("1500.00"));
+
+        ReporteGananciasResponse reporte = reporteCitaService.ganancias(DESDE, HASTA);
+
+        assertEquals(new BigDecimal("900.00"), reporte.totalTratamientos());
+        assertEquals(new BigDecimal("1500.00"), reporte.totalAbonos());
+        assertEquals(new BigDecimal("900.00"), ganancia(reporte, perez).total());
+    }
+
+    @Test
+    void gananciasConParametrosInvalidosDevuelveSolicitudInvalida() {
+        for (LocalDate[] fechas : new LocalDate[][] {{null, HASTA}, {DESDE, null}, {HASTA, DESDE}}) {
+            ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                    () -> reporteCitaService.ganancias(fechas[0], fechas[1]));
+            assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        }
+        verifyNoInteractions(reporteGananciaRepository, doctorRepository);
+    }
+
+    @Test
+    void citasPorDoctorCuentaSoloHastaLaFechaYHoraDelClock() {
+        when(doctorRepository.findByUsuarioEstado(EstadoUsuario.ACTIVO)).thenReturn(List.of(perez));
+        when(reporteCitaRepository.contarPorDoctorYEstado(DESDE, HASTA, HOY, HORA))
+                .thenReturn(List.of(conteo(perez, EstadoCita.AGENDADA, 2)));
+
+        assertEquals(2, fila(reporteCitaService.citasPorDoctor(DESDE, HASTA), perez).getAgendadas());
+        verify(reporteCitaRepository).contarPorDoctorYEstado(DESDE, HASTA, HOY, HORA);
+    }
+
+    @Test
+    void rangoCompletamenteFuturoNoFallaYUsaElMomentoActual() {
+        LocalDate desdeFuturo = HOY.plusDays(5);
+        LocalDate hastaFuturo = HOY.plusDays(9);
+        when(doctorRepository.findByUsuarioEstado(EstadoUsuario.ACTIVO)).thenReturn(List.of(perez));
+        when(reporteCitaRepository.contarPorDoctorYEstado(desdeFuturo, hastaFuturo, HOY, HORA)).thenReturn(List.of());
+
+        assertEquals(0, fila(reporteCitaService.citasPorDoctor(desdeFuturo, hastaFuturo), perez).getTotal());
+    }
+
+    @Test
+    void horasDemandadasCuentaSoloHastaLaFechaYHoraDelClock() {
+        when(reporteCitaRepository.contarPorHora(DESDE, HASTA, HOY, HORA)).thenReturn(List.of(new ReporteCitaRepository.ConteoHora() {
+            @Override
+            public int getHora() {
+                return 9;
+            }
+
+            @Override
+            public long getCantidad() {
+                return 3;
+            }
+        }));
+
+        ReporteHorasDemandadasResponse reporte = reporteCitaService.horasDemandadas(DESDE, HASTA);
+
+        assertEquals(1, reporte.horas().size());
+        assertEquals(3, reporte.horas().get(0).cantidad());
+    }
+
+    @Test
+    void inasistenciasCuentaSoloHastaLaFechaYHoraDelClock() {
+        when(reporteCitaRepository.contarPorDoctorYPaciente(DESDE, HASTA,
+                List.of(EstadoCita.NO_ASISTIO, EstadoCita.CANCELADA), HOY, HORA)).thenReturn(List.of());
+
+        ReporteInasistenciasResponse reporte = reporteCitaService.inasistencias(DESDE, HASTA);
+
+        assertEquals(0, reporte.total());
+        verify(reporteCitaRepository).contarPorDoctorYPaciente(DESDE, HASTA,
+                List.of(EstadoCita.NO_ASISTIO, EstadoCita.CANCELADA), HOY, HORA);
+    }
+
+    @Test
+    void ingresosPorTratamientoCuentaSoloHastaLaFechaYHoraDelClock() {
+        when(reporteCitaRepository.sumarIngresosPorTratamiento(DESDE, HASTA, HOY, HORA)).thenReturn(List.of());
+
+        assertEquals(0, reporteCitaService.ingresosPorTratamiento(DESDE, HASTA).cantidadTotal());
+        verify(reporteCitaRepository).sumarIngresosPorTratamiento(DESDE, HASTA, HOY, HORA);
+    }
+
+    private ReporteGananciasResponse.GananciaDoctor ganancia(ReporteGananciasResponse reporte, Doctor doctor) {
+        return reporte.doctores().stream()
+                .filter(fila -> fila.idDoctor().equals(doctor.getId()))
+                .findFirst()
+                .orElseThrow();
+    }
+
+    private ReporteGananciaRepository.IngresoDoctor ingreso(Doctor doctor, long cantidad, String total) {
+        return new ReporteGananciaRepository.IngresoDoctor() {
+            @Override
+            public UUID getIdDoctor() {
+                return doctor.getId();
+            }
+
+            @Override
+            public String getNombreDoctor() {
+                return doctor.getUsuario().getNombre();
+            }
+
+            @Override
+            public String getApellidoDoctor() {
+                return doctor.getUsuario().getApellido();
+            }
+
+            @Override
+            public long getCantidad() {
+                return cantidad;
+            }
+
+            @Override
+            public BigDecimal getTotal() {
+                return new BigDecimal(total);
+            }
+        };
     }
 
     private CitasPorDoctorResponse fila(ReporteCitasPorDoctorResponse reporte, Doctor doctor) {

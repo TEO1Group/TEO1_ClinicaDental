@@ -1,0 +1,95 @@
+.text-primario {
+  color: var(--color-primario);
+}
+
+.btn-primario {
+  background-color: var(--color-primario);
+  border-color: var(--color-primario);
+}
+
+.dato {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+  background-color: #f8f9fa;
+  border-radius: 0.5rem;
+}
+
+.dato span {
+  color: #6c757d;
+  font-size: 0.875rem;
+}
+
+.sesion-form {
+  background-color: #f8f9fa;
+  border-left: 3px solid var(--color-secundario);
+}
+
+.progress {
+  height: 0.75rem;
+}
+
+.abonos-section {
+  background-color: #f7f9fa;
+  border-left: 3px solid var(--color-primario);
+}
+
+.abono-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  background-color: #ffffff;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 4px rgba(44, 123, 229, 0.08);
+}
+
+.abono-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #7890a5;
+  font-weight: 600;
+}
+
+.abono-valor {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-texto);
+}
+
+.abono-valor-verde {
+  color: #28a745;
+}
+
+.abono-valor-primario {
+  color: var(--color-primario);
+}
+
+.modal-backdrop-custom {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1040;
+}
+
+.modal-custom {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+  padding: 1rem;
+}
+
+.modal-content-custom {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  padding: 2rem;
+  flex: 0 1 500px;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.15);
+}

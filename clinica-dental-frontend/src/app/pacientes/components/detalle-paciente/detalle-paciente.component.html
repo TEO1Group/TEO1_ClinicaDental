@@ -23,7 +23,7 @@
       }
 
       @if (!cargando() && paciente(); as pacienteActual) {
-        <div class="card shadow-sm border-0 rounded-4">
+        <div class="card shadow-sm border-0 rounded-4 mb-4">
           <div class="card-body p-4 p-md-5">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start gap-3 mb-4">
               <div>
@@ -120,7 +120,136 @@
             </div>
           </div>
         </div>
+
+        <!-- Card de inasistencias -->
+        @if (puedeVerInasistencias()) {
+          <div class="card shadow-sm border-0 rounded-4">
+            <div class="card-body p-4 p-md-5">
+              <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+                <div>
+                  <h3 class="fw-bold text-primario mb-1">Inasistencias</h3>
+                  <p class="text-muted mb-0">Control de inasistencias y restricciones de agendado</p>
+                </div>
+                @if (puedeLevantarRestriccion() && inasistencias()?.bloqueado) {
+                  <button
+                    type="button"
+                    class="btn btn-primario text-white"
+                    (click)="abrirModalLevantamiento()"
+                  >
+                    <i class="bi bi-unlock me-2"></i> Levantar restricción
+                  </button>
+                }
+              </div>
+
+              @if (cargandoInasistencias()) {
+                <div class="text-center py-4">
+                  <div class="spinner-border text-primario" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                  </div>
+                </div>
+              }
+
+              @if (!cargandoInasistencias() && inasistencias(); as inasistenciasData) {
+                <div class="inasistencias-grid">
+                  <div class="inasistencia-stat">
+                    <span class="inasistencia-label">Inasistencias</span>
+                    <span class="inasistencia-valor">
+                      {{ inasistenciasData.inasistencias }} / {{ inasistenciasData.limite }}
+                    </span>
+                  </div>
+
+                  <div class="inasistencia-stat">
+                    <span class="inasistencia-label">Estado</span>
+                    @if (inasistenciasData.bloqueado) {
+                      <span class="badge bg-danger fs-6">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i> Bloqueado para agendar
+                      </span>
+                    } @else {
+                      <span class="badge bg-success fs-6">
+                        <i class="bi bi-check-circle-fill me-1"></i> Puede agendar
+                      </span>
+                    }
+                  </div>
+                </div>
+
+                @if (inasistenciasData.ultimoLevantamiento) {
+                  <div class="levantamiento-info mt-4">
+                    <h6 class="fw-bold text-primario mb-2">
+                      <i class="bi bi-info-circle me-1"></i> Último levantamiento
+                    </h6>
+                    <div class="row g-3">
+                      <div class="col-md-6">
+                        <p class="mb-1 text-muted small">Motivo</p>
+                        <p class="mb-0 fw-semibold">{{ inasistenciasData.ultimoLevantamiento.motivo }}</p>
+                      </div>
+                      <div class="col-md-6">
+                        <p class="mb-1 text-muted small">Fecha</p>
+                        <p class="mb-0 fw-semibold">{{ formatearFecha(inasistenciasData.ultimoLevantamiento.fecha) }}</p>
+                      </div>
+                      <div class="col-md-6">
+                        <p class="mb-1 text-muted small">Inasistencias al momento del levantamiento</p>
+                        <p class="mb-0 fw-semibold">{{ inasistenciasData.ultimoLevantamiento.inasistencias }}</p>
+                      </div>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          </div>
+        }
       }
     </div>
   </div>
 </div>
+
+<!-- Modal de levantamiento -->
+@if (mostrarModalLevantamiento()) {
+  <div class="modal-backdrop-custom" (click)="cerrarModalLevantamiento()"></div>
+  <div class="modal-custom">
+    <div class="modal-content-custom">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold text-primario mb-0">Levantar restricción</h4>
+        <button class="btn btn-sm btn-outline-secondary" (click)="cerrarModalLevantamiento()">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+
+      @if (errorLevantamiento()) {
+        <div class="alert alert-danger" role="alert">{{ errorLevantamiento() }}</div>
+      }
+
+      <div class="mb-3">
+        <label for="motivoLevantamiento" class="form-label fw-semibold">
+          Motivo <span class="text-danger">*</span>
+        </label>
+        <textarea
+          id="motivoLevantamiento"
+          class="form-control"
+          rows="3"
+          maxlength="200"
+          [value]="motivoLevantamiento()"
+          (input)="motivoLevantamiento.set($any($event.target).value)"
+          placeholder="Explica por qué se levanta la restricción..."
+        ></textarea>
+        <small class="text-muted">{{ motivoLevantamiento().length }}/200</small>
+      </div>
+
+      <div class="d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-outline-secondary" (click)="cerrarModalLevantamiento()">
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="btn btn-primario text-white"
+          (click)="confirmarLevantamiento()"
+          [disabled]="enviandoLevantamiento()"
+        >
+          @if (enviandoLevantamiento()) {
+            <span class="spinner-border spinner-border-sm me-1"></span>
+          }
+          Confirmar
+        </button>
+      </div>
+    </div>
+  </div>
+}

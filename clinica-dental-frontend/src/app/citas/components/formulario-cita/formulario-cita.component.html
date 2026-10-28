@@ -86,6 +86,14 @@
               </div>
             </div>
 
+            @if (bloqueoSeleccionado(); as bloqueo) {
+              <div class="alert alert-warning mt-3" role="alert">
+                <i class="bi bi-calendar-x me-2"></i>
+                El doctor no está disponible en este horario: {{ bloqueo.motivo }}
+                ({{ bloqueo.inicio.replace('T', ' ') }} - {{ bloqueo.fin.replace('T', ' ') }}).
+              </div>
+            }
+
             <div class="mt-3 mb-4">
               <label for="notas" class="form-label fw-semibold">Notas</label>
               <textarea id="notas" class="form-control" rows="4" formControlName="notas" placeholder="Información adicional para la cita"></textarea>
@@ -93,7 +101,7 @@
 
             <div class="d-flex justify-content-end gap-2">
               <a routerLink="/citas" class="btn btn-outline-secondary">Cancelar</a>
-              <button type="submit" class="btn btn-primario text-white" [disabled]="isSubmitting()">
+              <button type="submit" class="btn btn-primario text-white" [disabled]="isSubmitting() || hayBloqueoSeleccionado()">
                 @if (isSubmitting()) {
                   <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Guardando...
                 } @else {

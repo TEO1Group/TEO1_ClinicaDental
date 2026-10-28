@@ -37,6 +37,10 @@ public class Tratamiento {
     @Column(name = "duracion_minutos", nullable = false)
     private Integer duracionMinutos;
 
+    @Builder.Default
+    @Column(name = "activo", nullable = false)
+    private boolean activo = true;
+
     @Column(name = "costo", nullable = false, precision = 10, scale = 2)
     private BigDecimal costo;
 }

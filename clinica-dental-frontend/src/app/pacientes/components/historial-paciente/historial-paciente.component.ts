@@ -7,9 +7,9 @@ import { AuthService } from '../../../core/services/auth.service';
 import { CitaResponse } from '../../../citas/models/cita.model';
 import { CitaService } from '../../../citas/service/cita.service';
 import { HistorialClinicoResponse } from '../../models/historial-clinico.model';
-import { CitaTratamientoRequest, CitaTratamientoResponse, TratamientoResponse } from '../../models/tratamiento.model';
+import { CitaTratamientoRequest, CitaTratamientoResponse, TratamientoResponse } from '../../../tratamientos-paciente/models/tratamiento.model';
 import { PacienteService } from '../../service/paciente.service';
-import { TratamientoService } from '../../service/tratamiento.service';
+import { TratamientoService } from '../../../tratamientos-paciente/service/tratamiento.service';
 
 @Component({
   selector: 'app-historial-paciente',
@@ -151,7 +151,7 @@ export class HistorialPacienteComponent implements OnInit {
   }
 
   private cargarCatalogoTratamientos(): void {
-    this.tratamientoService.listarCatalogo().subscribe({
+    this.tratamientoService.listar().subscribe({
       next: (tratamientos) => {
         this._catalogoTratamientos.set(tratamientos);
         this._cargandoFormularioTratamiento.set(false);

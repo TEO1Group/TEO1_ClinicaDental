@@ -3,7 +3,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
-import { ClienteResponse } from '../../models/paciente.model';
+import { ClienteResponse, InasistenciasPacienteResponse } from '../../models/paciente.model';
 import { PacienteService } from '../../service/paciente.service';
 
 @Component({
@@ -29,6 +29,17 @@ export class DetallePacienteComponent implements OnInit {
   readonly cargando = this._cargando.asReadonly();
   readonly error = this._error.asReadonly();
 
+  private readonly _inasistencias = signal<InasistenciasPacienteResponse | null>(null);
+  private readonly _cargandoInasistencias = signal(false);
+
+  readonly inasistencias = this._inasistencias.asReadonly();
+  readonly cargandoInasistencias = this._cargandoInasistencias.asReadonly();
+
+  readonly mostrarModalLevantamiento = signal(false);
+  readonly motivoLevantamiento = signal('');
+  readonly errorLevantamiento = signal('');
+  readonly enviandoLevantamiento = signal(false);
+
   private pacienteId = '';
 
   ngOnInit(): void {
@@ -36,6 +47,9 @@ export class DetallePacienteComponent implements OnInit {
 
     if (this.pacienteId) {
       this.cargarPaciente();
+      if (this.puedeVerInasistencias()) {
+        this.cargarInasistencias();
+      }
     } else {
       this._error.set('No se recibió un identificador de paciente válido.');
     }
@@ -52,7 +66,22 @@ export class DetallePacienteComponent implements OnInit {
       },
       error: (error) => {
         this._cargando.set(false);
+        if (error.status === 403) return;
         this._error.set(error.error?.mensaje || 'Error al cargar el paciente.');
+      }
+    });
+  }
+
+  cargarInasistencias(): void {
+    this._cargandoInasistencias.set(true);
+
+    this.pacienteService.obtenerInasistencias(this.pacienteId).subscribe({
+      next: (response) => {
+        this._inasistencias.set(response);
+        this._cargandoInasistencias.set(false);
+      },
+      error: () => {
+        this._cargandoInasistencias.set(false);
       }
     });
   }
@@ -63,6 +92,21 @@ export class DetallePacienteComponent implements OnInit {
 
   puedeGestionarListaNegra(): boolean {
     return this.rol() === 'SECRETARIA';
+  }
+
+  puedeVerHistorial(): boolean {
+    const rol = this.rol();
+    return rol === 'ADMIN' || rol === 'DOCTOR' || rol === 'SECRETARIA';
+  }
+
+  puedeVerInasistencias(): boolean {
+    const rol = this.rol();
+    return rol === 'ADMIN' || rol === 'DOCTOR' || rol === 'SECRETARIA';
+  }
+
+  puedeLevantarRestriccion(): boolean {
+    const rol = this.rol();
+    return rol === 'ADMIN' || rol === 'SECRETARIA';
   }
 
   desactivarPaciente(): void {
@@ -83,8 +127,53 @@ export class DetallePacienteComponent implements OnInit {
     });
   }
 
-  puedeVerHistorial(): boolean {
-    const rol = this.rol();
-    return rol === 'ADMIN' || rol === 'DOCTOR' || rol === 'SECRETARIA';
+  // Modal de levantamiento
+  abrirModalLevantamiento(): void {
+    this.motivoLevantamiento.set('');
+    this.errorLevantamiento.set('');
+    this.mostrarModalLevantamiento.set(true);
+  }
+
+  cerrarModalLevantamiento(): void {
+    this.mostrarModalLevantamiento.set(false);
+    this.motivoLevantamiento.set('');
+    this.errorLevantamiento.set('');
+  }
+
+  confirmarLevantamiento(): void {
+    const motivo = this.motivoLevantamiento().trim();
+
+    if (!motivo) {
+      this.errorLevantamiento.set('El motivo es obligatorio.');
+      return;
+    }
+
+    if (motivo.length > 200) {
+      this.errorLevantamiento.set('El motivo no puede superar 200 caracteres.');
+      return;
+    }
+
+    this.enviandoLevantamiento.set(true);
+    this.errorLevantamiento.set('');
+
+    this.pacienteService.levantarRestriccion(this.pacienteId, { motivo }).subscribe({
+      next: (response) => {
+        this.enviandoLevantamiento.set(false);
+        this._inasistencias.set(response);
+        this.notificacionService.exito('Restricción levantada correctamente.');
+        this.cerrarModalLevantamiento();
+      },
+      error: (error) => {
+        this.enviandoLevantamiento.set(false);
+        if (error.status === 403) return;
+        this.errorLevantamiento.set(error.error?.mensaje || 'Error al levantar la restricción.');
+      }
+    });
+  }
+
+  formatearFecha(fechaHora: string): string {
+    const [fecha, hora] = fechaHora.split('T');
+    const [year, month, day] = fecha.split('-');
+    return `${day}/${month}/${year} ${hora.slice(0, 5)}`;
   }
 }

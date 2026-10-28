@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
 import java.util.UUID;
 
 import static org.hamcrest.Matchers.contains;
@@ -98,7 +99,7 @@ class ReporteCitasIntegrationTests {
         doctorInactivo = doctorRepository.save(Doctor.builder()
                 .usuario(crearUsuario(Rol.DOCTOR, EstadoUsuario.INACTIVO)).especialidad("Cirugia").build());
 
-        desde = LocalDate.now(clock).plusDays(30);
+        desde = LocalDate.now(clock).minusDays(400);
         hasta = desde.plusDays(2);
 
         crearCita(doctorConCitas, desde, "09:00", EstadoCita.AGENDADA);
@@ -174,6 +175,84 @@ class ReporteCitasIntegrationTests {
     void doctorYClienteNoVenElReporte() throws Exception {
         reporte(tokenDoctor, desde.toString(), hasta.toString()).andExpect(status().isForbidden());
         reporte(tokenCliente, desde.toString(), hasta.toString()).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void horasAgrupaMinutosEstadosYDoctoresEnUnaHora() throws Exception {
+        crearCita(doctorConCitas, desde, "09:30", EstadoCita.CANCELADA);
+        for (String token : new String[] {tokenAdmin, tokenSecretaria}) {
+            horas(token, desde.toString(), hasta.toString())
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.desde").value(desde.toString()))
+                    .andExpect(jsonPath("$.hasta").value(hasta.toString()))
+                    .andExpect(jsonPath("$.horas.length()").value(3))
+                    .andExpect(jsonPath("$.horas[0].hora").value(9))
+                    .andExpect(jsonPath("$.horas[0].cantidad").value(6))
+                    .andExpect(jsonPath("$.horas[1].hora").value(10))
+                    .andExpect(jsonPath("$.horas[1].cantidad").value(2))
+                    .andExpect(jsonPath("$.horas[2].hora").value(11))
+                    .andExpect(jsonPath("$.horas[2].cantidad").value(1));
+        }
+    }
+
+    @Test
+    void horasRespetaAmbosLimitesYDevuelveVacioSinDatos() throws Exception {
+        horas(tokenAdmin, desde.toString(), desde.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.horas.length()").value(1))
+                .andExpect(jsonPath("$.horas[0].cantidad").value(1));
+        horas(tokenAdmin, hasta.toString(), hasta.toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.horas[0].cantidad").value(1));
+        horas(tokenAdmin, hasta.plusYears(10).toString(), hasta.plusYears(10).toString())
+                .andExpect(status().isOk()).andExpect(jsonPath("$.horas").isEmpty());
+    }
+
+    @Test
+    void horasValidaFechasYPermisos() throws Exception {
+        mockMvc.perform(conToken(get("/reportes/horas-demandadas").param("desde", desde.toString()), tokenAdmin))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(conToken(get("/reportes/horas-demandadas").param("hasta", hasta.toString()), tokenAdmin))
+                .andExpect(status().isBadRequest());
+        horas(tokenAdmin, "invalid", hasta.toString()).andExpect(status().isBadRequest());
+        horas(tokenAdmin, hasta.toString(), desde.toString()).andExpect(status().isBadRequest());
+        horas(tokenDoctor, desde.toString(), hasta.toString()).andExpect(status().isForbidden());
+        horas(tokenCliente, desde.toString(), hasta.toString()).andExpect(status().isForbidden());
+        mockMvc.perform(get("/reportes/horas-demandadas").param("desde", desde.toString()).param("hasta", hasta.toString()))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void lasCitasFuturasNoCuentanYLaDeLaHoraActualSi() throws Exception {
+        LocalDate hoy = LocalDate.now(clock);
+        LocalTime ahora = LocalTime.now(clock).truncatedTo(ChronoUnit.MINUTES);
+        crearCita(doctorSinCitas, hoy.minusDays(1), "09:00", EstadoCita.AGENDADA);
+        crearCita(doctorSinCitas, hoy, ahora.toString(), EstadoCita.AGENDADA);
+        crearCita(doctorSinCitas, hoy.plusDays(1), "09:00", EstadoCita.AGENDADA);
+        crearCita(doctorSinCitas, hoy.plusDays(1), "10:00", EstadoCita.ATENDIDA);
+        crearCita(doctorSinCitas, hoy.plusDays(2), "09:00", EstadoCita.CANCELADA);
+
+        reporte(tokenAdmin, hoy.minusDays(1).toString(), hoy.plusDays(2).toString())
+                .andExpect(status().isOk())
+                .andExpect(campo(doctorSinCitas, "agendadas").value(contains(2)))
+                .andExpect(campo(doctorSinCitas, "atendidas").value(contains(0)))
+                .andExpect(campo(doctorSinCitas, "canceladas").value(contains(0)))
+                .andExpect(campo(doctorSinCitas, "total").value(contains(2)));
+    }
+
+    @Test
+    void horasNoCuentaCitasFuturas() throws Exception {
+        LocalDate manana = LocalDate.now(clock).plusDays(1);
+        crearCita(doctorSinCitas, manana, "09:00", EstadoCita.AGENDADA);
+        crearCita(doctorSinCitas, manana, "10:00", EstadoCita.ATENDIDA);
+
+        horas(tokenAdmin, manana.toString(), manana.plusDays(2).toString())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.horas").isEmpty());
+    }
+
+    private ResultActions horas(String token, String inicio, String fin) throws Exception {
+        return mockMvc.perform(conToken(get("/reportes/horas-demandadas").param("desde", inicio).param("hasta", fin), token));
     }
 
     private ResultActions reporte(String token, String desdeTexto, String hastaTexto) throws Exception {

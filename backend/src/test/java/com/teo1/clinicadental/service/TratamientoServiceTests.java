@@ -99,9 +99,9 @@ class TratamientoServiceTests {
 
     @Test
     void catalogoDevuelveTodosLosCampos() {
-        when(tratamientoRepository.findAllByOrderByNombreAsc()).thenReturn(List.of(limpieza));
+        when(tratamientoRepository.findByActivoTrueOrderByNombreAsc()).thenReturn(List.of(limpieza));
 
-        List<TratamientoResponse> catalogo = tratamientoService.listarCatalogo();
+        List<TratamientoResponse> catalogo = tratamientoService.listarCatalogo(false, autenticacion(UUID.randomUUID(), "DOCTOR"));
 
         assertEquals(1, catalogo.size());
         assertEquals(limpieza.getId(), catalogo.get(0).getIdTratamiento());
