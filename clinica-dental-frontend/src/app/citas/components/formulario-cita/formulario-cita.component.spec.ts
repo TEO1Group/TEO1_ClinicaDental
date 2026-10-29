@@ -85,7 +85,7 @@ describe('FormularioCitaComponent', () => {
     });
 
     httpMock.expectOne('/api/doctores/doc-1/horarios').flush([]);
-    httpMock.expectOne('/api/doctores/doc-1/bloqueos').flush([]);
+    httpMock.expectOne('/api/doctores/doc-1/bloqueos-vigentes').flush([]);
 
     fixture.componentInstance.agendar();
 
