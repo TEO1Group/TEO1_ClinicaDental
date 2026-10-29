@@ -162,17 +162,29 @@ Prueba completa en http://localhost:4200 (o en la URL de EC2):
 
 ## Datos de demo
 
-`db/demo/datos-demo.sql` llena una base con datos de prueba para la demo. Necesita una base que ya tenga `db/clinica_dental_schema.sql` o las migraciones aplicadas, incluido el catálogo inicial de tratamientos (el script busca los tratamientos por nombre). Las fechas se calculan al correrlo, con el día de hoy en `America/Guatemala`, así que conviene cargarlo el mismo día de la demo.
+`db/demo/datos-demo.sql` llena una base con datos de prueba para la demo y también sirve para reiniciarla: cada corrida borra la demo anterior y la vuelve a cargar. Necesita una base que ya tenga `db/clinica_dental_schema.sql` o las migraciones aplicadas hasta `2026-10-sprint6-*.sql`, incluido el catálogo de tratamientos (el script busca los tratamientos por nombre). Las fechas y horas se calculan al correrlo, con la hora de `America/Guatemala`, así que conviene cargarlo justo antes de la demo.
 
 Qué crea (todos los ids empiezan con `de000000-`):
 
 - 2 doctores: Lucía Morales (Odontología general, horario de 08:00 a 18:00) y Andrés Castillo (Ortodoncia, de 09:00 a 17:00), con horario todos los días de la semana.
-- 1 secretaria: Sofía Herrera.
-- 4 pacientes: Ana López, Luis Pérez, María Gómez y Jorge Ruiz (este último en lista negra).
-- Citas de ayer, hoy y mañana en todos los estados: dos citas Atendidas (ayer de Ana López y hoy de María Gómez) con tratamientos registrados, una No asistió con motivo, una Cancelada con motivo y varias Agendadas.
+- 1 secretaria: Sofía Herrera. No crea ADMIN: para los pasos de administrador se usa el que crea `ADMIN_EMAIL`.
+- 5 pacientes: Ana López, Luis Pérez, María Gómez, Jorge Ruiz (en lista negra) y Carmen Díaz.
+- Citas en curso: dos citas Agendadas que empezaron entre 20 y 50 minutos antes de correr el script, así el doctor las puede marcar a cualquier hora del día. La de Ana López con la Dra. Morales sirve para atenderla y registrar el tratamiento. La de Luis Pérez con el Dr. Castillo sirve para marcar No asistió.
+- Citas pasadas atendidas con tratamientos (ayer, una hora antes de las citas en curso y en las últimas semanas), No asistió y Canceladas con motivo, y Agendadas para mañana y pasado mañana.
+- Inasistencias: Luis Pérez tiene 2 desde que le levantaron la restricción hace 40 días, a una del límite de 3. Carmen Díaz tiene 3 y está bloqueada para agendar.
+- Planes con abonos y sesiones futuras: Ana López, endodoncia de 3 sesiones (2 atendidas, la tercera pasado mañana, saldo Q2,000), y María Gómez, ortodoncia de 6 sesiones (2 atendidas, 1 cancelada, su cita de mañana y saldo Q1,200).
 - Una reprogramación, dos registros de historial clínico y un bloqueo del Dr. Castillo pasado mañana de 08:00 a 13:00.
 
-Los correos de los usuarios terminan en `@clinica-demo.test`; al terminar, el script imprime la lista de correos y roles. La contraseña no está en el repositorio: se pasa al ejecutar con la variable `clave_demo`, se guarda cifrada con BCrypt y es la misma para todos los usuarios de demo. Usa una contraseña que cumpla la regla de la sección anterior. Con la variable opcional `correo_demo` se reemplaza el correo de Ana López para recibir en un buzón real el recordatorio de su cita de mañana.
+Los correos de los usuarios terminan en `@clinica-demo.test`. Al terminar, el script imprime los correos y roles, las dos citas en curso, las inasistencias por paciente y el saldo de los planes.
+
+Recorrido sugerido con estos datos:
+
+1. Secretaria: registrar un paciente nuevo y agendarle una cita.
+2. Dra. Morales: marcar Atendida la cita en curso de Ana López y registrar un tratamiento.
+3. Dr. Castillo: marcar No asistió la cita en curso de Luis Pérez. Con eso llega a 3 inasistencias y, si la secretaria intenta agendarle, recibe el aviso de bloqueo.
+4. Secretaria: levantar la restricción de Carmen Díaz, registrar un abono en el plan de María Gómez y agendar una sesión del plan.
+5. Secretaria o administrador: reportes de inasistencias, ingresos por tratamiento, horas demandadas, ganancias y citas por doctor de los últimos 60 días.
+6. Ana López: Mis planes y Mis tratamientos. La contraseña no está en el repositorio: se pasa al ejecutar con la variable `clave_demo`, se guarda cifrada con BCrypt y es la misma para todos los usuarios de demo. Usa una contraseña que cumpla la regla de la sección anterior. Con la variable opcional `correo_demo` se reemplaza el correo de Ana López para recibir en un buzón real el recordatorio de su cita de mañana.
 
 Con Docker, desde la raíz del repositorio (la contraseña se pide sin mostrarla y no queda en el historial del shell):
 
@@ -186,12 +198,30 @@ unset CLAVE_DEMO
 
 Para usar `correo_demo`, agrega `-v correo_demo='<tu correo>'` dentro del comando `psql`.
 
+Para quitar la demo sin volver a cargarla (no pide contraseña):
+
+```bash
+docker compose exec -T db sh -lc \
+  'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1 -v solo_limpiar=1' \
+  < db/demo/datos-demo.sql
+```
+
+### Demo en EC2
+
+En EC2 la base es la de producción. Agrega usuarios y citas ficticios que aparecen en los listados y en los reportes, así que córrelo solo con autorización del equipo. El script que se usa es el del commit desplegado.
+
+1. Entra por SSH y ve al repositorio: `cd ~/TEO1_ClinicaDental`. Revisa con `git log --oneline -1` que sea el commit desplegado.
+2. Respalda la base antes de cargar la demo por primera vez: `scripts/respaldar-db.sh` (ver [Respaldo y restauración](docs/respaldo-y-restauracion.md)).
+3. Carga la demo con el comando de Docker de arriba, desde `~/TEO1_ClinicaDental`.
+4. Para repetir el recorrido, vuelve a correr el mismo comando justo antes de empezar: deja la demo como nueva y recalcula las citas en curso.
+5. Al terminar la presentación, quita la demo con `solo_limpiar=1`.
+
 Advertencias:
 
-- Se puede correr varias veces: primero borra los 7 usuarios de demo por su id y, en cascada, sus perfiles, horarios, citas, tratamientos de cita, reprogramaciones, historial y bloqueos. No toca otros datos.
+- Se puede correr varias veces: primero borra los 8 usuarios de demo por su id y, en cascada, sus perfiles, horarios, citas, tratamientos de cita, reprogramaciones, historial, bloqueos, planes, abonos y levantamientos. No toca otros datos.
+- Lo que se crea durante la demo con ids que no son de demo no se borra. Por ejemplo, un paciente registrado en el recorrido sigue existiendo, aunque sus citas con doctores de demo sí se borran. Para repetir el registro, usa otro correo y otro DPI.
 - Falla si en la base ya existe, con otro id, alguno de sus correos o DPI. Toda la carga va en una transacción: si algo falla no queda nada a medias.
 - Si el catálogo de tratamientos no tiene los nombres esperados, las citas atendidas quedan sin tratamientos.
-- Pensado para bases de desarrollo o de demo. En EC2 agrega usuarios y citas ficticios que aparecen en los listados y en el reporte; córrelo allí solo con autorización y después de aplicar las migraciones.
 
 ## Roles y permisos
 
