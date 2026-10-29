@@ -10,5 +10,10 @@ RUN ./mvnw -B package -DskipTests
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
+# Version que expone GET /version; van al final para no invalidar la cache del build de Maven
+ARG GIT_COMMIT=
+ARG BUILD_DATE=
+ENV APP_VERSION_COMMIT=${GIT_COMMIT} \
+    APP_VERSION_FECHA=${BUILD_DATE}
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
