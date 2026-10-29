@@ -13,3 +13,9 @@ export interface BloqueoDoctorResponse {
   idCreadoPor: string | null;
   fechaCreacion: string;
 }
+
+export interface BloqueoVigenteResponse {
+  inicio: string;   // "yyyy-MM-ddTHH:mm:ss"
+  fin: string;      // "yyyy-MM-ddTHH:mm:ss"
+  motivo: string;
+}

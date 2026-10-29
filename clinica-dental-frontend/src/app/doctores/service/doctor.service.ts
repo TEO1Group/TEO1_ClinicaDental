@@ -3,7 +3,7 @@ import { Observable } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 import { DoctorResponse, DoctorUpdateRequest } from '../models/doctor.model';
 import { HorarioRequest, HorarioResponse } from '../models/horario.mode';
-import { BloqueoDoctorRequest, BloqueoDoctorResponse } from '../models/bloqueo.model';
+import { BloqueoDoctorRequest, BloqueoDoctorResponse, BloqueoVigenteResponse } from '../models/bloqueo.model';
 
 @Injectable({ providedIn: 'root' })
 export class DoctorService extends ApiService {
@@ -41,9 +41,12 @@ export class DoctorService extends ApiService {
     return this.http.delete<void>(`${this.doctoresUrl}/${doctorId}/horarios/${horarioId}`);
   }
 
-
   listarBloqueos(idDoctor: string): Observable<BloqueoDoctorResponse[]> {
     return this.http.get<BloqueoDoctorResponse[]>(`${this.doctoresUrl}/${idDoctor}/bloqueos`);
+  }
+
+  listarBloqueosVigentes(idDoctor: string): Observable<BloqueoVigenteResponse[]> {
+    return this.http.get<BloqueoVigenteResponse[]>(`${this.doctoresUrl}/${idDoctor}/bloqueos-vigentes`);
   }
 
   crearBloqueo(idDoctor: string, request: BloqueoDoctorRequest): Observable<BloqueoDoctorResponse> {

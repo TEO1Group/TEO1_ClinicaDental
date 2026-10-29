@@ -5,7 +5,7 @@
         <div class="card-body p-4 p-md-5">
           <div class="mb-4">
             <h2 class="fw-bold text-primario mb-1">Reportes de la clínica</h2>
-            <p class="text-muted mb-0">Consulta indicadores de citas, inasistencias e ingresos</p>
+            <p class="text-muted mb-0">Consulta indicadores de citas, inasistencias, ingresos y ganancias</p>
           </div>
 
           <div class="row g-3 align-items-end mb-4">
@@ -16,16 +16,17 @@
                 <option value="inasistencias">Inasistencias y cancelaciones</option>
                 <option value="ingresosPorTratamiento">Ingresos por tratamiento</option>
                 <option value="horasDemandadas">Horas más demandadas</option>
+                <option value="ganancias">Ganancias</option>
               </select>
             </div>
             <form [formGroup]="filtroForm" (ngSubmit)="cargarReporte()" class="col-12 col-lg-8 row g-3" novalidate>
               <div class="col-12 col-md-5">
                 <label for="desde" class="form-label fw-semibold">Desde</label>
-                <input id="desde" type="date" class="form-control" formControlName="desde" [class.is-invalid]="filtroForm.controls.desde.touched && filtroForm.controls.desde.invalid" />
+                <input id="desde" type="date" class="form-control" formControlName="desde" [max]="fechaHoy" [class.is-invalid]="filtroForm.controls.desde.touched && filtroForm.controls.desde.invalid" />
               </div>
               <div class="col-12 col-md-5">
                 <label for="hasta" class="form-label fw-semibold">Hasta</label>
-                <input id="hasta" type="date" class="form-control" formControlName="hasta" [class.is-invalid]="filtroForm.controls.hasta.touched && filtroForm.controls.hasta.invalid" />
+                <input id="hasta" type="date" class="form-control" formControlName="hasta" [max]="fechaHoy" [class.is-invalid]="filtroForm.controls.hasta.touched && filtroForm.controls.hasta.invalid" />
               </div>
               <div class="col-12 col-md-2 d-flex align-items-end">
                 <button type="submit" class="btn btn-primario text-white w-100" [disabled]="cargando()" title="Generar reporte">
@@ -54,6 +55,31 @@
           } @else if (reporteHoras(); as reporte) {
             <div class="d-flex flex-wrap gap-2 mb-4"><span class="badge bg-primary">Horas con citas: {{ reporte.horas.length }}</span><span class="badge text-bg-light">Total citas: {{ reporte.horas.reduce(sumarCitas, 0) }}</span></div>
             <div class="table-responsive"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>Hora de inicio</th><th>Cantidad de citas</th></tr></thead><tbody>@for (hora of reporte.horas; track hora.hora) {<tr><td>{{ hora.hora | number:'2.0-0' }}:00</td><td>{{ hora.cantidad }}</td></tr>}</tbody></table></div>
+          } @else if (reporteGanancias(); as reporte) {
+            <div class="d-flex flex-wrap gap-2 mb-4">
+              <span class="badge bg-primary">Total tratamientos: Q {{ reporte.totalTratamientos | number:'1.2-2' }}</span>
+              <span class="badge bg-success">Total abonos: Q {{ reporte.totalAbonos | number:'1.2-2' }}</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th>Doctor</th>
+                    <th>Tratamientos realizados</th>
+                    <th class="text-end">Total tratamientos</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (doctor of reporte.doctores; track doctor.idDoctor) {
+                    <tr>
+                      <td>{{ doctor.nombreDoctor }} {{ doctor.apellidoDoctor }}</td>
+                      <td>{{ doctor.cantidadTratamientos }}</td>
+                      <td class="text-end fw-semibold">Q {{ doctor.total | number:'1.2-2' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           } @else if (!error()) {
             <div class="text-center py-5"><i class="bi bi-bar-chart text-muted empty-icon"></i><p class="text-muted mt-3 mb-0">No hay datos para el periodo seleccionado.</p></div>
           }

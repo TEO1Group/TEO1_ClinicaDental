@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { ApiService } from '../../core/services/api.service';
 import {
   ReporteCitasPorDoctorResponse,
+  ReporteGananciasResponse,
   ReporteHorasDemandadasResponse,
   ReporteInasistenciasResponse,
   ReporteIngresosTratamientoResponse
@@ -27,6 +28,10 @@ export class ReporteService extends ApiService {
 
   ingresosPorTratamiento(desde: string, hasta: string): Observable<ReporteIngresosTratamientoResponse> {
     return this.obtener<ReporteIngresosTratamientoResponse>('ingresos-por-tratamiento', desde, hasta);
+  }
+
+  ganancias(desde: string, hasta: string): Observable<ReporteGananciasResponse> {
+    return this.obtener<ReporteGananciasResponse>('ganancias', desde, hasta);
   }
 
   private obtener<T>(recurso: string, desde: string, hasta: string): Observable<T> {

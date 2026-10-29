@@ -5,14 +5,34 @@ import { Observable } from 'rxjs';
 import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 import {
   ReporteCitasPorDoctorResponse,
+  ReporteGananciasResponse,
   ReporteHorasDemandadasResponse,
   ReporteInasistenciasResponse,
   ReporteIngresosTratamientoResponse
 } from '../../models/reporte-citas.model';
 import { ReporteService } from '../../service/reporte.service';
 
-type TipoReporte = 'citasPorDoctor' | 'inasistencias' | 'ingresosPorTratamiento' | 'horasDemandadas';
-type ReporteResponse = ReporteCitasPorDoctorResponse | ReporteInasistenciasResponse | ReporteIngresosTratamientoResponse | ReporteHorasDemandadasResponse;
+function obtenerFechaHoyGuatemala(): string {
+  const partes = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Guatemala',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date());
+  const ano = partes.find(parte => parte.type === 'year')?.value;
+  const mes = partes.find(parte => parte.type === 'month')?.value;
+  const dia = partes.find(parte => parte.type === 'day')?.value;
+
+  return `${ano}-${mes}-${dia}`;
+}
+
+type TipoReporte = 'citasPorDoctor' | 'inasistencias' | 'ingresosPorTratamiento' | 'horasDemandadas' | 'ganancias';
+type ReporteResponse =
+  | ReporteCitasPorDoctorResponse
+  | ReporteInasistenciasResponse
+  | ReporteIngresosTratamientoResponse
+  | ReporteHorasDemandadasResponse
+  | ReporteGananciasResponse;
 
 @Component({
   selector: 'app-reporte-citas',
@@ -26,6 +46,8 @@ export class ReporteCitasComponent implements OnInit {
   private readonly reporteService = inject(ReporteService);
   private readonly notificacionService = inject(NotificacionService);
 
+  readonly fechaHoy = obtenerFechaHoyGuatemala();
+
   readonly filtroForm = this.formBuilder.nonNullable.group({
     desde: ['', [Validators.required]],
     hasta: ['', [Validators.required]]
@@ -36,6 +58,7 @@ export class ReporteCitasComponent implements OnInit {
   private readonly _reporteInasistencias = signal<ReporteInasistenciasResponse | null>(null);
   private readonly _reporteIngresos = signal<ReporteIngresosTratamientoResponse | null>(null);
   private readonly _reporteHoras = signal<ReporteHorasDemandadasResponse | null>(null);
+  private readonly _reporteGanancias = signal<ReporteGananciasResponse | null>(null);
   private readonly _cargando = signal(false);
   private readonly _error = signal('');
 
@@ -43,14 +66,20 @@ export class ReporteCitasComponent implements OnInit {
   readonly reporteInasistencias = this._reporteInasistencias.asReadonly();
   readonly reporteIngresos = this._reporteIngresos.asReadonly();
   readonly reporteHoras = this._reporteHoras.asReadonly();
+  readonly reporteGanancias = this._reporteGanancias.asReadonly();
   readonly cargando = this._cargando.asReadonly();
   readonly error = this._error.asReadonly();
 
   ngOnInit(): void {
-    const hoy = new Date();
+    const hoyGuatemala = this.fechaHoy;
+    const [ano, mes] = hoyGuatemala.split('-').map(Number);
+    const ultimoDiaMes = new Date(ano, mes, 0).getDate();
+    const finDeMes = `${ano}-${String(mes).padStart(2, '0')}-${String(ultimoDiaMes).padStart(2, '0')}`;
+    const hastaPorDefecto = hoyGuatemala < finDeMes ? hoyGuatemala : finDeMes;
+
     this.filtroForm.setValue({
-      desde: this.formatearFecha(new Date(hoy.getFullYear(), hoy.getMonth(), 1)),
-      hasta: this.formatearFecha(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0))
+      desde: `${ano}-${String(mes).padStart(2, '0')}-01`,
+      hasta: hastaPorDefecto
     });
     this.cargarReporte();
   }
@@ -69,12 +98,18 @@ export class ReporteCitasComponent implements OnInit {
       return;
     }
 
+    if (hasta > this.fechaHoy) {
+      this._error.set('La fecha final no puede ser posterior a la fecha de hoy.');
+      return;
+    }
+
     this._cargando.set(true);
     const solicitud: Observable<ReporteResponse> = {
       citasPorDoctor: () => this.reporteService.citasPorDoctor(desde, hasta),
       inasistencias: () => this.reporteService.inasistencias(desde, hasta),
       ingresosPorTratamiento: () => this.reporteService.ingresosPorTratamiento(desde, hasta),
-      horasDemandadas: () => this.reporteService.horasDemandadas(desde, hasta)
+      horasDemandadas: () => this.reporteService.horasDemandadas(desde, hasta),
+      ganancias: () => this.reporteService.ganancias(desde, hasta)
     }[this.tipoReporte()]();
 
     solicitud.subscribe({
@@ -84,6 +119,7 @@ export class ReporteCitasComponent implements OnInit {
         if (this.tipoReporte() === 'inasistencias') this._reporteInasistencias.set(reporte as ReporteInasistenciasResponse);
         if (this.tipoReporte() === 'ingresosPorTratamiento') this._reporteIngresos.set(reporte as ReporteIngresosTratamientoResponse);
         if (this.tipoReporte() === 'horasDemandadas') this._reporteHoras.set(reporte as ReporteHorasDemandadasResponse);
+        if (this.tipoReporte() === 'ganancias') this._reporteGanancias.set(reporte as ReporteGananciasResponse);
         this._cargando.set(false);
       },
       error: (error) => {
@@ -128,11 +164,6 @@ export class ReporteCitasComponent implements OnInit {
     this._reporteInasistencias.set(null);
     this._reporteIngresos.set(null);
     this._reporteHoras.set(null);
-  }
-
-  private formatearFecha(fecha: Date): string {
-    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-    const dia = String(fecha.getDate()).padStart(2, '0');
-    return `${fecha.getFullYear()}-${mes}-${dia}`;
+    this._reporteGanancias.set(null);
   }
 }
