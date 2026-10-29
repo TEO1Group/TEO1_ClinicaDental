@@ -4,7 +4,7 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { BloqueoDoctorResponse } from '../../../doctores/models/bloqueo.model';
+import { BloqueoVigenteResponse } from '../../../doctores/models/bloqueo.model';
 import { DoctorService } from '../../../doctores/service/doctor.service';
 import { CitaResponse, EstadoCita, EstadoCitaRequest } from '../../models/cita.model';
 import { CitaService } from '../../service/cita.service';
@@ -67,8 +67,8 @@ export class ListadoCitasComponent implements OnInit {
   readonly reprogramarCita = signal<CitaResponse | null>(null);
   readonly reprogramarError = signal('');
   readonly reprogramarEnviando = signal(false);
-  readonly reprogramarBloqueos = signal<BloqueoDoctorResponse[]>([]);
-  readonly reprogramarBloqueo = signal<BloqueoDoctorResponse | null>(null);
+  readonly reprogramarBloqueos = signal<BloqueoVigenteResponse[]>([]);
+  readonly reprogramarBloqueo = signal<BloqueoVigenteResponse | null>(null);
 
   ngOnInit(): void {
     this.cargarCitas();
@@ -207,7 +207,7 @@ export class ListadoCitasComponent implements OnInit {
   }
 
   cargarBloqueosReprogramar(idDoctor: string): void {
-    this.doctorService.listarBloqueos(idDoctor).subscribe({
+    this.doctorService.listarBloqueosVigentes(idDoctor).subscribe({
       next: (bloqueos) => {
         this.reprogramarBloqueos.set(bloqueos);
         this.actualizarBloqueoReprogramar();

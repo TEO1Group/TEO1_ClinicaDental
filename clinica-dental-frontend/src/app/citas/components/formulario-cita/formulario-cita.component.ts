@@ -5,7 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 import { DoctorResponse } from '../../../doctores/models/doctor.model';
-import { BloqueoDoctorResponse } from '../../../doctores/models/bloqueo.model';
+import { BloqueoVigenteResponse } from '../../../doctores/models/bloqueo.model';
 import { HorarioResponse } from '../../../doctores/models/horario.mode';
 import { DoctorService } from '../../../doctores/service/doctor.service';
 import { ClienteResponse } from '../../../pacientes/models/paciente.model';
@@ -47,13 +47,13 @@ export class FormularioCitaComponent implements OnInit {
   readonly doctores = signal<DoctorResponse[]>([]);
   readonly pacientes = signal<ClienteResponse[]>([]);
   readonly horarios = signal<HorarioResponse[]>([]);
-  readonly bloqueos = signal<BloqueoDoctorResponse[]>([]);
+  readonly bloqueos = signal<BloqueoVigenteResponse[]>([]);
   readonly cargandoDoctores = signal(false);
   readonly cargandoPacientes = signal(false);
   readonly cargandoHorarios = signal(false);
   readonly isSubmitting = signal(false);
   readonly error = signal('');
-  readonly bloqueoSeleccionado = signal<BloqueoDoctorResponse | null>(null);
+  readonly bloqueoSeleccionado = signal<BloqueoVigenteResponse | null>(null);
   readonly fechaMinima = obtenerFechaMinimaGuatemala();
 
   readonly formulario = this.formBuilder.nonNullable.group({
@@ -130,7 +130,7 @@ export class FormularioCitaComponent implements OnInit {
   }
 
   cargarBloqueos(idDoctor: string): void {
-    this.doctorService.listarBloqueos(idDoctor).subscribe({
+    this.doctorService.listarBloqueosVigentes(idDoctor).subscribe({
       next: (bloqueos) => {
         this.bloqueos.set(bloqueos);
         this.actualizarBloqueoSeleccionado();
@@ -199,7 +199,7 @@ export class FormularioCitaComponent implements OnInit {
     this.bloqueoSeleccionado.set(this.buscarBloqueo(fecha, hora));
   }
 
-  private buscarBloqueo(fecha: string, hora: string): BloqueoDoctorResponse | null {
+  private buscarBloqueo(fecha: string, hora: string): BloqueoVigenteResponse | null {
     if (!fecha || !hora) return null;
     const inicioCita = `${fecha}T${hora}`;
     return this.bloqueos().find(bloqueo => {
