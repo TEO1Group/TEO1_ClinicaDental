@@ -1,6 +1,18 @@
 # TEO1_ClinicaDental
 
-Sistema web para una clinica dental: registro de pacientes, doctores y horarios, agendamiento y reprogramación de citas sin solapamiento, bloqueos de doctor, tratamientos por cita con su costo, reporte de citas por doctor y recordatorios de citas.
+Sistema web para una clínica dental: registro de pacientes, doctores y horarios, agendamiento y reprogramación de citas sin solapamiento, bloqueos de doctor, control de inasistencias, tratamientos por cita y planes de tratamiento con abonos, reportes y recordatorios de citas.
+
+## Documentación
+
+Los documentos del proyecto están en `docs/Manuales y Documentacion/` (PDF). Los diagramas están al final de este README y en `docs/Diagramas/`.
+
+| Documento | Qué contiene | Archivo |
+|-----------|--------------|---------|
+| Documento final | Propósito y alcance, requisitos funcionales, técnicos y no funcionales (con sus métricas), seguridad básica, diagramas, historial de sprints, retrospectiva y estimaciones contra tiempo real | [DocumentacionFinal_ClinicaDental.pdf](docs/Manuales%20y%20Documentacion/DocumentacionFinal_ClinicaDental.pdf) |
+| Manual de usuario | Cómo usar el sistema en cada rol (paciente, doctor, secretaria y administrador), con capturas, reglas del sistema y solución de problemas | [ManualdeUsuarioClinicaDental.pdf](docs/Manuales%20y%20Documentacion/ManualdeUsuarioClinicaDental.pdf) |
+| Manual técnico | Arquitectura, modelo de datos, seguridad, lógica de negocio, API, variables de entorno, Docker, CI/CD, despliegue en EC2, respaldo y solución de problemas | [ManualTecnicoClinicaDental.pdf](docs/Manuales%20y%20Documentacion/ManualTecnicoClinicaDental.pdf) |
+
+Además: [Respaldo y restauración de la base](docs/respaldo-y-restauracion.md).
 
 ## Requisitos
 
@@ -14,16 +26,17 @@ Sistema web para una clinica dental: registro de pacientes, doctores y horarios,
 | npm | 11 (`npm@11.19.0`) | `clinica-dental-frontend/package.json` (`packageManager`) |
 | Angular | 22.1 (`@angular/core` 22.1.5 en `package-lock.json`) | `clinica-dental-frontend/package.json` |
 | PostgreSQL | 16 | `docker-compose.yml` y `ci.yml` (`postgres:16-alpine`) |
-| Docker | Docker Engine con el plugin Compose v2 (comando `docker compose`, no `docker-compose`) | `docker-compose.yml` |
+| Docker | Docker Engine con el plugin Compose v2 o superior (comando `docker compose`, no `docker-compose`) | `docker-compose.yml` |
 
-Con Docker solo se necesita Docker con Compose v2 y `openssl`. Sin Docker se necesitan JDK 21, Node.js 24.15.0 con npm 11 y PostgreSQL 16 con los clientes `psql` y `createdb`.
+Con Docker solo se necesita Docker con Compose v2 o superior y `openssl`. Sin Docker se necesitan JDK 21, Node.js 24.15.0 con npm 11 y PostgreSQL 16 con los clientes `psql` y `createdb`.
 
 Estructura del repositorio:
 
 - `backend/`: API REST en Spring Boot con Spring Security (JWT), JPA y PostgreSQL. El código está en `backend/src/main/java/com/teo1/clinicadental/` (`controller`, `service`, `repository`, `model`, `dto`, `security`, `config`, `exception`).
 - `clinica-dental-frontend/`: aplicación Angular. Llama al backend con el prefijo `/api` (en desarrollo lo redirige `proxy.conf.json` y en Docker lo hace `nginx.conf`).
-- `db/clinica_dental_schema.sql`: esquema completo para una base vacía. `db/migrations/`: cambios para bases que ya tienen datos.
-- `scripts/deploy-ec2.sh`: script que ejecuta el CD dentro de la instancia EC2.
+- `db/clinica_dental_schema.sql`: esquema completo para una base vacía. `db/migrations/`: cambios para bases que ya tienen datos. `db/demo/datos-demo.sql`: datos de demostración.
+- `scripts/`: `deploy-ec2.sh` (lo ejecuta el CD dentro de la instancia EC2), `respaldar-db.sh` y `restaurar-db.sh` (respaldo y restauración de la base).
+- `docs/`: `Manuales y Documentacion/` (PDF), `Diagramas/` (`.drawio` y `.png`) y `respaldo-y-restauracion.md`.
 - `.github/workflows/`: `ci.yml` y `cd.yml`.
 
 ## Levantar con Docker
@@ -124,6 +137,7 @@ Valores fijos en `backend/src/main/resources/application.properties` (no son var
 | `app.zona-horaria` | `America/Guatemala` | Hora "actual" del backend para validar fechas, plazos y el cron del recordatorio |
 | `app.citas.duracion-minutos` | `30` | Duración de cada cita, para el horario, los solapamientos y los bloqueos |
 | `app.citas.antelacion-cancelacion-horas` | `24` | Anticipación mínima con la que el paciente puede cancelar o reprogramar su cita |
+| `app.citas.max-inasistencias` | `3` | Inasistencias (No asistió) desde las cuales el paciente no puede agendar hasta que se levante la restricción |
 | `app.citas.recordatorio-cron` | `${RECORDATORIO_CRON:0 0 7 * * *}` | Horario del correo de recordatorio; se cambia con la variable `RECORDATORIO_CRON` |
 
 El correo de recordatorio avisa las citas Agendadas que empiezan en las próximas 24 horas, una sola vez por cita. La campana del frontend consulta `GET /citas/proximas`, que por defecto mira 48 horas y acepta de 1 a 72.
@@ -140,6 +154,8 @@ En el despliegue de EC2 el administrador es `admin@clinica.com`. Su contraseña 
 
 Las contraseñas de usuarios nuevos deben tener al menos 8 caracteres, con una mayúscula, una minúscula, un número y un carácter especial. Usa la misma regla para `ADMIN_PASSWORD`.
 
+El recorrido siguiente prueba las reglas principales. Para ver cada pantalla paso a paso, con capturas, consulta el [Manual de usuario](docs/Manuales%20y%20Documentacion/ManualdeUsuarioClinicaDental.pdf).
+
 Prueba completa en http://localhost:4200 (o en la URL de EC2):
 
 1. Inicia sesión con `ADMIN_EMAIL` y `ADMIN_PASSWORD`. En EC2 usa el usuario `admin@clinica.com`.
@@ -154,11 +170,15 @@ Prueba completa en http://localhost:4200 (o en la URL de EC2):
 10. Atendida o no asistió: entra como el doctor o la secretaria; en **Citas** el doctor ve solo sus citas y la secretaria ve todas, y ambos pueden marcarlas como Atendida o No asistió. No asistió pide motivo obligatorio; en Atendida el motivo es opcional. El doctor solo puede marcarlas desde la hora de inicio de la cita; antes recibe "No puedes marcar la cita como ATENDIDA antes de su hora de inicio". La secretaria y el admin no tienen esa restricción. Solo las citas Agendadas cambian de estado; los demás estados son finales.
 11. Plazo de 24 horas: como ADMIN o SECRETARIA, agrega al doctor un horario de 08:00 a 12:00 para el día que cae dentro de 3 días. Como el primer paciente, agenda una cita dentro de 3 días a las 09:00 y otra dentro de 3 días a las 11:00; cancela la de las 11:00 con un motivo y se acepta, porque falta más de 24 horas. Si faltan menos de 24 horas para su cita de mañana a las 09:00 (por ejemplo, si ya pasaron las 09:00 de hoy), al cancelarla recibe "Solo puedes cancelar tu cita con al menos 24 horas de anticipacion". La secretaria sí puede cancelar esa misma cita.
 12. Reprogramar: como el primer paciente, reprograma su cita de dentro de 3 días de las 09:00 a las 10:00 con un motivo. La cita queda en la nueva hora y la de las 09:00 queda libre. Casos que se rechazan: sin motivo; la misma fecha y hora ("La nueva fecha y hora son iguales a las actuales"); una hora ocupada por otra cita del doctor; una hora fuera del horario; una fecha ya pasada; y, como paciente, una cita a la que le faltan menos de 24 horas ("Solo puedes reprogramar tu cita con al menos 24 horas de anticipacion"). El doctor no ve el botón de reprogramar.
-13. Bloqueo de doctor: como SECRETARIA (o ADMIN), en **Doctores**, abre el doctor y en **Bloqueos** crea uno para dentro de 3 días de 08:00 a 10:00 con un motivo. Se acepta aunque la cita reprogramada empiece a las 10:00, porque los bordes no se cruzan. Como el segundo paciente, intenta agendar ese día a las 08:30 o a las 09:30: se rechaza con "El doctor no atiende en ese horario: <motivo>"; reprogramar una cita a esa franja también se rechaza. Intenta crear otro bloqueo de 09:30 a 10:30 ese mismo día: se rechaza porque el doctor tiene una cita agendada en ese periodo y primero hay que reprogramarla o cancelarla. Al eliminar el bloqueo, la franja vuelve a poder agendarse. El doctor ve sus propios bloqueos pero no puede crearlos ni borrarlos; el paciente no los ve.
+13. Bloqueo de doctor: como SECRETARIA (o ADMIN), en **Doctores**, abre el doctor y en **Bloqueos** crea uno para dentro de 3 días de 08:00 a 10:00 con un motivo. Se acepta aunque la cita reprogramada empiece a las 10:00, porque los bordes no se cruzan. Como el segundo paciente, intenta agendar ese día a las 08:30 o a las 09:30: se rechaza con "El doctor no atiende en ese horario: <motivo>"; reprogramar una cita a esa franja también se rechaza. Intenta crear otro bloqueo de 09:30 a 10:30 ese mismo día: se rechaza porque el doctor tiene una cita agendada en ese periodo y primero hay que reprogramarla o cancelarla. Al eliminar el bloqueo, la franja vuelve a poder agendarse. El doctor ve sus propios bloqueos pero no puede crearlos ni borrarlos; el paciente no ve el listado completo (solo los bloqueos vigentes, para el aviso al agendar).
 14. Tratamientos en el historial: solo se registran en citas **Atendidas**, y la API no deja crear citas con fecha u hora pasada. Para tener una cita atendida: carga los [datos de demo](#datos-de-demo), que ya traen citas atendidas de ayer y de hoy con tratamientos; o marca una cita Agendada como Atendida siendo SECRETARIA o ADMIN, que no tienen restricción de hora; o espera a que llegue su hora de inicio y márcala como su doctor. Luego, como el doctor de esa cita, entra a **Pacientes**, abre el historial del paciente y en **Registrar tratamiento** elige la cita atendida y un tratamiento del catálogo. Si dejas vacío el costo se usa el precio del catálogo; puedes escribir otro costo y observaciones. La tabla **Tratamientos realizados** muestra cada tratamiento con su costo y el **Total**. Registrar en una cita que no está Atendida devuelve 409, y otro doctor recibe 403. La secretaria y el admin ven los tratamientos y el total, pero no los registran.
-15. Reporte: como ADMIN o SECRETARIA, abre **Reportes**. Por defecto toma del primer al último día del mes actual; pulsa **Generar reporte**. Aparece una fila por doctor activo con sus citas Agendadas, Atendidas, Canceladas, No asistió y el total del periodo, contando ambas fechas extremas. Si la fecha inicial es posterior a la final se rechaza. DOCTOR y CLIENTE no ven la opción.
-16. Campana de recordatorios: como paciente o como doctor, la campana del encabezado muestra las citas Agendadas de las próximas 48 horas y, al iniciar sesión, aparece un aviso con cuántas hay. La campana se actualiza al iniciar sesión, al recargar la página y después de cambiar el estado o reprogramar una cita. ADMIN y SECRETARIA no ven la campana ni reciben recordatorios.
-17. Swagger: abre la URL de Swagger UI, ejecuta `POST /auth/login`, copia el valor de `token`, pulsa **Authorize** y pégalo (solo el token, sin la palabra `Bearer`). Después prueba, por ejemplo, `GET /citas/proximas`, `GET /tratamientos` o `GET /reportes/citas-por-doctor` con `desde` y `hasta` en formato `yyyy-MM-dd`.
+15. Reportes: como ADMIN o SECRETARIA, abre **Reportes**, elige el reporte (citas por doctor y estado, inasistencias y cancelaciones, ingresos por tratamiento, horas más demandadas o ganancias) y pulsa **Generar reporte**. Por defecto toma el mes actual. En citas por doctor aparece una fila por doctor activo con sus citas Agendadas, Atendidas, Canceladas, No asistió y el total del periodo, contando ambas fechas extremas. Los reportes no cuentan las citas cuya hora de inicio todavía no llega. Si la fecha inicial es posterior a la final se rechaza. DOCTOR y CLIENTE no ven la opción.
+16. Inasistencias: el límite es 3 inasistencias (`app.citas.max-inasistencias`). Con los [datos de demo](#datos-de-demo), Luis Pérez tiene 2 y Carmen Díaz tiene 3 y está bloqueada. Como el doctor o la secretaria, marca No asistió una cita de Luis Pérez: llega a 3 y ya no puede agendar (409, también al agendar sesiones de un plan). En la ficha del paciente, la tarjeta **Inasistencias** muestra el conteo y el estado. Como ADMIN o SECRETARIA, pulsa **Levantar restricción**, escribe el motivo (obligatorio, máximo 200 caracteres) y confirma: el conteo vuelve a cero y queda registrado quién, cuándo y por qué. Levantar la restricción de un paciente que no está bloqueado se rechaza.
+17. Planes y abonos: en **Planes de tratamiento** pulsa **Nuevo plan** como DOCTOR (el plan queda a su nombre), SECRETARIA o ADMIN (eligen el doctor); elige el paciente, el tratamiento y el total de sesiones (de 1 a 50). Si dejas vacío el costo total se usa el costo del catálogo por el número de sesiones. En **Ver detalle**, como SECRETARIA o ADMIN, **Agendar sesión** crea la cita de la sesión con las mismas validaciones de horario, bloqueos, solapamiento e inasistencias, y **Registrar abono** acepta un monto mayor a cero que no supere el saldo (de lo contrario se rechaza). El avance es sesiones atendidas sobre sesiones totales y el plan pasa a Completado cuando todas se atienden. El doctor solo consulta los abonos.
+18. Catálogo de tratamientos: como ADMIN, en **Tratamientos**, pulsa **Nuevo Tratamiento** (nombre único, duración, costo no negativo) o edita uno existente. Un tratamiento inactivo deja de ofrecerse para nuevos registros pero se conserva en los anteriores, y cambiar un costo no altera lo ya cobrado.
+19. Paciente: **Mis Tratamientos** y **Mis Planes** muestran, en solo lectura, sus tratamientos con el total y sus planes con avance, abonos y saldo.
+20. Campana de recordatorios: como paciente o como doctor, la campana del encabezado muestra las citas Agendadas de las próximas 48 horas y, al iniciar sesión, aparece un aviso con cuántas hay. La campana se actualiza al iniciar sesión, al recargar la página y después de cambiar el estado o reprogramar una cita. ADMIN y SECRETARIA no ven la campana ni reciben recordatorios.
+21. Swagger: abre la URL de Swagger UI, ejecuta `POST /auth/login`, copia el valor de `token`, pulsa **Authorize** y pégalo (solo el token, sin la palabra `Bearer`). Después prueba, por ejemplo, `GET /citas/proximas`, `GET /tratamientos` o `GET /reportes/citas-por-doctor` con `desde` y `hasta` en formato `yyyy-MM-dd`.
 
 ## Datos de demo
 
@@ -225,7 +245,7 @@ Advertencias:
 
 ## Roles y permisos
 
-Según `SecurityConfig` y los servicios (`CitaService`, `ReprogramacionCitaService`, `BloqueoDoctorService`, `TratamientoService` y `ReporteCitaService`):
+Según `SecurityConfig` y los servicios (`CitaService`, `ReprogramacionCitaService`, `BloqueoDoctorService`, `InasistenciaService`, `TratamientoService`, `PlanTratamientoService` y `ReporteCitaService`):
 
 | Acción | ADMIN | SECRETARIA | DOCTOR | CLIENTE |
 |--------|-------|------------|--------|---------|
@@ -246,33 +266,48 @@ Según `SecurityConfig` y los servicios (`CitaService`, `ReprogramacionCitaServi
 | Reprogramar una cita (motivo obligatorio) | Cualquiera, sin plazo | Cualquiera, sin plazo | No | Solo las suyas, con al menos 24 h de anticipación |
 | Crear y eliminar bloqueos de un doctor | Sí | Sí | No | No |
 | Ver los bloqueos de un doctor | Todos | Todos | Solo los suyos | No |
+| Ver los bloqueos vigentes de un doctor (aviso al agendar) | Sí | Sí | Sí | Sí |
 | Ver el catálogo de tratamientos | Sí | Sí | Sí | No |
+| Crear, editar y activar o desactivar tratamientos del catálogo | Sí | No | No | No |
 | Registrar tratamientos en una cita Atendida | No | No | Solo en sus citas | No |
 | Ver los tratamientos de una cita | Sí | Sí | Solo de sus citas | No |
 | Ver los tratamientos y el total de un paciente (historial) | Sí | Sí | Sí | No |
-| Reporte de citas por doctor | Sí | Sí | No | No |
+| Ver sus propios tratamientos (`GET /mis-tratamientos`) | No | No | No | Sí |
+| Consultar las inasistencias de un paciente | Sí | Sí | Sí | No |
+| Levantar la restricción por inasistencias (motivo obligatorio) | Sí | Sí | No | No |
+| Crear un plan de tratamiento | Sí, eligiendo doctor | Sí, eligiendo doctor | Solo para sí mismo | No |
+| Ver planes, su avance, saldo y abonos | Todos | Todos | Solo los suyos | No |
+| Agendar sesiones de un plan y registrar abonos | Sí | Sí | No | No |
+| Ver sus propios planes (`GET /mis-planes`) | No | No | No | Sí |
+| Reportes (citas por doctor, inasistencias y cancelaciones, ingresos por tratamiento, horas más demandadas y ganancias) | Sí | Sí | No | No |
 | Recordatorios en la campana y aviso al ingresar (`GET /citas/proximas`) | No | No | Sus citas de las próximas 48 h | Sus citas de las próximas 48 h |
 | Correo de recordatorio | No lo recibe | No lo recibe | No lo recibe | Lo recibe el paciente de la cita |
+| Consultar la versión desplegada (`GET /version`) | Público | Público | Público | Público |
 
-Una cita solo puede cambiar de estado mientras está Agendada. Al agendar también se valida que el doctor y el paciente estén activos, que el paciente no esté en lista negra y que la fecha y hora sean futuras. Una cita cancelada libera su horario.
+Una cita solo puede cambiar de estado mientras está Agendada. Al agendar también se valida que el doctor y el paciente estén activos, que el paciente no esté en lista negra ni haya llegado al límite de inasistencias, y que la fecha y hora sean futuras. Una cita cancelada libera su horario.
 
 El token se valida en cada petición; si un usuario se desactiva, su token deja de servir al momento.
 
-## Reglas de negocio de citas (Sprint 5)
+## Reglas de negocio (Sprints 5 y 6)
 
 Son los valores acordados por el equipo para el Product Owner. Los plazos se calculan con la hora de `America/Guatemala` (`app.zona-horaria`).
 
 - **Plazo para cancelar y reprogramar:** el paciente (CLIENTE) solo puede cancelar o reprogramar su cita si faltan al menos 24 horas para su inicio; con exactamente 24 horas se acepta. El valor sale de `app.citas.antelacion-cancelacion-horas=24`. SECRETARIA y ADMIN quedan exentos. Fuera de plazo la API responde 409.
 - **Motivo:** obligatorio al cancelar (CANCELADA), al marcar No asistió (NO_ASISTIO) y al reprogramar; opcional al marcar Atendida. Máximo 200 caracteres. Se recortan los espacios y, si queda vacío en Atendida, no se guarda. El motivo del último cambio de estado se guarda en la cita (`motivo_estado`) y se devuelve como `motivo` en las citas.
 - **Hora de inicio para el doctor:** el DOCTOR no puede marcar su cita como Atendida ni No asistió antes de la hora de inicio (409). SECRETARIA y ADMIN pueden marcarla a cualquier hora.
-- **Bloqueos de doctor** (`/doctores/{idDoctor}/bloqueos`): periodos con inicio y fin (fecha y hora de Guatemala) y motivo obligatorio de hasta 200 caracteres; el inicio debe ser anterior al fin. Los crean y eliminan ADMIN y SECRETARIA; los listan ADMIN, SECRETARIA y el propio doctor. No se puede crear un bloqueo si el doctor tiene citas Agendadas que se cruzan con el periodo (409): primero hay que reprogramarlas o cancelarlas. Mientras exista el bloqueo no se puede agendar ni reprogramar una cita que se cruce con él (409 con el motivo del bloqueo). Los bordes no cuentan como cruce: una cita que termina justo cuando empieza el bloqueo, o que empieza justo cuando termina, se acepta.
+- **Bloqueos de doctor** (`/doctores/{idDoctor}/bloqueos`): periodos con inicio y fin (fecha y hora de Guatemala) y motivo obligatorio de hasta 200 caracteres; el inicio debe ser anterior al fin. Los crean y eliminan ADMIN y SECRETARIA; los listan ADMIN, SECRETARIA y el propio doctor. No se puede crear un bloqueo si el doctor tiene citas Agendadas que se cruzan con el periodo (409): primero hay que reprogramarlas o cancelarlas. Mientras exista el bloqueo no se puede agendar ni reprogramar una cita que se cruce con él (409 con el motivo del bloqueo). Los bordes no cuentan como cruce: una cita que termina justo cuando empieza el bloqueo, o que empieza justo cuando termina, se acepta. `GET /doctores/{idDoctor}/bloqueos-vigentes` lo puede consultar cualquier usuario autenticado y devuelve inicio, fin y motivo de los bloqueos que aún no terminan, para avisar antes de agendar.
 - **Reprogramar** (`PATCH /citas/{id}/reprogramar`): solo citas Agendadas y con una fecha u hora distinta a la actual. La nueva fecha y hora se revalidan igual que al agendar: debe ser futura, caber en el horario de atención, no caer en un bloqueo y no solaparse con otra cita del doctor. Cada reprogramación queda registrada en `cita_reprogramacion` con la fecha y hora anterior y nueva, el motivo, el momento del cambio y el usuario que la hizo. La cita vuelve a quedar pendiente de recordatorio (`recordatorio_enviado` en falso), así que el paciente recibe el correo otra vez para la nueva hora.
-- **Tratamientos** (`POST /citas/{idCita}/tratamientos`): solo los registra el DOCTOR de la cita y solo si la cita está Atendida (409 en otro estado, 403 para otro usuario). El tratamiento se elige del catálogo (`GET /tratamientos`); si no se envía `costo` se usa el costo del catálogo, y si se envía no puede ser negativo (hasta 8 enteros y 2 decimales). Las observaciones admiten hasta 1000 caracteres. Una cita puede tener el mismo tratamiento más de una vez. El historial del paciente (`GET /pacientes/{idCliente}/tratamientos`) muestra cada tratamiento con la fecha y hora de la cita, el doctor, el costo cobrado y las observaciones, y el total de todos ellos.
-- **Reporte de citas por doctor** (`GET /reportes/citas-por-doctor`): parámetros obligatorios `desde` y `hasta` en formato `yyyy-MM-dd`; el rango incluye ambos extremos y `desde` no puede ser posterior a `hasta` (400). Lo ven ADMIN y SECRETARIA. Cuenta las citas por estado de cada doctor activo, con ceros si no tiene citas en el periodo, ordenados por apellido y nombre.
+- **Inasistencias** (`/pacientes/{id}/inasistencias`): se cuentan las citas No asistió del paciente desde su último levantamiento. Con `app.citas.max-inasistencias` (3) o más, el paciente no puede agendar una cita ni una sesión de un plan (409). ADMIN y SECRETARIA levantan la restricción con un motivo obligatorio de hasta 200 caracteres (`POST /pacientes/{id}/inasistencias/levantamientos`); queda registrado en `levantamiento_inasistencia` quién lo hizo, cuándo, el motivo y la cantidad de inasistencias, y el conteo vuelve a empezar de cero. Levantar la restricción de un paciente que no está restringido responde 409.
+- **Catálogo de tratamientos** (`/tratamientos`): solo ADMIN crea y modifica tratamientos. El nombre es único, el costo no puede ser negativo y un tratamiento se desactiva (columna `activo`) en lugar de borrarse; uno inactivo no se ofrece para nuevos registros, pero se conserva en los anteriores.
+- **Tratamientos en una cita** (`POST /citas/{idCita}/tratamientos`): solo los registra el DOCTOR de la cita y solo si la cita está Atendida (409 en otro estado, 403 para otro usuario). El tratamiento se elige del catálogo (activo); si no se envía `costo` se usa el costo del catálogo, y si se envía no puede ser negativo (hasta 8 enteros y 2 decimales). El costo queda copiado en el registro, así que un cambio de precio posterior no altera lo ya cobrado. Las observaciones admiten hasta 1000 caracteres. Una cita puede tener el mismo tratamiento más de una vez. El historial del paciente (`GET /pacientes/{idCliente}/tratamientos`) muestra cada tratamiento con la fecha y hora de la cita, el doctor, el costo cobrado y las observaciones, y el total de todos ellos. El paciente consulta los suyos con `GET /mis-tratamientos`.
+- **Planes de tratamiento** (`/planes`): un plan tiene paciente, doctor, tratamiento, de 1 a 50 sesiones y un costo total; si no se envía, se calcula como el costo del catálogo por el número de sesiones. Lo crean ADMIN, SECRETARIA (eligen el doctor) y DOCTOR (solo para sí mismo). Cada sesión es una cita vinculada al plan que se agenda con `POST /planes/{id}/citas` (ADMIN y SECRETARIA) y pasa por las mismas validaciones que cualquier cita (horario, bloqueos, solapamiento, lista negra e inasistencias). Una sesión ocupa lugar mientras su cita está Agendada o Atendida; si se cancela o no asiste, se puede agendar otra. El avance es sesiones atendidas sobre sesiones totales y el plan se informa Completado cuando todas se atienden. El paciente consulta los suyos con `GET /mis-planes`.
+- **Abonos** (`POST /planes/{id}/abonos`): los registran ADMIN y SECRETARIA; el monto debe ser mayor a cero y no puede superar el saldo, que es el costo total menos los abonos (409). Se registran con el plan bloqueado, para que dos abonos simultáneos no superen el saldo.
+- **Reportes** (`/reportes`): `citas-por-doctor`, `inasistencias`, `ingresos-por-tratamiento`, `horas-demandadas` y `ganancias`, con los parámetros obligatorios `desde` y `hasta` en formato `yyyy-MM-dd`. El rango incluye ambos extremos y `desde` no puede ser posterior a `hasta` (400). Los ven ADMIN y SECRETARIA. Se calculan con consultas agregadas en la base de datos y ninguno cuenta citas cuya hora de inicio todavía no llega. `citas-por-doctor` cuenta las citas por estado de cada doctor activo, con ceros si no tiene citas en el periodo, ordenados por apellido y nombre. `ganancias` suma el costo cobrado de los tratamientos de citas Atendidas por doctor y muestra aparte el total de abonos, sin sumarlo a los tratamientos.
+- **Versión** (`GET /version`): endpoint público que devuelve el commit y la fecha de construcción de la versión desplegada. Solo responde en una versión que incluya este endpoint.
 
 ## API (Swagger)
 
-Swagger/OpenAPI es la fuente principal y actualizada de documentación de la API. Las 38 operaciones de los controllers tienen `@Operation`, con sus reglas, permisos, errores y ejemplos generados desde las anotaciones y DTO del backend. La prueba `OpenApiDocumentationIntegrationTests` comprueba que cada operación tenga resumen, descripción, respuestas y seguridad.
+Swagger/OpenAPI es la fuente principal y actualizada de documentación de la API. Las 56 operaciones de los controllers tienen `@Operation`, con sus reglas, permisos, errores y ejemplos generados desde las anotaciones y DTO del backend. La prueba `OpenApiDocumentationIntegrationTests` comprueba que cada operación tenga resumen, descripción, respuestas y seguridad.
 
 | Grupo (`@Tag`) | Endpoints | Rutas |
 |----------------|-----------|-------|
@@ -280,10 +315,13 @@ Swagger/OpenAPI es la fuente principal y actualizada de documentación de la API
 | Usuarios | 5 | `/admin/usuarios`, `/admin/usuarios/{id}`, `/admin/usuarios/{id}/estado`, `/roles` |
 | Clientes | 8 | `/pacientes`, `/pacientes/{id}`, `/pacientes/{id}/lista-negra`, `/pacientes/{id}/historial` |
 | Doctores | 8 | `/doctores`, `/doctores/{id}`, `/doctores/{id}/horarios`, `/doctores/{id}/horarios/{idHorario}` |
+| Bloqueos de doctor | 4 | `/doctores/{idDoctor}/bloqueos`, `/doctores/{idDoctor}/bloqueos/{idBloqueo}`, `/doctores/{idDoctor}/bloqueos-vigentes` |
 | Citas | 6 | `/citas`, `/citas/proximas`, `/citas/{id}`, `/citas/{id}/estado`, `/citas/{id}/reprogramar` |
-| Bloqueos de doctor | 3 | `/doctores/{idDoctor}/bloqueos`, `/doctores/{idDoctor}/bloqueos/{idBloqueo}` |
-| Tratamientos | 4 | `/tratamientos`, `/citas/{idCita}/tratamientos`, `/pacientes/{idCliente}/tratamientos` |
-| Reportes | 1 | `/reportes/citas-por-doctor` |
+| Tratamientos | 7 | `/tratamientos`, `/tratamientos/{id}`, `/citas/{idCita}/tratamientos`, `/pacientes/{idCliente}/tratamientos`, `/mis-tratamientos` |
+| Inasistencias | 2 | `/pacientes/{id}/inasistencias`, `/pacientes/{id}/inasistencias/levantamientos` |
+| Planes de tratamiento | 7 | `/planes`, `/planes/{id}`, `/planes/{id}/citas`, `/planes/{id}/abonos`, `/mis-planes` |
+| Reportes | 5 | `/reportes/citas-por-doctor`, `/reportes/horas-demandadas`, `/reportes/inasistencias`, `/reportes/ingresos-por-tratamiento`, `/reportes/ganancias` |
+| Versión | 1 | `/version` |
 
 - Local: http://localhost:8080/swagger-ui.html (directo al backend) o http://localhost:4200/api/swagger-ui.html (a través de nginx en Docker).
 - EC2: http://18.226.37.148:4200/api/swagger-ui/index.html y el JSON en http://18.226.37.148:4200/api/v3/api-docs.
@@ -304,9 +342,9 @@ cd backend
 cd ..
 ```
 
-Si el volumen `postgres_data` se creó con un esquema anterior, aplica antes las migraciones de `db/migrations/`. La mayoría de las pruebas de integración se revierten al terminar; `CitasConcurrencyIntegrationTests` guarda datos reales y los borra al final, así que usa una base de desarrollo, nunca la de producción.
+Si el volumen `postgres_data` se creó con un esquema anterior, aplica antes las migraciones de `db/migrations/`. La mayoría de las pruebas de integración se revierten al terminar; `CitasConcurrencyIntegrationTests` y `AbonosConcurrencyIntegrationTests` guardan datos reales y los borran al final, así que usa una base de desarrollo, nunca la de producción.
 
-Las reglas del Sprint 5 tienen casos de éxito y de rechazo en `TratamientosIntegrationTests`, `TratamientoServiceTests`, `ReprogramarCitaIntegrationTests`, `ReprogramacionCitaServiceTests`, `BloqueosDoctorIntegrationTests`, `BloqueoDoctorServiceTests`, `ReporteCitasIntegrationTests`, `ReporteCitaServiceTests`, `SeguridadSprint5IntegrationTests`, `CitaServiceTests` (motivo y plazo de 24 horas) y `DisponibilidadCitaServiceTests`. El CI las ejecuta todas con `./mvnw -B verify`.
+Las reglas de los sprints 5 y 6 tienen casos de éxito y de rechazo, entre otras, en `TratamientosIntegrationTests`, `TratamientoServiceTests`, `ReprogramarCitaIntegrationTests`, `ReprogramacionCitaServiceTests`, `BloqueosDoctorIntegrationTests`, `BloqueoDoctorServiceTests`, `ReporteCitasIntegrationTests`, `ReporteCitaServiceTests`, `PlanesTratamientoIntegrationTests`, `SeguridadSprint5IntegrationTests`, `SeguridadSprint6IntegrationTests`, `CitaServiceTests` (motivo y plazo de 24 horas), `DisponibilidadCitaServiceTests` y `FlujoCompletoIntegrationTests` (recorre el flujo completo con los roles del personal). `OpenApiDocumentationIntegrationTests` falla si una operación queda sin documentar en Swagger. El CI las ejecuta todas con `./mvnw -B verify`. En la medición del 29 de octubre de 2026 corrieron 289 pruebas sin fallas, con 93.1 % de cobertura de líneas (ver el Documento final, sección 6.1).
 
 Frontend, desde la raíz del repositorio (son los mismos comandos del CI):
 
@@ -330,9 +368,11 @@ Después recrea solo backend y frontend y espera hasta 180 segundos a que respon
 
 El CD no aplica migraciones de base de datos: se hacen a mano, antes de desplegar, siguiendo [Migraciones manuales de esquema](#migraciones-manuales-de-esquema).
 
+Protección de ramas en GitHub (iguales en `main` y `develop`): los cambios entran solo por pull request con 1 aprobación, un push nuevo descarta la aprobación anterior, las conversaciones del PR deben estar resueltas y no se permite el push forzado ni borrar la rama. No hay checks de estado obligatorios: el CI corre en cada pull request, pero GitHub no impide fusionar si falla, y las reglas no aplican a los administradores del repositorio. Lo que sí es automático es que el CD solo despliega después de un CI exitoso en `main`.
+
 ### Secrets exclusivos de CI y activación del flujo
 
-Configura estos **repository secrets** en **Settings > Secrets and variables > Actions > New repository secret**, antes de ejecutar el CI de esta rama:
+El CI necesita estos **repository secrets**, que se configuran en **Settings > Secrets and variables > Actions > New repository secret**:
 
 | Secret | Requisito |
 |--------|-----------|
@@ -341,9 +381,9 @@ Configura estos **repository secrets** en **Settings > Secrets and variables > A
 
 No reutilices secretos de EC2/producción ni los copies a archivos versionados, PR o logs. Estos secretos no se crean solos: los configura a mano quien administra el repositorio. Si falta `CI_DB_PASSWORD`, PostgreSQL rechazará el arranque del servicio antes de ejecutar los pasos; si falta `CI_JWT_SECRET`, el paso de validación fallará antes de Maven. Un valor JWT con formato o longitud incorrectos hará fallar el backend. Los PR desde forks no reciben estos secretos de repositorio y no podrán completar este CI; no se usa `pull_request_target` para ejecutar su código con secretos.
 
-El encadenamiento `workflow_run` solo estará activo cuando `cd.yml` exista en la rama predeterminada (`main`), según [GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run). Mientras `develop` no se integre en `main`, `main` conserva el `cd.yml` anterior, que se disparaba directamente con cada push a `main`; un PR hacia `develop` prueba el CI, pero no el flujo CI → CD. Después de integrar en `main` conviene verificar con autorización un CI fallido (sin build ni despliegue), uno exitoso para el mismo SHA y un reintento antiguo rechazado. El CD no aplica migraciones: deben aplicarse antes de integrar en `main` (ver la sección siguiente).
+El encadenamiento `workflow_run` solo está activo cuando `cd.yml` existe en la rama predeterminada (`main`), según [GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run). Para comprobar el flujo con autorización conviene verificar un CI fallido (sin build ni despliegue), uno exitoso para el mismo SHA y un reintento antiguo rechazado. El CD no aplica migraciones: deben aplicarse antes de integrar en `main` (ver la sección siguiente).
 
-Despliegue actual:
+Despliegue actual (se sirve por HTTP, sin TLS):
 
 - Frontend: http://18.226.37.148:4200
 - Swagger UI: http://18.226.37.148:4200/api/swagger-ui/index.html
@@ -355,12 +395,17 @@ Las migraciones se aplican manualmente y por separado del despliegue de aplicaci
 
 > **No ejecutes `db/clinica_dental_schema.sql` sobre EC2 ni sobre una base con datos.** Ese archivo contiene instrucciones `DROP TABLE` y es solo para inicializar una base vacía.
 
-Las migraciones se aplican en este orden, cada una una sola vez por base aunque ambas se pueden repetir sin error:
+Las migraciones se aplican en este orden, cada una una sola vez por base aunque todas se pueden repetir sin error:
 
-1. `db/migrations/2026-10-sprint4-cita.sql`: estados de la cita, `recordatorio_enviado` y el índice parcial `uq_cita_doctor_slot`.
-2. `db/migrations/2026-10-sprint5.sql`: `motivo_estado` en `cita`, la tabla `bloqueo_doctor`, la nueva forma de `cita_tratamiento` (id propio, costo, observaciones y fecha), motivo obligatorio y `reprogramado_por` en `cita_reprogramacion`, el índice único `uq_tratamiento_nombre` y el catálogo inicial de tratamientos si la tabla está vacía. Va después de la del Sprint 4.
+| Orden | Archivo | Qué hace |
+|-------|---------|----------|
+| 1 | `db/migrations/2026-10-sprint4-cita.sql` | Estados de la cita, `recordatorio_enviado` y el índice parcial `uq_cita_doctor_slot` |
+| 2 | `db/migrations/2026-10-sprint5.sql` | `motivo_estado` en `cita`, la tabla `bloqueo_doctor`, la nueva forma de `cita_tratamiento` (id propio, costo, observaciones y fecha), motivo obligatorio y `reprogramado_por` en `cita_reprogramacion`, el índice único `uq_tratamiento_nombre` y el catálogo inicial de tratamientos si la tabla está vacía. Va después de la del Sprint 4 |
+| 3 | `db/migrations/2026-10-sprint6-tratamientos.sql` | Agrega `tratamiento.activo` y amplía el catálogo a 20 tratamientos, conservando los nombres, precios y estados existentes |
+| 4 | `db/migrations/2026-10-sprint6-planes.sql` | Crea `plan_tratamiento` y `abono_plan` y agrega `cita.id_plan` |
+| 5 | `db/migrations/2026-10-sprint6-inasistencias.sql` | Crea `levantamiento_inasistencia` |
 
-El backend usa `ddl-auto=validate`: si se despliega la versión del Sprint 5 sobre una base sin su migración, el backend no arranca. Los pasos siguientes describen la migración del Sprint 4; la del Sprint 5 usa el mismo respaldo y luego sigue [Migración del Sprint 5](#migración-del-sprint-5).
+El backend usa `ddl-auto=validate`: si se despliega una versión sobre una base sin su migración, el backend no arranca. Los pasos siguientes describen la migración del Sprint 4; la del Sprint 5 usa el mismo respaldo y luego sigue [Migración del Sprint 5](#migración-del-sprint-5), y las del Sprint 6 siguen [Migraciones del Sprint 6](#migraciones-del-sprint-6).
 
 Realiza los pasos siguientes desde `~/TEO1_ClinicaDental` en el servidor, con acceso autorizado a la base. No actives `set -x` ni incluyas contraseñas en los comandos.
 
@@ -490,6 +535,54 @@ Se aplica después de la del Sprint 4 y antes de integrar `develop` en `main`. H
 
 Si el checkout de EC2 todavía no tiene `db/migrations/2026-10-sprint5.sql`, obtenlo como se explica en la sección siguiente, cambiando el nombre del archivo.
 
+### Migraciones del Sprint 6
+
+Son tres archivos que van después de `2026-10-sprint5.sql` y se aplican antes de levantar el backend del Sprint 6, porque este necesita las tablas y columnas nuevas. Se aplicaron en EC2 el 28 de octubre de 2026 (issue #213), en este orden:
+
+1. `2026-10-sprint6-tratamientos.sql`: agrega `tratamiento.activo` y carga el catálogo ampliado. Su encabezado indica que los nombres, duraciones y precios propuestos requieren aprobación del equipo: confírmalos antes de aplicarla. Depende de la tabla `tratamiento`, que ya existía.
+2. `2026-10-sprint6-planes.sql`: crea `plan_tratamiento` y `abono_plan` y agrega `cita.id_plan`. Depende de `cliente`, `doctor`, `tratamiento`, `cita` y `usuario`.
+3. `2026-10-sprint6-inasistencias.sql`: crea `levantamiento_inasistencia`. Depende de `cliente` y `usuario`.
+
+El orden entre estas tres no importa porque ninguna usa algo que cree otra; la única corrida real fue en el orden de arriba y no se probó el inverso. Cada una corre en una transacción y se puede repetir sin error.
+
+1. Haz el respaldo y su validación (pasos 2 y 3 de la migración del Sprint 4) y anota el total de citas y de tratamientos:
+
+   ```sql
+   SELECT count(*) FROM cita;
+   SELECT count(*) FROM tratamiento;
+   ```
+
+2. Aplica las tres con errores fatales, desde `~/TEO1_ClinicaDental`:
+
+   ```bash
+   for archivo in 2026-10-sprint6-tratamientos 2026-10-sprint6-planes 2026-10-sprint6-inasistencias; do
+     docker compose exec -T db sh -lc \
+       'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1' \
+       < "db/migrations/${archivo}.sql" || break
+   done
+   ```
+
+3. Verifica el resultado antes de desplegar:
+
+   ```bash
+   docker compose exec -T db sh -lc \
+     'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -v ON_ERROR_STOP=1' <<'SQL'
+   \d+ plan_tratamiento
+   \d+ abono_plan
+   \d+ levantamiento_inasistencia
+   SELECT table_name, column_name FROM information_schema.columns
+   WHERE (table_name = 'cita' AND column_name = 'id_plan')
+      OR (table_name = 'tratamiento' AND column_name = 'activo')
+   ORDER BY table_name, column_name;
+   SELECT count(*) FROM cita;
+   SELECT count(*) FROM tratamiento;
+   SQL
+   ```
+
+   Deben existir las tres tablas y las dos columnas, el total de citas debe ser igual al anotado y el de tratamientos debe haber aumentado (20 si el catálogo tenía los 10 iniciales). Después de migrar, los datos de demo (`db/demo/datos-demo.sql`) se cargan al final, porque buscan los tratamientos del catálogo por nombre.
+
+Si el checkout de EC2 todavía no tiene los archivos, obtenlos como se explica en la sección siguiente, cambiando el nombre del archivo.
+
 ### Obtener el archivo de migración desde el commit aprobado
 
 El checkout de `main` en EC2 puede no contener todavía la migración que está en `develop`. No cambies de rama ni hagas checkout del release para obtenerla. Después de aprobar el SHA de `develop` y el SHA-256 del archivo, puedes extraer esa versión exacta sin mover el checkout desplegado:
@@ -507,7 +600,7 @@ sha256sum "$migration_file"
 
 Compara el SHA-256 con el valor comunicado en la revisión aprobada antes de continuar. Ejecuta el archivo extraído únicamente después de completar el preflight, respaldo y autorización descritos arriba, usando `< "$migration_file"` en lugar de `< db/migrations/2026-10-sprint4-cita.sql` en el paso 4. `git fetch` solo actualiza referencias/objetos de Git; no despliega ni cambia el checkout activo.
 
-Para la migración del Sprint 5, con la misma variable `migration_commit`:
+Para otra migración, con la misma variable `migration_commit` (por ejemplo, la del Sprint 5):
 
 ```bash
 migration_file="../2026-10-sprint5-${migration_commit}.sql"
@@ -515,7 +608,7 @@ git show "${migration_commit}:db/migrations/2026-10-sprint5.sql" > "$migration_f
 sha256sum "$migration_file"
 ```
 
-y en el paso 2 de [Migración del Sprint 5](#migración-del-sprint-5) usa `< "$migration_file"` en lugar de `< db/migrations/2026-10-sprint5.sql`.
+y en el paso 2 de [Migración del Sprint 5](#migración-del-sprint-5) usa `< "$migration_file"` en lugar de `< db/migrations/2026-10-sprint5.sql`. Las de [Migraciones del Sprint 6](#migraciones-del-sprint-6) se extraen igual, cambiando el nombre del archivo.
 
 ### Recuperación de backend y frontend
 
@@ -542,36 +635,52 @@ La recreación usa las imágenes anteriores que dejó en caché el paso de `pull
 
 | Nombre         | Rol | Usuario de GitHub |
 |----------------|-----|-------------------|
-| Mynor Monzon   | Backend y Scrum Master | [Mynor-M-50](https://github.com/Mynor-M-50) |
+| Mynor Monzon   | Backend, Scrum Master y documentación | [Mynor-M-50](https://github.com/Mynor-M-50) |
 | Carlos Lopez   | Backend e infraestructura AWS | [CarlosL62](https://github.com/CarlosL62) |
 | Luis Regalado  | Base de datos y backend | [LuisRV2112](https://github.com/LuisRV2112) |
 | Herson Aguilar | Frontend | [HersonAJ](https://github.com/HersonAJ) |
 | Yohana Perez   | Frontend | [yoha-lab-202030086](https://github.com/yoha-lab-202030086) |
 
-Ultima revision: 2026-10-15
+Ultima revision: 2026-10-29
 
 ## Diagramas
 
-Los archivos `.drawio` se abren y editan en https://app.diagrams.net.
+Los archivos `.drawio` se abren y editan en https://app.diagrams.net. Los `.drawio.png` también se pueden abrir ahí: llevan el diagrama editable incrustado.
 
 ### Diagrama entidad-relación
 
-![Diagrama ER](docs/diagramas/diagrama-er.png)
+![Diagrama ER](docs/Diagramas/diagrama-er.png)
 
-Editable: [docs/diagramas/diagrama-er.drawio](docs/diagramas/diagrama-er.drawio)
+Editable: [docs/Diagramas/diagrama-er.drawio](docs/Diagramas/diagrama-er.drawio)
+
+### Diagrama de arquitectura
+
+Capas del sistema: navegador, frontend Angular con nginx, backend Spring Boot en capas y PostgreSQL, con las tareas programadas y el servidor de correo.
+
+![Diagrama de arquitectura](docs/Diagramas/diagrama-arquitectura.drawio.png)
 
 ### Diagrama de despliegue
 
-EC2 con Docker Compose: nginx (frontend), backend Spring Boot y PostgreSQL, con las imágenes publicadas en GHCR.
+EC2 con Docker Compose: nginx (frontend), backend Spring Boot y PostgreSQL, con las imágenes publicadas en GHCR y el flujo de CI y CD desde GitHub.
 
-![Diagrama de despliegue](docs/diagramas/diagrama-despliegue.png)
+![Diagrama de despliegue](docs/Diagramas/diagrama-despliegue.drawio.png)
 
-Editable: [docs/diagramas/diagrama-despliegue.drawio](docs/diagramas/diagrama-despliegue.drawio)
+### Diagrama de despliegue en AWS
+
+![Diagrama de despliegue en AWS](docs/Diagramas/diagrama-despliegueAWS.png)
+
+Editable: [docs/Diagramas/diagrama-despliegueAWS.drawio](docs/Diagramas/diagrama-despliegueAWS.drawio)
 
 ### Diagrama de CI/CD
 
 Flujo de `ci.yml`, `cd.yml` y `scripts/deploy-ec2.sh`.
 
-![Diagrama de CI/CD](docs/diagramas/diagrama-cicd.png)
+![Diagrama de CI/CD](docs/Diagramas/diagrama-cicd.png)
 
-Editable: [docs/diagramas/diagrama-cicd.drawio](docs/diagramas/diagrama-cicd.drawio)
+Editable: [docs/Diagramas/diagrama-cicd.drawio](docs/Diagramas/diagrama-cicd.drawio)
+
+### Diagrama de procesos del flujo principal
+
+Registro, agendamiento con sus validaciones, atención y registro de tratamientos, con las ramas de cancelación, reprogramación, bloqueo de doctor e inasistencias.
+
+![Diagrama de procesos del flujo principal](docs/Diagramas/DiagramaFlujoPrincipal.drawio.png)
