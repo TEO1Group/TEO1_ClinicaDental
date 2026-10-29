@@ -58,3 +58,19 @@ export interface ReporteIngresosTratamientoResponse {
     total: number;
   }[];
 }
+
+export interface GananciaDoctor {
+  idDoctor: string;
+  nombreDoctor: string;
+  apellidoDoctor: string;
+  cantidadTratamientos: number;
+  total: number;
+}
+
+export interface ReporteGananciasResponse {
+  desde: string;
+  hasta: string;
+  totalTratamientos: number;
+  totalAbonos: number;
+  doctores: GananciaDoctor[];
+}
