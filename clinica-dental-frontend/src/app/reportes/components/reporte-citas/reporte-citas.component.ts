@@ -12,6 +12,20 @@ import {
 } from '../../models/reporte-citas.model';
 import { ReporteService } from '../../service/reporte.service';
 
+function obtenerFechaHoyGuatemala(): string {
+  const partes = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Guatemala',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(new Date());
+  const ano = partes.find(parte => parte.type === 'year')?.value;
+  const mes = partes.find(parte => parte.type === 'month')?.value;
+  const dia = partes.find(parte => parte.type === 'day')?.value;
+
+  return `${ano}-${mes}-${dia}`;
+}
+
 type TipoReporte = 'citasPorDoctor' | 'inasistencias' | 'ingresosPorTratamiento' | 'horasDemandadas' | 'ganancias';
 type ReporteResponse =
   | ReporteCitasPorDoctorResponse
@@ -32,7 +46,7 @@ export class ReporteCitasComponent implements OnInit {
   private readonly reporteService = inject(ReporteService);
   private readonly notificacionService = inject(NotificacionService);
 
-  readonly fechaHoy = this.formatearFecha(new Date());
+  readonly fechaHoy = obtenerFechaHoyGuatemala();
 
   readonly filtroForm = this.formBuilder.nonNullable.group({
     desde: ['', [Validators.required]],
@@ -57,10 +71,15 @@ export class ReporteCitasComponent implements OnInit {
   readonly error = this._error.asReadonly();
 
   ngOnInit(): void {
-    const hoy = new Date();
+    const hoyGuatemala = this.fechaHoy;
+    const [ano, mes] = hoyGuatemala.split('-').map(Number);
+    const ultimoDiaMes = new Date(ano, mes, 0).getDate();
+    const finDeMes = `${ano}-${String(mes).padStart(2, '0')}-${String(ultimoDiaMes).padStart(2, '0')}`;
+    const hastaPorDefecto = hoyGuatemala < finDeMes ? hoyGuatemala : finDeMes;
+
     this.filtroForm.setValue({
-      desde: this.formatearFecha(new Date(hoy.getFullYear(), hoy.getMonth(), 1)),
-      hasta: this.fechaHoy
+      desde: `${ano}-${String(mes).padStart(2, '0')}-01`,
+      hasta: hastaPorDefecto
     });
     this.cargarReporte();
   }
@@ -76,6 +95,11 @@ export class ReporteCitasComponent implements OnInit {
     const { desde, hasta } = this.filtroForm.getRawValue();
     if (desde > hasta) {
       this._error.set('La fecha inicial no puede ser posterior a la fecha final.');
+      return;
+    }
+
+    if (hasta > this.fechaHoy) {
+      this._error.set('La fecha final no puede ser posterior a la fecha de hoy.');
       return;
     }
 
@@ -141,11 +165,5 @@ export class ReporteCitasComponent implements OnInit {
     this._reporteIngresos.set(null);
     this._reporteHoras.set(null);
     this._reporteGanancias.set(null);
-  }
-
-  private formatearFecha(fecha: Date): string {
-    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-    const dia = String(fecha.getDate()).padStart(2, '0');
-    return `${fecha.getFullYear()}-${mes}-${dia}`;
   }
 }
