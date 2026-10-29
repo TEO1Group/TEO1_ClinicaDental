@@ -46,7 +46,7 @@ class OpenApiDocumentationIntegrationTests {
                 assertThat(operation).as("%s %s", method, path).isNotNull();
                 assertThat(operation).containsKeys("summary", "description", "tags", "responses");
 
-                boolean isPublic = path.equals("/auth/login") || path.equals("/auth/registro");
+                boolean isPublic = path.equals("/auth/login") || path.equals("/auth/registro") || path.equals("/version");
                 if (isPublic) {
                     assertThat(operation).doesNotContainKey("security");
                 } else {
