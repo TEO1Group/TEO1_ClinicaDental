@@ -5,14 +5,20 @@ import { Observable } from 'rxjs';
 import { NotificacionService } from '../../../core/notificacion/service/notificacion.service';
 import {
   ReporteCitasPorDoctorResponse,
+  ReporteGananciasResponse,
   ReporteHorasDemandadasResponse,
   ReporteInasistenciasResponse,
   ReporteIngresosTratamientoResponse
 } from '../../models/reporte-citas.model';
 import { ReporteService } from '../../service/reporte.service';
 
-type TipoReporte = 'citasPorDoctor' | 'inasistencias' | 'ingresosPorTratamiento' | 'horasDemandadas';
-type ReporteResponse = ReporteCitasPorDoctorResponse | ReporteInasistenciasResponse | ReporteIngresosTratamientoResponse | ReporteHorasDemandadasResponse;
+type TipoReporte = 'citasPorDoctor' | 'inasistencias' | 'ingresosPorTratamiento' | 'horasDemandadas' | 'ganancias';
+type ReporteResponse =
+  | ReporteCitasPorDoctorResponse
+  | ReporteInasistenciasResponse
+  | ReporteIngresosTratamientoResponse
+  | ReporteHorasDemandadasResponse
+  | ReporteGananciasResponse;
 
 @Component({
   selector: 'app-reporte-citas',
@@ -26,6 +32,8 @@ export class ReporteCitasComponent implements OnInit {
   private readonly reporteService = inject(ReporteService);
   private readonly notificacionService = inject(NotificacionService);
 
+  readonly fechaHoy = this.formatearFecha(new Date());
+
   readonly filtroForm = this.formBuilder.nonNullable.group({
     desde: ['', [Validators.required]],
     hasta: ['', [Validators.required]]
@@ -36,6 +44,7 @@ export class ReporteCitasComponent implements OnInit {
   private readonly _reporteInasistencias = signal<ReporteInasistenciasResponse | null>(null);
   private readonly _reporteIngresos = signal<ReporteIngresosTratamientoResponse | null>(null);
   private readonly _reporteHoras = signal<ReporteHorasDemandadasResponse | null>(null);
+  private readonly _reporteGanancias = signal<ReporteGananciasResponse | null>(null);
   private readonly _cargando = signal(false);
   private readonly _error = signal('');
 
@@ -43,6 +52,7 @@ export class ReporteCitasComponent implements OnInit {
   readonly reporteInasistencias = this._reporteInasistencias.asReadonly();
   readonly reporteIngresos = this._reporteIngresos.asReadonly();
   readonly reporteHoras = this._reporteHoras.asReadonly();
+  readonly reporteGanancias = this._reporteGanancias.asReadonly();
   readonly cargando = this._cargando.asReadonly();
   readonly error = this._error.asReadonly();
 
@@ -50,7 +60,7 @@ export class ReporteCitasComponent implements OnInit {
     const hoy = new Date();
     this.filtroForm.setValue({
       desde: this.formatearFecha(new Date(hoy.getFullYear(), hoy.getMonth(), 1)),
-      hasta: this.formatearFecha(new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0))
+      hasta: this.fechaHoy
     });
     this.cargarReporte();
   }
@@ -74,7 +84,8 @@ export class ReporteCitasComponent implements OnInit {
       citasPorDoctor: () => this.reporteService.citasPorDoctor(desde, hasta),
       inasistencias: () => this.reporteService.inasistencias(desde, hasta),
       ingresosPorTratamiento: () => this.reporteService.ingresosPorTratamiento(desde, hasta),
-      horasDemandadas: () => this.reporteService.horasDemandadas(desde, hasta)
+      horasDemandadas: () => this.reporteService.horasDemandadas(desde, hasta),
+      ganancias: () => this.reporteService.ganancias(desde, hasta)
     }[this.tipoReporte()]();
 
     solicitud.subscribe({
@@ -84,6 +95,7 @@ export class ReporteCitasComponent implements OnInit {
         if (this.tipoReporte() === 'inasistencias') this._reporteInasistencias.set(reporte as ReporteInasistenciasResponse);
         if (this.tipoReporte() === 'ingresosPorTratamiento') this._reporteIngresos.set(reporte as ReporteIngresosTratamientoResponse);
         if (this.tipoReporte() === 'horasDemandadas') this._reporteHoras.set(reporte as ReporteHorasDemandadasResponse);
+        if (this.tipoReporte() === 'ganancias') this._reporteGanancias.set(reporte as ReporteGananciasResponse);
         this._cargando.set(false);
       },
       error: (error) => {
@@ -128,6 +140,7 @@ export class ReporteCitasComponent implements OnInit {
     this._reporteInasistencias.set(null);
     this._reporteIngresos.set(null);
     this._reporteHoras.set(null);
+    this._reporteGanancias.set(null);
   }
 
   private formatearFecha(fecha: Date): string {
