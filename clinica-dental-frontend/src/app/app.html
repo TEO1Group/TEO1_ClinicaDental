@@ -3,9 +3,25 @@
 @if (mostrarLayout()) {
   <app-header (toggleSidebar)="toggleSidebar()"></app-header>
   <app-sidebar [visible]="sidebarVisible()" (cerrar)="cerrarSidebar()"></app-sidebar>
-  <main class="contenido-principal">
-    <router-outlet></router-outlet>
+  <main class="contenido-principal d-flex flex-column">
+    <div class="flex-grow-1">
+      <router-outlet></router-outlet>
+    </div>
+    @if (versionCommit(); as commit) {
+      <footer class="app-pie text-center py-2 text-muted small border-top">
+        <span>Commit: {{ commit }}</span>
+      </footer>
+    }
   </main>
 } @else {
-  <router-outlet></router-outlet>
+  <div class="d-flex flex-column min-vh-100">
+    <div class="flex-grow-1">
+      <router-outlet></router-outlet>
+    </div>
+    @if (versionCommit(); as commit) {
+      <footer class="app-pie text-center py-2 text-muted small">
+        <span>Commit: {{ commit }}</span>
+      </footer>
+    }
+  </div>
 }

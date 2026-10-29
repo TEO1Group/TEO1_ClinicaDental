@@ -109,3 +109,4 @@ describe('ReporteService', () => {
     expect(mensaje).toBe('La fecha desde no puede ser posterior a hasta');
   });
 });
+
