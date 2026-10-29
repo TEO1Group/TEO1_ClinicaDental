@@ -1,8 +1,14 @@
--- Datos de demo de la Clínica Dental (Sprint 6).
+-- Datos de demo de la Clínica Dental (Sprint 7). También sirve para reiniciar la demo: cada corrida la
+-- deja como nueva.
 --
 -- Crea: 2 doctores con horarios, 1 secretaria, 5 pacientes (uno en lista negra), citas de ayer, hoy y
 -- mañana en todos los estados, tratamientos registrados, una reprogramación, historial clínico y un
 -- bloqueo de doctor. Las fechas se calculan al correr el script (zona America/Guatemala).
+--
+-- Citas en curso: las dos citas Agendadas de hoy empiezan entre 20 y 50 minutos antes de correr el
+-- script, así el doctor las puede marcar en la demo a cualquier hora: la de Ana López (Dra. Morales)
+-- para atenderla y registrar el tratamiento, y la de Luis Pérez (Dr. Castillo) para marcar No asistió
+-- y ver cómo llega al límite de inasistencias. La cita Atendida de hoy es una hora antes.
 --
 -- Sprint 6:
 --   - Inasistencias: Luis Pérez tiene 2 desde que le levantaron la restricción hace 40 días (antes tuvo 3);
@@ -26,10 +32,12 @@
 -- de su cita de mañana en un buzón real.
 --
 -- Se puede correr varias veces: primero borra los datos de demo anteriores (solo los suyos, por id).
+-- Con -v solo_limpiar=1 (sin clave_demo) solo borra la demo y no carga nada.
 
 \set ON_ERROR_STOP 1
 
-\if :{?clave_demo}
+\if :{?solo_limpiar}
+\elif :{?clave_demo}
 \else
     \echo 'Falta la contraseña: agrega -v clave_demo=''<contraseña>'' al comando psql'
     SELECT 1 / 0 AS falta_clave_demo;
@@ -47,6 +55,14 @@ SELECT (now() AT TIME ZONE 'America/Guatemala')::date - 1 AS ayer,
        (now() AT TIME ZONE 'America/Guatemala')::date + 2 AS pasado_manana
 \gset
 
+-- Inicio de las citas en curso: el bloque de 30 minutos que empezó entre 20 y 50 minutos antes de ahora.
+-- Si se corre poco después de medianoche, cae en la noche de ayer.
+SELECT en_curso::date AS en_curso_fecha, en_curso::time AS en_curso_hora,
+       (en_curso - interval '1 hour')::date AS antes_fecha, (en_curso - interval '1 hour')::time AS antes_hora
+FROM (SELECT date_bin(interval '30 minutes', (now() AT TIME ZONE 'America/Guatemala') - interval '20 minutes',
+                      timestamp '2000-01-01') AS en_curso) AS t
+\gset
+
 BEGIN;
 
 -- 1. Limpiar la demo anterior. Al borrar los usuarios se borran en cascada sus perfiles, citas,
@@ -57,6 +73,12 @@ DELETE FROM usuario WHERE id_usuario IN (
     'de000000-0000-4000-8000-000000000012', 'de000000-0000-4000-8000-000000000013',
     'de000000-0000-4000-8000-000000000014', 'de000000-0000-4000-8000-000000000015'
 );
+
+\if :{?solo_limpiar}
+COMMIT;
+\echo 'Datos de demo borrados; no se cargó nada.'
+\quit
+\endif
 
 -- 2. Usuarios
 INSERT INTO usuario (id_usuario, nombre, apellido, email, password_hash, id_rol, telefono, estado)
@@ -105,13 +127,13 @@ INSERT INTO cita (id_cita, id_cliente, id_doctor, fecha, hora, estado, notas, mo
      :'ayer', '09:00', 'ATENDIDA', 'Revisión general', NULL),
     ('de000000-0000-4000-8000-00000000c102', 'de000000-0000-4000-8000-0000000000c2', 'de000000-0000-4000-8000-0000000000d1',
      :'ayer', '10:00', 'NO_ASISTIO', 'Dolor en muela', 'El paciente no se presentó ni avisó'),
-    -- Hoy
+    -- Hoy: una atendida una hora antes y las dos en curso (ver el encabezado)
     ('de000000-0000-4000-8000-00000000c201', 'de000000-0000-4000-8000-0000000000c3', 'de000000-0000-4000-8000-0000000000d1',
-     :'hoy', '08:00', 'ATENDIDA', 'Caries en pieza 36', NULL),
+     :'antes_fecha', :'antes_hora', 'ATENDIDA', 'Caries en pieza 36', NULL),
     ('de000000-0000-4000-8000-00000000c202', 'de000000-0000-4000-8000-0000000000c1', 'de000000-0000-4000-8000-0000000000d1',
-     :'hoy', '15:00', 'AGENDADA', 'Control después de la limpieza', NULL),
+     :'en_curso_fecha', :'en_curso_hora', 'AGENDADA', 'Control después de la limpieza', NULL),
     ('de000000-0000-4000-8000-00000000c203', 'de000000-0000-4000-8000-0000000000c2', 'de000000-0000-4000-8000-0000000000d2',
-     :'hoy', '16:30', 'AGENDADA', 'Evaluación para brackets', NULL),
+     :'en_curso_fecha', :'en_curso_hora', 'AGENDADA', 'Evaluación para brackets', NULL),
     -- Mañana (la de Ana López es la que recibe el correo de recordatorio)
     ('de000000-0000-4000-8000-00000000c301', 'de000000-0000-4000-8000-0000000000c1', 'de000000-0000-4000-8000-0000000000d1',
      :'manana', '09:00', 'AGENDADA', 'Limpieza dental', NULL),
@@ -139,7 +161,8 @@ VALUES ('de000000-0000-4000-8000-00000000c302', :'hoy', '11:00', :'manana', '10:
 -- 8. Historial clínico
 INSERT INTO historial_clinico (id_cliente, fecha, descripcion) VALUES
     ('de000000-0000-4000-8000-0000000000c1', :'ayer'::date + time '09:30', 'Paciente sin alergias conocidas. Se realizó limpieza; control en una semana.'),
-    ('de000000-0000-4000-8000-0000000000c3', :'hoy'::date + time '08:30', 'Caries profunda en pieza 36, restaurada con resina.');
+    ('de000000-0000-4000-8000-0000000000c3', :'antes_fecha'::date + :'antes_hora'::time + interval '30 minutes',
+     'Caries profunda en pieza 36, restaurada con resina.');
 
 -- 9. Bloqueo: el Dr. Castillo no atiende pasado mañana por la mañana
 INSERT INTO bloqueo_doctor (id_doctor, inicio, fin, motivo, creado_por)
@@ -237,6 +260,17 @@ SELECT u.email, r.nombre_rol AS rol, u.nombre || ' ' || u.apellido AS nombre
 FROM usuario u JOIN rol r USING (id_rol)
 WHERE u.id_usuario::text LIKE 'de000000-%'
 ORDER BY r.nombre_rol, u.apellido;
+
+\echo 'Citas en curso para la demo (el doctor ya las puede marcar):'
+SELECT c.fecha, c.hora, ud.nombre || ' ' || ud.apellido AS doctor, up.nombre || ' ' || up.apellido AS paciente,
+       c.notas
+FROM cita c
+JOIN doctor d USING (id_doctor)
+JOIN usuario ud ON ud.id_usuario = d.id_usuario
+JOIN cliente cl USING (id_cliente)
+JOIN usuario up ON up.id_usuario = cl.id_usuario
+WHERE c.id_cita IN ('de000000-0000-4000-8000-00000000c202', 'de000000-0000-4000-8000-00000000c203')
+ORDER BY doctor DESC;
 
 \echo 'Inasistencias desde el último levantamiento (con 3 o más el paciente no puede agendar):'
 SELECT u.nombre || ' ' || u.apellido AS paciente,
