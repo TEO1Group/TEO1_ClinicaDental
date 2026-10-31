@@ -33,6 +33,7 @@ public class ReprogramacionCitaService {
     private final DoctorRepository doctorRepository;
     private final UsuarioRepository usuarioRepository;
     private final DisponibilidadCitaService disponibilidadCitaService;
+    private final RecordatorioCitaService recordatorioCitaService;
     private final CitaMapper citaMapper;
     private final Clock clock;
 
@@ -54,10 +55,6 @@ public class ReprogramacionCitaService {
         LocalTime horaNueva = request.getHora();
         if (fechaNueva.equals(cita.getFecha()) && horaNueva.equals(cita.getHora())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La nueva fecha y hora son iguales a las actuales");
-        }
-
-        if (esCliente) {
-            disponibilidadCitaService.validarAntelacion(cita, "reprogramar");
         }
 
         Doctor doctor = doctorRepository.findByIdForUpdate(cita.getDoctor().getId())
@@ -91,6 +88,7 @@ public class ReprogramacionCitaService {
                 .reprogramadoPor(usuarioRepository.getReferenceById(usuarioId))
                 .build());
 
+        recordatorioCitaService.enviarAlAgendar(guardada);
         return citaMapper.toResponse(guardada);
     }
 

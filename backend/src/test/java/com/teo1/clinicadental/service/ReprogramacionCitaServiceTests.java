@@ -78,6 +78,9 @@ class ReprogramacionCitaServiceTests {
     @Mock
     private BloqueoDoctorRepository bloqueoDoctorRepository;
 
+    @Mock
+    private RecordatorioCitaService recordatorioCitaService;
+
     private ReprogramacionCitaService reprogramacionCitaService;
     private Doctor doctor;
     private Cliente cliente;
@@ -87,10 +90,10 @@ class ReprogramacionCitaServiceTests {
     void setUp() {
         Clock clock = Clock.fixed(ZonedDateTime.of(AHORA, ZONA).toInstant(), ZONA);
         DisponibilidadCitaService disponibilidadCitaService = new DisponibilidadCitaService(
-                citaRepository, horarioRepository, bloqueoDoctorRepository, clock, 30, 24);
+                citaRepository, horarioRepository, bloqueoDoctorRepository, clock, 30);
         reprogramacionCitaService = new ReprogramacionCitaService(
                 citaRepository, citaReprogramacionRepository, doctorRepository, usuarioRepository,
-                disponibilidadCitaService, new CitaMapper(), clock);
+                disponibilidadCitaService, recordatorioCitaService, new CitaMapper(), clock);
 
         usuarioClienteId = UUID.randomUUID();
         doctor = Doctor.builder()
@@ -133,6 +136,7 @@ class ReprogramacionCitaServiceTests {
         assertEquals(EstadoCita.AGENDADA, respuesta.getEstado());
         assertEquals(cliente.getId(), respuesta.getIdCliente());
         assertEquals(doctor.getId(), respuesta.getIdDoctor());
+        verify(recordatorioCitaService).enviarAlAgendar(cita);
     }
 
     @Test
@@ -148,15 +152,17 @@ class ReprogramacionCitaServiceTests {
     }
 
     @Test
-    void clienteReprogramaConMenosDe24HorasDevuelveConflicto() {
-        Cita cita = prepararCita(LocalDate.of(2026, 10, 9), LocalTime.of(7, 30), EstadoCita.AGENDADA);
+    void clienteReprogramaElMismoDiaSeAcepta() {
+        LocalDate hoy = AHORA.toLocalDate();
+        Cita cita = prepararCita(hoy, LocalTime.of(9, 0), EstadoCita.AGENDADA);
+        prepararDisponibilidad(hoy, List.of());
+        prepararGuardado(cita);
 
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> reprogramacionCitaService.reprogramar(
-                cita.getId(), request(FECHA, LocalTime.of(10, 0), "Cambio de turno"), autenticacion(usuarioClienteId, "CLIENTE")));
+        CitaResponse respuesta = reprogramacionCitaService.reprogramar(
+                cita.getId(), request(hoy, LocalTime.of(10, 0), "Cambio de turno"), autenticacion(usuarioClienteId, "CLIENTE"));
 
-        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
-        assertEquals("Solo puedes reprogramar tu cita con al menos 24 horas de anticipacion", exception.getReason());
-        assertSinCambios(cita, LocalDate.of(2026, 10, 9), LocalTime.of(7, 30));
+        assertEquals(hoy, respuesta.getFecha());
+        assertEquals(LocalTime.of(10, 0), respuesta.getHora());
     }
 
     @Test

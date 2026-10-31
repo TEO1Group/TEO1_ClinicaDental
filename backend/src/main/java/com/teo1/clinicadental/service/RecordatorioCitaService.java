@@ -17,8 +17,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
- * Envia una vez al dia el correo de recordatorio de las citas AGENDADA de las proximas 24 horas
- * y las marca con recordatorio_enviado para no repetirlo. Si SMTP_HOST o SMTP_FROM estan
+ * Envia el correo de recordatorio en cuanto se agenda o reprograma una cita y, una vez al dia, a las
+ * citas AGENDADA de las proximas 24 horas que aun no lo recibieron. Marca recordatorio_enviado para
+ * no repetirlo. Si SMTP_HOST o SMTP_FROM estan
  * vacios no hace nada, asi el CI y el desarrollo local no necesitan servidor de correo.
  */
 @Slf4j
@@ -49,6 +50,14 @@ public class RecordatorioCitaService {
         this.remitente = remitente;
     }
 
+    public void enviarAlAgendar(Cita cita) {
+        JavaMailSender sender = mailSender.getIfAvailable();
+        if (smtpHost.isBlank() || remitente.isBlank() || sender == null) {
+            return;
+        }
+        enviar(sender, cita);
+    }
+
     @Scheduled(cron = "${app.citas.recordatorio-cron:0 0 7 * * *}", zone = "${app.zona-horaria}")
     public void enviarRecordatorios() {
         JavaMailSender sender = mailSender.getIfAvailable();
@@ -67,19 +76,26 @@ public class RecordatorioCitaService {
                 continue;
             }
 
-            try {
-                sender.send(mensaje(cita));
-                cita.setRecordatorioEnviado(true);
-                citaRepository.save(cita);
+            if (enviar(sender, cita)) {
                 enviados++;
-            } catch (MailException exception) {
-                // Queda sin marcar para intentarlo en la siguiente ejecucion
-                log.warn("No se pudo enviar el recordatorio de la cita {}: {}", cita.getId(), exception.getMessage());
             }
         }
 
         if (enviados > 0) {
             log.info("Recordatorios de cita enviados: {}", enviados);
+        }
+    }
+
+    private boolean enviar(JavaMailSender sender, Cita cita) {
+        try {
+            sender.send(mensaje(cita));
+            cita.setRecordatorioEnviado(true);
+            citaRepository.save(cita);
+            return true;
+        } catch (MailException exception) {
+            // Queda sin marcar para intentarlo en la siguiente ejecucion
+            log.warn("No se pudo enviar el recordatorio de la cita {}: {}", cita.getId(), exception.getMessage());
+            return false;
         }
     }
 

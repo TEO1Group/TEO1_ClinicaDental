@@ -75,6 +75,9 @@ class CitaServiceTests {
     @Mock
     private InasistenciaService inasistenciaService;
 
+    @Mock
+    private RecordatorioCitaService recordatorioCitaService;
+
     private CitaService citaService;
     private Doctor doctor;
     private Cliente cliente;
@@ -85,10 +88,10 @@ class CitaServiceTests {
         Clock clock = Clock.fixed(ZonedDateTime.of(2026, 10, 8, 8, 0, 0, 0, ZONA).toInstant(), ZONA);
         DisponibilidadCitaService disponibilidadCitaService =
                 new DisponibilidadCitaService(
-                citaRepository, horarioRepository, bloqueoDoctorRepository, clock, 30, 24);
+                citaRepository, horarioRepository, bloqueoDoctorRepository, clock, 30);
         citaService = new CitaService(
                 citaRepository, clienteRepository, doctorRepository, disponibilidadCitaService, inasistenciaService,
-                new CitaMapper(), clock);
+                recordatorioCitaService, new CitaMapper(), clock);
 
         usuarioClienteId = UUID.randomUUID();
         doctor = Doctor.builder()
@@ -119,6 +122,7 @@ class CitaServiceTests {
         assertEquals(LocalTime.of(9, 0), respuesta.getHora());
         assertEquals("Ana", respuesta.getNombreCliente());
         assertEquals("Perez", respuesta.getApellidoDoctor());
+        verify(recordatorioCitaService).enviarAlAgendar(captor.getValue());
     }
 
     @Test
@@ -511,17 +515,12 @@ class CitaServiceTests {
     }
 
     @Test
-    void clienteCancelaConMenosDe24HorasDevuelveConflicto() {
-        Cita cita = citaEn(LocalDate.of(2026, 10, 9), LocalTime.of(7, 30));
-        when(citaRepository.findConRelacionesById(cita.getId())).thenReturn(Optional.of(cita));
+    void clienteCancelaElMismoDiaSeAcepta() {
+        Cita cita = prepararCambioEstado(LocalDate.of(2026, 10, 8), LocalTime.of(10, 0));
 
-        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
-                () -> citaService.cambiarEstado(cita.getId(), estado(EstadoCita.CANCELADA), autenticacion("CLIENTE")));
+        CitaResponse respuesta = citaService.cambiarEstado(cita.getId(), estado(EstadoCita.CANCELADA), autenticacion("CLIENTE"));
 
-        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
-        assertEquals("Solo puedes cancelar tu cita con al menos 24 horas de anticipacion", exception.getReason());
-        assertEquals(EstadoCita.AGENDADA, cita.getEstado());
-        verify(citaRepository, never()).save(any());
+        assertEquals(EstadoCita.CANCELADA, respuesta.getEstado());
     }
 
     @Test
