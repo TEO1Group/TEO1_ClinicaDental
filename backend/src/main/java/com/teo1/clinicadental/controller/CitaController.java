@@ -52,7 +52,8 @@ public class CitaController {
                     + "en app.citas.duracion-minutos) debe caber en un horario del doctor para ese dia y no puede solaparse "
                     + "con otra cita no cancelada del mismo doctor; dos citas que solo se tocan en el borde si se permiten. "
                     + "Tampoco puede cruzarse con un bloqueo del doctor. Si el paciente alcanza app.citas.max-inasistencias "
-                    + "(3 por defecto) desde su ultimo levantamiento, se rechaza con 409 hasta levantar la restriccion."
+                    + "(3 por defecto) desde su ultimo levantamiento, se rechaza con 409 hasta levantar la restriccion. "
+                    + "Al agendar se envia en ese momento el correo de recordatorio al paciente, si SMTP esta configurado."
     )
     @ApiResponse(responseCode = "201", description = "Cita agendada")
     @ApiResponse(responseCode = "400", description = "Datos invalidos, falta idCliente o la fecha y hora ya pasaron", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -129,8 +130,8 @@ public class CitaController {
                     + "CANCELADA la pueden hacer el CLIENTE (solo su cita), SECRETARIA y ADMIN; el DOCTOR no. "
                     + "ATENDIDA y NO_ASISTIO las pueden hacer el DOCTOR (solo sus citas), SECRETARIA y ADMIN; el CLIENTE no. "
                     + "CANCELADA y NO_ASISTIO exigen motivo (maximo 200 caracteres); en ATENDIDA es opcional. El motivo se "
-                    + "devuelve en el campo motivo de la respuesta. El CLIENTE solo puede cancelar con al menos "
-                    + "app.citas.antelacion-cancelacion-horas (24) horas de anticipacion al inicio de la cita. El DOCTOR solo "
+                    + "devuelve en el campo motivo de la respuesta. El CLIENTE puede cancelar su cita en cualquier momento, "
+                    + "incluso el mismo dia. El DOCTOR solo "
                     + "puede marcar ATENDIDA o NO_ASISTIO desde la hora de inicio de la cita. SECRETARIA y ADMIN no tienen "
                     + "limites de tiempo. Cancelar una cita libera el horario para volver a agendarlo."
     )
@@ -139,7 +140,7 @@ public class CitaController {
     @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "403", description = "Rol sin permiso para ese estado o la cita es de otra persona", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "Cita no encontrada", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    @ApiResponse(responseCode = "409", description = "La cita ya esta en un estado final, el CLIENTE cancela con menos de 24 horas de anticipacion o el DOCTOR marca la cita antes de su hora de inicio", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "409", description = "La cita ya esta en un estado final o el DOCTOR marca la cita antes de su hora de inicio", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<CitaResponse> cambiarEstado(
             @PathVariable UUID id,
             @Valid @RequestBody EstadoCitaRequest request,
@@ -154,19 +155,18 @@ public class CitaController {
             description = "Cambia la fecha y hora de una cita AGENDADA; conserva su doctor, su paciente y su estado. "
                     + "La pueden reprogramar el CLIENTE (solo su cita), SECRETARIA y ADMIN; el DOCTOR no. El motivo es "
                     + "obligatorio para todos (maximo 200 caracteres) y queda en el historial de reprogramaciones, no en el "
-                    + "campo motivo de la cita. El CLIENTE solo puede reprogramar con al menos "
-                    + "app.citas.antelacion-cancelacion-horas (24) horas de anticipacion al inicio ORIGINAL de la cita; "
-                    + "SECRETARIA y ADMIN no tienen limite. La nueva fecha y hora deben ser futuras, distintas de las actuales, "
+                    + "campo motivo de la cita. Ningun rol tiene plazo minimo de anticipacion: "
+                    + "se puede reprogramar el mismo dia. La nueva fecha y hora deben ser futuras, distintas de las actuales, "
                     + "caber en un horario del doctor, no cruzarse con un bloqueo del doctor y no solaparse con otra cita "
-                    + "(sin contar la propia). La hora anterior queda libre y el recordatorio queda pendiente de nuevo "
-                    + "para la nueva fecha, sujeto a la configuración SMTP y la tarea de recordatorios."
+                    + "(sin contar la propia). La hora anterior queda libre y el correo de recordatorio con la nueva fecha "
+                    + "se envia al paciente en ese momento, si SMTP esta configurado."
     )
     @ApiResponse(responseCode = "200", description = "Cita reprogramada")
     @ApiResponse(responseCode = "400", description = "Falta fecha, hora o motivo, el motivo supera 200 caracteres, la nueva fecha y hora son iguales a las actuales o ya pasaron", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "401", description = "Falta autenticacion valida", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "403", description = "El usuario es DOCTOR o es un CLIENTE y la cita es de otra persona", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "404", description = "Cita no encontrada", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
-    @ApiResponse(responseCode = "409", description = "La cita no esta AGENDADA, el CLIENTE reprograma con menos de 24 horas de anticipacion, o la nueva fecha y hora quedan fuera del horario del doctor, dentro de un bloqueo o solapadas con otra cita", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "409", description = "La cita no esta AGENDADA o la nueva fecha y hora quedan fuera del horario del doctor, dentro de un bloqueo o solapadas con otra cita", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<CitaResponse> reprogramar(
             @PathVariable UUID id,
             @Valid @RequestBody ReprogramarCitaRequest request,

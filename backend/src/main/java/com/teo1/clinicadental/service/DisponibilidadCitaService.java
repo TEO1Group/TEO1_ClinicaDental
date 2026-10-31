@@ -1,6 +1,5 @@
 package com.teo1.clinicadental.service;
 
-import com.teo1.clinicadental.model.Cita;
 import com.teo1.clinicadental.model.DiaSemana;
 import com.teo1.clinicadental.model.Doctor;
 import com.teo1.clinicadental.model.EstadoCita;
@@ -29,22 +28,19 @@ public class DisponibilidadCitaService {
     private final BloqueoDoctorRepository bloqueoDoctorRepository;
     private final Clock clock;
     private final long duracionMinutos;
-    private final long antelacionHoras;
 
     public DisponibilidadCitaService(
             CitaRepository citaRepository,
             HorarioRepository horarioRepository,
             BloqueoDoctorRepository bloqueoDoctorRepository,
             Clock clock,
-            @Value("${app.citas.duracion-minutos:30}") long duracionMinutos,
-            @Value("${app.citas.antelacion-cancelacion-horas:24}") long antelacionHoras
+            @Value("${app.citas.duracion-minutos:30}") long duracionMinutos
     ) {
         this.citaRepository = citaRepository;
         this.horarioRepository = horarioRepository;
         this.bloqueoDoctorRepository = bloqueoDoctorRepository;
         this.clock = clock;
         this.duracionMinutos = duracionMinutos;
-        this.antelacionHoras = antelacionHoras;
     }
 
     public void validar(Doctor doctor, LocalDate fecha, LocalTime hora, UUID citaExcluidaId) {
@@ -60,14 +56,6 @@ public class DisponibilidadCitaService {
     static boolean violaIndiceDeSlot(DataIntegrityViolationException exception) {
         String detalle = exception.getMostSpecificCause().getMessage();
         return detalle != null && detalle.contains(INDICE_CITA_DOCTOR_SLOT);
-    }
-
-    public void validarAntelacion(Cita cita, String accion) {
-        LocalDateTime inicio = LocalDateTime.of(cita.getFecha(), cita.getHora());
-        if (LocalDateTime.now(clock).plusHours(antelacionHoras).isAfter(inicio)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Solo puedes " + accion + " tu cita con al menos " + antelacionHoras + " horas de anticipacion");
-        }
     }
 
     private void validarDentroDeHorario(UUID doctorId, LocalDate fecha, LocalTime inicio) {

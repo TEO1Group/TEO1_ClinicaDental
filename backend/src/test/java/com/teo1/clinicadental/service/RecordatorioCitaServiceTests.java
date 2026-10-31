@@ -95,6 +95,43 @@ class RecordatorioCitaServiceTests {
         verify(citaRepository, never()).save(any());
     }
 
+    @Test
+    void alAgendarEnviaElCorreoDeInmediatoAunqueFaltenDias() {
+        Cita cita = cita(HOY.plusDays(2), LocalTime.of(9, 0));
+        when(mailSenderProvider.getIfAvailable()).thenReturn(mailSender);
+
+        servicio("smtp.prueba.com", "clinica@prueba.com").enviarAlAgendar(cita);
+
+        ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender).send(captor.capture());
+        assertArrayEquals(new String[] {"ana@prueba.com"}, captor.getValue().getTo());
+        assertTrue(captor.getValue().getText().contains("10/10/2026 a las 09:00"));
+        assertTrue(cita.isRecordatorioEnviado());
+        verify(citaRepository).save(cita);
+    }
+
+    @Test
+    void alAgendarSinSmtpConfiguradoNoEnvia() {
+        Cita cita = cita(HOY, LocalTime.of(18, 0));
+
+        servicio("", "").enviarAlAgendar(cita);
+
+        assertFalse(cita.isRecordatorioEnviado());
+        verifyNoInteractions(citaRepository, mailSender);
+    }
+
+    @Test
+    void alAgendarSiFallaElEnvioLaCitaQuedaSinMarcar() {
+        Cita cita = cita(HOY, LocalTime.of(18, 0));
+        when(mailSenderProvider.getIfAvailable()).thenReturn(mailSender);
+        doThrow(new MailSendException("SMTP caido")).when(mailSender).send(any(SimpleMailMessage.class));
+
+        servicio("smtp.prueba.com", "clinica@prueba.com").enviarAlAgendar(cita);
+
+        assertFalse(cita.isRecordatorioEnviado());
+        verify(citaRepository, never()).save(any());
+    }
+
     private RecordatorioCitaService servicio(String host, String remitente) {
         return new RecordatorioCitaService(citaRepository, mailSenderProvider, clock, host, remitente);
     }
