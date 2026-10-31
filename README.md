@@ -610,6 +610,43 @@ sha256sum "$migration_file"
 
 y en el paso 2 de [Migración del Sprint 5](#migración-del-sprint-5) usa `< "$migration_file"` en lugar de `< db/migrations/2026-10-sprint5.sql`. Las de [Migraciones del Sprint 6](#migraciones-del-sprint-6) se extraen igual, cambiando el nombre del archivo.
 
+### Respaldo y restauración de la base
+
+Los dos scripts se corren desde la raíz del repositorio (en EC2, `~/TEO1_ClinicaDental`) con el contenedor `db` en marcha. Entran al contenedor con `docker compose exec` y usan sus credenciales, así que no piden ni guardan contraseñas. El procedimiento completo, con la salida de la prueba en EC2, está en [Respaldo y restauración de la base](docs/respaldo-y-restauracion.md).
+
+1. **Respaldar** antes de cada migración y de cada release a `main`. Genera `~/respaldos/clinica_dental-AAAA-MM-DD-HHMM.dump` (modo 600), lo valida con `pg_restore --list` y guarda junto a él un `.conteos.txt` con las filas de cada tabla:
+
+   ```bash
+   scripts/respaldar-db.sh
+   ```
+
+   Copia el respaldo fuera de EC2 (por ejemplo, con `scp` a una carpeta privada). Tiene datos personales de los pacientes: no se sube al repositorio ni a carpetas compartidas.
+
+2. **Ensayar la restauración** sin tocar producción. Crea la base `clinica_dental_restore_test`, restaura el respaldo y compara las filas de cada tabla con el `.conteos.txt`. Debe terminar con `OK: ... tiene las mismas filas que el respaldo en todas las tablas`; `--reemplazar` borra la base de prueba anterior para repetir el ensayo. Al terminar, se borra la base de prueba:
+
+   ```bash
+   scripts/restaurar-db.sh ~/respaldos/clinica_dental-AAAA-MM-DD-HHMM.dump
+   echo "DROP DATABASE clinica_dental_restore_test" \
+     | docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d postgres -X -q'
+   ```
+
+3. **Recuperar producción**, solo si la base se dañó o hay que volver a un estado anterior. Se pierde lo guardado después del respaldo. Primero respalda el estado actual (paso 1); luego restaura el respaldo bueno en otra base y, con el backend detenido, intercambia los nombres. La base actual queda como `clinica_dental_anterior`, sin borrarse:
+
+   ```bash
+   scripts/restaurar-db.sh ~/respaldos/<respaldo-bueno>.dump clinica_dental_recuperada
+   docker compose stop backend
+   docker compose exec -T db sh -c 'psql -U "$POSTGRES_USER" -d postgres -X -v ON_ERROR_STOP=1' <<'SQL'
+   ALTER DATABASE clinica_dental RENAME TO clinica_dental_anterior;
+   ALTER DATABASE clinica_dental_recuperada RENAME TO clinica_dental;
+   SQL
+   docker compose start backend
+   curl -s -o /dev/null -w "%{http_code}\n" localhost:8080/v3/api-docs
+   ```
+
+   El `curl` debe dar 200 (si el backend todavía está arrancando, espera unos segundos y repítelo). Si el respaldo es de antes de una migración, aplica las migraciones de `db/migrations/` sobre `clinica_dental_recuperada` antes de detener el backend, porque arranca con `ddl-auto=validate`. Cuando la aplicación muestre los datos esperados, borra `clinica_dental_anterior` con `DROP DATABASE` como en el paso 2.
+
+`restaurar-db.sh` se niega a restaurar sobre la base que usa el backend. Para probar los scripts en local con podman, `DB_EXEC="podman exec -i <contenedor>"` cambia el comando con el que entran al contenedor.
+
 ### Recuperación de backend y frontend
 
 Antes de publicar imágenes nuevas, guarda una copia privada del `.env` actual fuera del repositorio. Contiene configuración sensible y debe conservar permisos restrictivos:
