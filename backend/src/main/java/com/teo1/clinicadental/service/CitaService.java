@@ -35,6 +35,7 @@ public class CitaService {
     private final DoctorRepository doctorRepository;
     private final DisponibilidadCitaService disponibilidadCitaService;
     private final InasistenciaService inasistenciaService;
+    private final RecordatorioCitaService recordatorioCitaService;
     private final CitaMapper citaMapper;
     private final Clock clock;
 
@@ -44,6 +45,7 @@ public class CitaService {
             DoctorRepository doctorRepository,
             DisponibilidadCitaService disponibilidadCitaService,
             InasistenciaService inasistenciaService,
+            RecordatorioCitaService recordatorioCitaService,
             CitaMapper citaMapper,
             Clock clock
     ) {
@@ -52,6 +54,7 @@ public class CitaService {
         this.doctorRepository = doctorRepository;
         this.disponibilidadCitaService = disponibilidadCitaService;
         this.inasistenciaService = inasistenciaService;
+        this.recordatorioCitaService = recordatorioCitaService;
         this.citaMapper = citaMapper;
         this.clock = clock;
     }
@@ -87,14 +90,18 @@ public class CitaService {
                 .recordatorioEnviado(false)
                 .build();
 
+        Cita guardada;
         try {
-            return citaMapper.toResponse(citaRepository.saveAndFlush(cita));
+            guardada = citaRepository.saveAndFlush(cita);
         } catch (DataIntegrityViolationException exception) {
             if (DisponibilidadCitaService.violaIndiceDeSlot(exception)) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, DisponibilidadCitaService.MENSAJE_SOLAPE);
             }
             throw exception;
         }
+
+        recordatorioCitaService.enviarAlAgendar(guardada);
+        return citaMapper.toResponse(guardada);
     }
 
     @Transactional(readOnly = true)
@@ -177,7 +184,7 @@ public class CitaService {
     }
 
     // CANCELADA: CLIENTE (su cita), SECRETARIA y ADMIN. ATENDIDA y NO_ASISTIO: DOCTOR (su cita), SECRETARIA y ADMIN.
-    // Reglas de tiempo en validarTiempoCambioEstado: el CLIENTE cancela solo con la antelacion configurada y el DOCTOR
+    // Reglas de tiempo en validarTiempoCambioEstado: el CLIENTE cancela sin limite de tiempo y el DOCTOR
     // marca ATENDIDA o NO_ASISTIO solo desde la hora de inicio; SECRETARIA y ADMIN no tienen limite.
     private void validarPermisoCambioEstado(Cita cita, EstadoCita nuevoEstado, Authentication authentication) {
         if (veTodasLasCitas(authentication)) {
@@ -200,7 +207,6 @@ public class CitaService {
         }
 
         if (nuevoEstado == EstadoCita.CANCELADA) {
-            disponibilidadCitaService.validarAntelacion(cita, "cancelar");
             return;
         }
 

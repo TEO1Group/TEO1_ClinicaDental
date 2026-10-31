@@ -54,7 +54,7 @@ class DisponibilidadCitaServiceTests {
     void setUp() {
         Clock clock = Clock.fixed(ZonedDateTime.of(2026, 10, 8, 8, 0, 0, 0, ZONA).toInstant(), ZONA);
         disponibilidadCitaService = new DisponibilidadCitaService(
-                citaRepository, horarioRepository, bloqueoDoctorRepository, clock, 30, 24);
+                citaRepository, horarioRepository, bloqueoDoctorRepository, clock, 30);
         doctor = Doctor.builder()
                 .id(UUID.randomUUID())
                 .especialidad("Odontologia general")
